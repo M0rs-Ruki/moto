@@ -12,7 +12,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { visitorId, reason } = body;
+    const { visitorId, reason, modelIds } = body;
 
     // Validation
     if (!visitorId || !reason) {
@@ -54,6 +54,55 @@ export async function POST(request: NextRequest) {
         status: "intake",
       },
     });
+
+    // Add new vehicle interests for this session (if provided)
+    if (modelIds && modelIds.length > 0) {
+      // Get existing interests to avoid duplicates
+      const existingInterests = await prisma.visitorInterest.findMany({
+        where: {
+          visitorId: visitor.id,
+        },
+        select: {
+          modelId: true,
+        },
+      });
+
+      const existingModelIds = new Set(existingInterests.map((ei) => ei.modelId));
+
+      // Create new interests that don't already exist, linked to this session
+      const newModelIds = modelIds.filter(
+        (modelId: string) => !existingModelIds.has(modelId)
+      );
+
+      if (newModelIds.length > 0) {
+        await prisma.visitorInterest.createMany({
+          data: newModelIds.map((modelId: string) => ({
+            visitorId: visitor.id,
+            modelId,
+            sessionId: session.id,
+          })),
+        });
+      }
+
+      // Also link existing interests to this session if they were selected
+      const selectedExistingModelIds = modelIds.filter((modelId: string) =>
+        existingModelIds.has(modelId)
+      );
+
+      if (selectedExistingModelIds.length > 0) {
+        // Update existing interests to link them to this session
+        await prisma.visitorInterest.updateMany({
+          where: {
+            visitorId: visitor.id,
+            modelId: { in: selectedExistingModelIds },
+            sessionId: null, // Only update interests not already linked to a session
+          },
+          data: {
+            sessionId: session.id,
+          },
+        });
+      }
+    }
 
     // Get return visit template (if exists) or use welcome template
     const returnVisitTemplate = await prisma.whatsAppTemplate.findFirst({

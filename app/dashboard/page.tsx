@@ -72,6 +72,7 @@ export default function DashboardPage() {
   const [foundVisitor, setFoundVisitor] = useState<any>(null);
   const [visitReason, setVisitReason] = useState("");
   const [creatingSession, setCreatingSession] = useState(false);
+  const [existingVisitorModelIds, setExistingVisitorModelIds] = useState<string[]>([]);
 
   // Form state
   const [formData, setFormData] = useState({
@@ -164,12 +165,19 @@ export default function DashboardPage() {
     setSearching(true);
     setError("");
     setFoundVisitor(null);
+    setExistingVisitorModelIds([]);
 
     try {
       const response = await axios.get(`/api/visitors?phone=${encodeURIComponent(searchPhone.trim())}`);
       
       if (response.data.found && response.data.visitor) {
         setFoundVisitor(response.data.visitor);
+        // Pre-select existing interests
+        if (response.data.visitor.interests) {
+          setExistingVisitorModelIds(
+            response.data.visitor.interests.map((i: any) => i.modelId)
+          );
+        }
       } else {
         setError("Visitor not found. You can create a new visitor instead.");
       }
@@ -194,12 +202,14 @@ export default function DashboardPage() {
       const response = await axios.post("/api/visitors/session", {
         visitorId: foundVisitor.id,
         reason: visitReason,
+        modelIds: existingVisitorModelIds, // Include selected vehicle interests
       });
 
       // Reset form
       setSearchPhone("");
       setVisitReason("");
       setFoundVisitor(null);
+      setExistingVisitorModelIds([]);
       setExistingVisitorDialogOpen(false);
       
       // Navigate to the new session
@@ -219,7 +229,16 @@ export default function DashboardPage() {
     setSearchPhone("");
     setFoundVisitor(null);
     setVisitReason("");
+    setExistingVisitorModelIds([]);
     setError("");
+  };
+
+  const handleExistingVisitorModelToggle = (modelId: string) => {
+    setExistingVisitorModelIds((prev) =>
+      prev.includes(modelId)
+        ? prev.filter((id) => id !== modelId)
+        : [...prev, modelId]
+    );
   };
 
   if (loading) {
@@ -552,6 +571,57 @@ export default function DashboardPage() {
                           </Badge>
                         ))}
                       </div>
+                    </div>
+                  )}
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="text-sm">
+                    Vehicle Interests (Optional - Update if changed)
+                  </Label>
+                  <p className="text-xs text-muted-foreground mb-2">
+                    Select vehicles the visitor is interested in for this visit. Previous interests are pre-selected.
+                  </p>
+                  {categories.length === 0 ? (
+                    <p className="text-xs sm:text-sm text-muted-foreground">
+                      No vehicle models available. Please add categories and models in Settings.
+                    </p>
+                  ) : (
+                    <div className="space-y-3 border rounded-lg p-3 sm:p-4 max-h-64 overflow-y-auto">
+                      {categories.map((category) => (
+                        <div key={category.id}>
+                          <h4 className="font-semibold text-sm mb-2">
+                            {category.name}
+                          </h4>
+                          <div className="flex flex-wrap gap-2">
+                            {category.models.map((model) => {
+                              const isSelected = existingVisitorModelIds.includes(model.id);
+                              const wasPreviousInterest = foundVisitor.interests?.some(
+                                (i: any) => i.modelId === model.id
+                              );
+                              return (
+                                <Badge
+                                  key={model.id}
+                                  variant={isSelected ? "default" : "outline"}
+                                  className={`cursor-pointer text-xs sm:text-sm ${
+                                    wasPreviousInterest && !isSelected
+                                      ? "border-primary/50 bg-primary/5"
+                                      : ""
+                                  }`}
+                                  onClick={() => handleExistingVisitorModelToggle(model.id)}
+                                >
+                                  {model.name} {model.year ? `(${model.year})` : ""}
+                                  {wasPreviousInterest && (
+                                    <span className="ml-1 text-xs opacity-70">
+                                      (Previous)
+                                    </span>
+                                  )}
+                                </Badge>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      ))}
                     </div>
                   )}
                 </div>

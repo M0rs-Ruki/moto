@@ -27,6 +27,20 @@ export async function GET(request: NextRequest) {
             },
           },
         },
+        visitorInterests: {
+          where: {
+            sessionId: {
+              not: null, // Only get interests linked to this session
+            },
+          },
+          include: {
+            model: {
+              include: {
+                category: true,
+              },
+            },
+          },
+        },
       },
       orderBy: {
         createdAt: "desc",

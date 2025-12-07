@@ -38,10 +38,10 @@ model Dealership {
   updatedAt DateTime @updatedAt
 
   // Relations
-  users              User[]
-  vehicleCategories  VehicleCategory[]
-  visitors           Visitor[]
-  whatsappTemplates  WhatsAppTemplate[]
+  users             User[]
+  vehicleCategories VehicleCategory[]
+  visitors          Visitor[]
+  whatsappTemplates WhatsAppTemplate[]
 }
 
 // Vehicle categories (e.g., Car, Bike, Coupe, SUV, etc.)
@@ -64,9 +64,9 @@ model VehicleCategory {
 
 // Vehicle models under categories
 model VehicleModel {
-  id    String @id @default(cuid())
-  name  String
-  year  Int?
+  id   String @id @default(cuid())
+  name String
+  year Int?
 
   category   VehicleCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
   categoryId String
@@ -126,7 +126,8 @@ model VisitorSession {
   updatedAt DateTime @updatedAt
 
   // Relations
-  testDrives TestDrive[]
+  testDrives       TestDrive[]
+  visitorInterests VisitorInterest[]
 
   @@index([visitorId])
   @@index([status])
@@ -142,11 +143,16 @@ model VisitorInterest {
   model   VehicleModel @relation(fields: [modelId], references: [id], onDelete: Cascade)
   modelId String
 
+  // Link to session to track which visit this interest is from
+  session   VisitorSession? @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  sessionId String?
+
   createdAt DateTime @default(now())
 
-  @@unique([visitorId, modelId])
+  @@unique([visitorId, modelId, sessionId])
   @@index([visitorId])
   @@index([modelId])
+  @@index([sessionId])
 }
 
 // Test drive records

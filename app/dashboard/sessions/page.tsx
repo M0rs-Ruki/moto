@@ -63,6 +63,15 @@ interface Session {
       };
     };
   }>;
+  visitorInterests?: Array<{
+    id: string;
+    model: {
+      name: string;
+      category: {
+        name: string;
+      };
+    };
+  }>;
 }
 
 interface VehicleModel {
@@ -365,6 +374,25 @@ export default function SessionsPage() {
                           {session.reason}
                         </p>
                       </div>
+
+                      {session.visitorInterests && session.visitorInterests.length > 0 && (
+                        <div>
+                          <p className="text-xs sm:text-sm font-semibold mb-2">
+                            Vehicle Interests for This Visit:
+                          </p>
+                          <div className="flex flex-wrap gap-2">
+                            {session.visitorInterests.map((interest) => (
+                              <Badge
+                                key={interest.id}
+                                variant="secondary"
+                                className="text-xs"
+                              >
+                                {interest.model.category.name} - {interest.model.name}
+                              </Badge>
+                            ))}
+                          </div>
+                        </div>
+                      )}
 
                       {hasTestDrives && (
                         <div>
