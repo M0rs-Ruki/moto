@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import axios from "axios";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,7 +15,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Loader2, UserPlus } from "lucide-react";
+import { Plus, Loader2, UserPlus, Search, UserCheck } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -58,12 +59,19 @@ interface Visitor {
 }
 
 export default function DashboardPage() {
+  const router = useRouter();
   const [categories, setCategories] = useState<VehicleCategory[]>([]);
   const [visitors, setVisitors] = useState<Visitor[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [existingVisitorDialogOpen, setExistingVisitorDialogOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
+  const [searching, setSearching] = useState(false);
+  const [searchPhone, setSearchPhone] = useState("");
+  const [foundVisitor, setFoundVisitor] = useState<any>(null);
+  const [visitReason, setVisitReason] = useState("");
+  const [creatingSession, setCreatingSession] = useState(false);
 
   // Form state
   const [formData, setFormData] = useState({
@@ -132,6 +140,88 @@ export default function DashboardPage() {
     }
   };
 
+  const handleVisitorClick = (visitor: Visitor) => {
+    // Get the most recent session ID, or use visitor ID if no session
+    const sessionId = visitor.sessions && visitor.sessions.length > 0 
+      ? visitor.sessions[0].id 
+      : null;
+    
+    if (sessionId) {
+      // Navigate to sessions page with session ID
+      router.push(`/dashboard/sessions?sessionId=${sessionId}`);
+    } else {
+      // If no session, still navigate but with visitor ID
+      router.push(`/dashboard/sessions?visitorId=${visitor.id}`);
+    }
+  };
+
+  const handleSearchVisitor = async () => {
+    if (!searchPhone.trim()) {
+      setError("Please enter a phone number");
+      return;
+    }
+
+    setSearching(true);
+    setError("");
+    setFoundVisitor(null);
+
+    try {
+      const response = await axios.get(`/api/visitors?phone=${encodeURIComponent(searchPhone.trim())}`);
+      
+      if (response.data.found && response.data.visitor) {
+        setFoundVisitor(response.data.visitor);
+      } else {
+        setError("Visitor not found. You can create a new visitor instead.");
+      }
+    } catch (err: any) {
+      setError(err.response?.data?.error || "Failed to search visitor");
+    } finally {
+      setSearching(false);
+    }
+  };
+
+  const handleCreateSessionForExistingVisitor = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!foundVisitor || !visitReason.trim()) {
+      setError("Please enter a reason for the visit");
+      return;
+    }
+
+    setCreatingSession(true);
+    setError("");
+
+    try {
+      const response = await axios.post("/api/visitors/session", {
+        visitorId: foundVisitor.id,
+        reason: visitReason,
+      });
+
+      // Reset form
+      setSearchPhone("");
+      setVisitReason("");
+      setFoundVisitor(null);
+      setExistingVisitorDialogOpen(false);
+      
+      // Navigate to the new session
+      if (response.data.session) {
+        router.push(`/dashboard/sessions?sessionId=${response.data.session.id}`);
+      } else {
+        fetchData(); // Refresh visitors list
+      }
+    } catch (err: any) {
+      setError(err.response?.data?.error || "Failed to create session");
+    } finally {
+      setCreatingSession(false);
+    }
+  };
+
+  const handleResetSearch = () => {
+    setSearchPhone("");
+    setFoundVisitor(null);
+    setVisitReason("");
+    setError("");
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -153,16 +243,18 @@ export default function DashboardPage() {
           </p>
         </div>
 
-        <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-          <DialogTrigger asChild>
-            <Button
-              size="lg"
-              className="w-full sm:w-auto shadow-md hover:shadow-lg"
-            >
-              <UserPlus className="mr-2 h-5 w-5" />
-              New Visitor
-            </Button>
-          </DialogTrigger>
+        <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto">
+          <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
+            <DialogTrigger asChild>
+              <Button
+                size="lg"
+                variant="default"
+                className="w-full sm:w-auto shadow-md hover:shadow-lg"
+              >
+                <UserPlus className="mr-2 h-5 w-5" />
+                New Visitor
+              </Button>
+            </DialogTrigger>
           <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto p-4 sm:p-6">
             <DialogHeader className="space-y-2">
               <DialogTitle>Add New Visitor</DialogTitle>
@@ -335,6 +427,199 @@ export default function DashboardPage() {
             </form>
           </DialogContent>
         </Dialog>
+
+        <Dialog open={existingVisitorDialogOpen} onOpenChange={setExistingVisitorDialogOpen}>
+          <DialogTrigger asChild>
+            <Button
+              size="lg"
+              variant="outline"
+              className="w-full sm:w-auto shadow-md hover:shadow-lg"
+            >
+              <UserCheck className="mr-2 h-5 w-5" />
+              Existing Visitor
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto p-4 sm:p-6">
+            <DialogHeader className="space-y-2">
+              <DialogTitle>Existing Visitor - New Visit</DialogTitle>
+              <DialogDescription className="text-xs sm:text-sm">
+                Search for an existing visitor by phone number to create a new visit session.
+              </DialogDescription>
+            </DialogHeader>
+
+            {!foundVisitor ? (
+              <div className="space-y-4 mt-4">
+                <div className="space-y-2">
+                  <Label htmlFor="searchPhone" className="text-sm">
+                    Search by WhatsApp Number *
+                  </Label>
+                  <div className="flex gap-2">
+                    <Input
+                      id="searchPhone"
+                      type="tel"
+                      placeholder="+1234567890"
+                      value={searchPhone}
+                      onChange={(e) => setSearchPhone(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          handleSearchVisitor();
+                        }
+                      }}
+                      className="flex-1"
+                    />
+                    <Button
+                      type="button"
+                      onClick={handleSearchVisitor}
+                      disabled={searching || !searchPhone.trim()}
+                    >
+                      {searching ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Search className="h-4 w-4" />
+                      )}
+                    </Button>
+                  </div>
+                </div>
+
+                {error && (
+                  <div className="bg-destructive/10 text-destructive text-xs sm:text-sm p-3 rounded">
+                    {error}
+                  </div>
+                )}
+
+                {error && error.includes("not found") && (
+                  <div className="pt-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => {
+                        setExistingVisitorDialogOpen(false);
+                        setDialogOpen(true);
+                      }}
+                      className="w-full"
+                    >
+                      <UserPlus className="mr-2 h-4 w-4" />
+                      Create New Visitor Instead
+                    </Button>
+                  </div>
+                )}
+              </div>
+            ) : (
+              <form onSubmit={handleCreateSessionForExistingVisitor} className="space-y-4 mt-4">
+                <div className="bg-muted/30 p-4 rounded-lg space-y-2">
+                  <div className="flex items-center justify-between">
+                    <h3 className="font-semibold text-sm">Visitor Information</h3>
+                    <Badge variant="secondary" className="text-xs">
+                      {foundVisitor.sessionCount === 1
+                        ? "2nd Visit"
+                        : foundVisitor.sessionCount === 2
+                        ? "3rd Visit"
+                        : `${foundVisitor.sessionCount + 1}th Visit`}
+                    </Badge>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+                    <div>
+                      <span className="text-muted-foreground text-xs">Name:</span>
+                      <p className="font-medium">
+                        {foundVisitor.firstName} {foundVisitor.lastName}
+                      </p>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground text-xs">Phone:</span>
+                      <p className="font-medium">{foundVisitor.whatsappNumber}</p>
+                    </div>
+                    {foundVisitor.email && (
+                      <div>
+                        <span className="text-muted-foreground text-xs">Email:</span>
+                        <p className="font-medium">{foundVisitor.email}</p>
+                      </div>
+                    )}
+                    {foundVisitor.address && (
+                      <div>
+                        <span className="text-muted-foreground text-xs">Address:</span>
+                        <p className="font-medium">{foundVisitor.address}</p>
+                      </div>
+                    )}
+                  </div>
+                  {foundVisitor.interests && foundVisitor.interests.length > 0 && (
+                    <div className="pt-2 border-t">
+                      <span className="text-muted-foreground text-xs">Previous Interests:</span>
+                      <div className="flex flex-wrap gap-2 mt-1">
+                        {foundVisitor.interests.map((interest: any, idx: number) => (
+                          <Badge key={idx} variant="outline" className="text-xs">
+                            {interest.categoryName} - {interest.modelName}
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="visitReason" className="text-sm">
+                    Reason for This Visit *
+                  </Label>
+                  <Textarea
+                    id="visitReason"
+                    placeholder="Why is the visitor here today? (e.g., Follow-up on previous inquiry, Test drive, etc.)"
+                    value={visitReason}
+                    onChange={(e) => setVisitReason(e.target.value)}
+                    required
+                    className="min-h-24"
+                  />
+                </div>
+
+                {error && (
+                  <div className="bg-destructive/10 text-destructive text-xs sm:text-sm p-3 rounded">
+                    {error}
+                  </div>
+                )}
+
+                <div className="flex flex-col sm:flex-row justify-end gap-2 pt-4">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={handleResetSearch}
+                    className="w-full sm:w-auto"
+                  >
+                    Search Another
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setExistingVisitorDialogOpen(false)}
+                    className="w-full sm:w-auto"
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    type="submit"
+                    disabled={creatingSession || !visitReason.trim()}
+                    className="w-full sm:w-auto"
+                  >
+                    {creatingSession ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Creating...
+                      </>
+                    ) : (
+                      <>
+                        Create {foundVisitor.sessionCount === 1
+                          ? "2nd"
+                          : foundVisitor.sessionCount === 2
+                          ? "3rd"
+                          : `${foundVisitor.sessionCount + 1}th`}{" "}
+                        Visit Session
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </form>
+            )}
+          </DialogContent>
+        </Dialog>
+        </div>
       </div>
 
       {/* Visitors List - Responsive Grid */}
@@ -352,10 +637,11 @@ export default function DashboardPage() {
           visitors.map((visitor) => (
             <Card
               key={visitor.id}
-              className="flex flex-col hover:shadow-lg transition-shadow"
+              className="flex flex-col hover:shadow-lg transition-shadow cursor-pointer group"
+              onClick={() => handleVisitorClick(visitor)}
             >
               <CardHeader className="pb-3 border-b">
-                <CardTitle className="text-base sm:text-lg truncate">
+                <CardTitle className="text-base sm:text-lg truncate group-hover:text-primary transition-colors">
                   {visitor.firstName} {visitor.lastName}
                 </CardTitle>
                 <CardDescription className="text-xs sm:text-sm truncate">

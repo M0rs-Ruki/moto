@@ -152,6 +152,57 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
     }
 
+    // Check if searching by phone number
+    const searchParams = request.nextUrl.searchParams;
+    const phoneNumber = searchParams.get("phone");
+
+    if (phoneNumber) {
+      // Search for visitor by phone number
+      const visitor = await prisma.visitor.findFirst({
+        where: {
+          dealershipId: user.dealershipId,
+          whatsappNumber: phoneNumber,
+        },
+        include: {
+          sessions: {
+            orderBy: { createdAt: "desc" },
+          },
+          interests: {
+            include: {
+              model: {
+                include: {
+                  category: true,
+                },
+              },
+            },
+          },
+        },
+      });
+
+      if (!visitor) {
+        return NextResponse.json({ visitor: null, found: false });
+      }
+
+      return NextResponse.json({
+        visitor: {
+          id: visitor.id,
+          firstName: visitor.firstName,
+          lastName: visitor.lastName,
+          whatsappNumber: visitor.whatsappNumber,
+          email: visitor.email,
+          address: visitor.address,
+          sessionCount: visitor.sessions.length,
+          interests: visitor.interests.map((i) => ({
+            modelId: i.model.id,
+            modelName: i.model.name,
+            categoryName: i.model.category.name,
+          })),
+        },
+        found: true,
+      });
+    }
+
+    // Return all visitors
     const visitors = await prisma.visitor.findMany({
       where: {
         dealershipId: user.dealershipId,

@@ -1,6 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
+import { useSearchParams } from "next/navigation";
 import axios from "axios";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -77,6 +78,8 @@ interface VehicleCategory {
 }
 
 export default function SessionsPage() {
+  const searchParams = useSearchParams();
+  const sessionRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
   const [sessions, setSessions] = useState<Session[]>([]);
   const [categories, setCategories] = useState<VehicleCategory[]>([]);
   const [loading, setLoading] = useState(true);
@@ -104,6 +107,49 @@ export default function SessionsPage() {
   useEffect(() => {
     fetchData();
   }, []);
+
+  // Handle auto-expand and scroll when coming from dashboard
+  useEffect(() => {
+    if (sessions.length === 0 || loading) return;
+
+    const sessionId = searchParams.get("sessionId");
+    const visitorId = searchParams.get("visitorId");
+
+    if (sessionId || visitorId) {
+      // Find the matching session
+      const targetSession = sessions.find(
+        (s) =>
+          (sessionId && s.id === sessionId) ||
+          (visitorId && s.visitor.id === visitorId)
+      );
+
+      if (targetSession) {
+        // Expand the session (override default collapsed state if needed)
+        setExpandedSessions((prev) => {
+          const newSet = new Set(prev);
+          newSet.add(targetSession.id);
+          return newSet;
+        });
+
+        // Scroll to the session after a short delay to allow expansion
+        setTimeout(() => {
+          const element = sessionRefs.current[targetSession.id];
+          if (element) {
+            element.scrollIntoView({
+              behavior: "smooth",
+              block: "center",
+            });
+            
+            // Highlight the session briefly
+            element.classList.add("ring-2", "ring-primary", "ring-offset-2", "rounded-lg");
+            setTimeout(() => {
+              element.classList.remove("ring-2", "ring-primary", "ring-offset-2", "rounded-lg");
+            }, 2000);
+          }
+        }, 400);
+      }
+    }
+  }, [sessions, loading, searchParams]);
 
   const fetchData = async () => {
     try {
@@ -244,7 +290,10 @@ export default function SessionsPage() {
             return (
               <Card
                 key={session.id}
-                className="overflow-hidden hover:shadow-md transition-shadow"
+                ref={(el) => {
+                  sessionRefs.current[session.id] = el;
+                }}
+                className="overflow-hidden hover:shadow-md transition-all duration-200"
               >
                 <Collapsible
                   open={isExpanded}
