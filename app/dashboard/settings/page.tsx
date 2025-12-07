@@ -15,6 +15,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Loader2, Plus, Save } from "lucide-react";
 import { useTheme } from "@/lib/theme-provider";
+import SettingsLoading from "./loading";
 import {
   Dialog,
   DialogContent,
@@ -46,7 +47,16 @@ interface WhatsAppTemplate {
 }
 
 export default function SettingsPage() {
-  const { theme, accentColor, setTheme, setAccentColor } = useTheme();
+  const {
+    theme,
+    primaryColor,
+    secondaryColor,
+    tertiaryColor,
+    setTheme,
+    setPrimaryColor,
+    setSecondaryColor,
+    setTertiaryColor,
+  } = useTheme();
   const [categories, setCategories] = useState<VehicleCategory[]>([]);
   const [templates, setTemplates] = useState<WhatsAppTemplate[]>([]);
   const [loading, setLoading] = useState(true);
@@ -67,7 +77,9 @@ export default function SettingsPage() {
   // Theme settings
   const [themeSettings, setThemeSettings] = useState({
     theme: theme,
-    accentColor: accentColor,
+    primaryColor: primaryColor,
+    secondaryColor: secondaryColor,
+    tertiaryColor: tertiaryColor,
   });
 
   useEffect(() => {
@@ -75,8 +87,13 @@ export default function SettingsPage() {
   }, []);
 
   useEffect(() => {
-    setThemeSettings({ theme, accentColor });
-  }, [theme, accentColor]);
+    setThemeSettings({
+      theme,
+      primaryColor,
+      secondaryColor,
+      tertiaryColor,
+    });
+  }, [theme, primaryColor, secondaryColor, tertiaryColor]);
 
   const fetchData = async () => {
     try {
@@ -137,15 +154,15 @@ export default function SettingsPage() {
 
   const handleApplyTheme = () => {
     setTheme(themeSettings.theme as "light" | "dark" | "custom");
-    setAccentColor(themeSettings.accentColor);
+    if (themeSettings.theme === "custom") {
+      setPrimaryColor(themeSettings.primaryColor);
+      setSecondaryColor(themeSettings.secondaryColor);
+      setTertiaryColor(themeSettings.tertiaryColor);
+    }
   };
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    );
+    return <SettingsLoading />;
   }
 
   return (
@@ -518,34 +535,107 @@ export default function SettingsPage() {
               </div>
 
               {themeSettings.theme === "custom" && (
-                <div className="space-y-2">
-                  <Label htmlFor="accent-color" className="text-sm">
-                    Accent Color
-                  </Label>
-                  <div className="flex flex-col sm:flex-row gap-2">
-                    <Input
-                      id="accent-color"
-                      type="color"
-                      value={themeSettings.accentColor}
-                      onChange={(e) =>
-                        setThemeSettings({
-                          ...themeSettings,
-                          accentColor: e.target.value,
-                        })
-                      }
-                      className="w-full sm:w-20 h-10"
-                    />
-                    <Input
-                      value={themeSettings.accentColor}
-                      onChange={(e) =>
-                        setThemeSettings({
-                          ...themeSettings,
-                          accentColor: e.target.value,
-                        })
-                      }
-                      placeholder="#3b82f6"
-                      className="text-xs sm:text-sm flex-1"
-                    />
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="primary-color" className="text-sm font-semibold">
+                      Primary Color (Main)
+                    </Label>
+                    <p className="text-xs text-muted-foreground">
+                      Used for main buttons, headings, and primary actions
+                    </p>
+                    <div className="flex flex-col sm:flex-row gap-2">
+                      <Input
+                        id="primary-color"
+                        type="color"
+                        value={themeSettings.primaryColor}
+                        onChange={(e) =>
+                          setThemeSettings({
+                            ...themeSettings,
+                            primaryColor: e.target.value,
+                          })
+                        }
+                        className="w-full sm:w-20 h-10"
+                      />
+                      <Input
+                        value={themeSettings.primaryColor}
+                        onChange={(e) =>
+                          setThemeSettings({
+                            ...themeSettings,
+                            primaryColor: e.target.value,
+                          })
+                        }
+                        placeholder="#3b82f6"
+                        className="text-xs sm:text-sm flex-1"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="secondary-color" className="text-sm font-semibold">
+                      Secondary Color
+                    </Label>
+                    <p className="text-xs text-muted-foreground">
+                      Used for secondary buttons, accents, and highlights
+                    </p>
+                    <div className="flex flex-col sm:flex-row gap-2">
+                      <Input
+                        id="secondary-color"
+                        type="color"
+                        value={themeSettings.secondaryColor}
+                        onChange={(e) =>
+                          setThemeSettings({
+                            ...themeSettings,
+                            secondaryColor: e.target.value,
+                          })
+                        }
+                        className="w-full sm:w-20 h-10"
+                      />
+                      <Input
+                        value={themeSettings.secondaryColor}
+                        onChange={(e) =>
+                          setThemeSettings({
+                            ...themeSettings,
+                            secondaryColor: e.target.value,
+                          })
+                        }
+                        placeholder="#8b5cf6"
+                        className="text-xs sm:text-sm flex-1"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="tertiary-color" className="text-sm font-semibold">
+                      Tertiary Color
+                    </Label>
+                    <p className="text-xs text-muted-foreground">
+                      Used for borders, hover states, and subtle backgrounds
+                    </p>
+                    <div className="flex flex-col sm:flex-row gap-2">
+                      <Input
+                        id="tertiary-color"
+                        type="color"
+                        value={themeSettings.tertiaryColor}
+                        onChange={(e) =>
+                          setThemeSettings({
+                            ...themeSettings,
+                            tertiaryColor: e.target.value,
+                          })
+                        }
+                        className="w-full sm:w-20 h-10"
+                      />
+                      <Input
+                        value={themeSettings.tertiaryColor}
+                        onChange={(e) =>
+                          setThemeSettings({
+                            ...themeSettings,
+                            tertiaryColor: e.target.value,
+                          })
+                        }
+                        placeholder="#ec4899"
+                        className="text-xs sm:text-sm flex-1"
+                      />
+                    </div>
                   </div>
                 </div>
               )}

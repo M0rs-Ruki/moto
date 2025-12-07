@@ -112,13 +112,128 @@
   --sidebar-ring: oklch(0.556 0 0);
 }
 
-/* Custom theme support */
+/* Custom theme support - Three Color System */
 [data-theme="custom"] {
-  --primary: var(--accent-color, oklch(0.582 0.22 255.77));
+  /* Primary Color - Main buttons, headings, primary actions */
+  --primary: var(--primary-color, oklch(0.582 0.22 255.77));
   --primary-foreground: oklch(1 0 0);
-  --sidebar-primary: var(--accent-color, oklch(0.582 0.22 255.77));
+  --sidebar-primary: var(--primary-color, oklch(0.582 0.22 255.77));
   --sidebar-primary-foreground: oklch(1 0 0);
-  --ring: var(--accent-color, oklch(0.582 0.22 255.77));
+  --ring: var(--primary-color, oklch(0.582 0.22 255.77));
+  
+  /* Secondary Color - Secondary buttons, accents, highlights */
+  --secondary: var(--secondary-color, oklch(0.696 0.17 162.48));
+  --secondary-foreground: oklch(1 0 0);
+  --accent: var(--secondary-color, oklch(0.696 0.17 162.48));
+  --accent-foreground: oklch(1 0 0);
+  
+  /* Tertiary Color - Borders, hover states, subtle backgrounds */
+  --muted: var(--tertiary-color, oklch(0.769 0.188 70.08));
+  --muted-foreground: oklch(0.145 0 0);
+  --border: var(--tertiary-color, oklch(0.769 0.188 70.08));
+  --input: var(--tertiary-color, oklch(0.922 0.05 70.08));
+}
+
+/* Custom theme hover and interactive states */
+[data-theme="custom"] .hover\:bg-primary:hover {
+  background-color: var(--primary-color) !important;
+  opacity: 0.9;
+}
+
+[data-theme="custom"] .hover\:bg-secondary:hover {
+  background-color: var(--secondary-color) !important;
+  opacity: 0.9;
+}
+
+[data-theme="custom"] .hover\:bg-accent:hover {
+  background-color: var(--secondary-color) !important;
+}
+
+[data-theme="custom"] .bg-primary {
+  background-color: var(--primary-color);
+}
+
+[data-theme="custom"] .bg-secondary {
+  background-color: var(--secondary-color);
+}
+
+[data-theme="custom"] .bg-accent {
+  background-color: var(--secondary-color);
+}
+
+[data-theme="custom"] .bg-muted {
+  background-color: var(--tertiary-color);
+  opacity: 0.15;
+}
+
+[data-theme="custom"] .border-primary,
+[data-theme="custom"] .border {
+  border-color: var(--tertiary-color);
+  opacity: 0.3;
+}
+
+[data-theme="custom"] .text-primary {
+  color: var(--primary-color);
+}
+
+[data-theme="custom"] .text-secondary {
+  color: var(--secondary-color);
+}
+
+[data-theme="custom"] .ring-primary {
+  --tw-ring-color: var(--primary-color);
+}
+
+/* Card hover effects */
+[data-theme="custom"] .card:hover,
+[data-theme="custom"] [role="region"]:hover {
+  border-color: var(--tertiary-color);
+  opacity: 0.5;
+}
+
+/* Button variants */
+[data-theme="custom"] button.variant-secondary,
+[data-theme="custom"] [data-variant="secondary"] {
+  background-color: var(--secondary-color);
+  color: var(--secondary-foreground);
+}
+
+[data-theme="custom"] button.variant-outline:hover {
+  background-color: var(--tertiary-color);
+  opacity: 0.1;
+  border-color: var(--primary-color);
+  color: var(--primary-color);
+}
+
+/* Input focus */
+[data-theme="custom"] input:focus,
+[data-theme="custom"] textarea:focus,
+[data-theme="custom"] select:focus {
+  border-color: var(--primary-color);
+  --tw-ring-color: var(--primary-color);
+}
+
+/* Badge colors */
+[data-theme="custom"] [data-variant="default"] {
+  background-color: var(--primary-color);
+  color: var(--primary-foreground);
+}
+
+[data-theme="custom"] [data-variant="secondary"] {
+  background-color: var(--secondary-color);
+  color: var(--secondary-foreground);
+}
+
+[data-theme="custom"] [data-variant="outline"] {
+  border-color: var(--tertiary-color);
+  color: var(--tertiary-color);
+}
+
+/* Gradient effects */
+[data-theme="custom"] .bg-gradient-to-r.from-primary {
+  --tw-gradient-from: var(--primary-color);
+  --tw-gradient-to: var(--secondary-color);
+  --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to);
 }
 
 @layer base {

@@ -6,29 +6,57 @@ type Theme = "light" | "dark" | "custom";
 
 interface ThemeContextType {
   theme: Theme;
-  accentColor: string;
+  primaryColor: string;
+  secondaryColor: string;
+  tertiaryColor: string;
   setTheme: (theme: Theme) => void;
-  setAccentColor: (color: string) => void;
+  setPrimaryColor: (color: string) => void;
+  setSecondaryColor: (color: string) => void;
+  setTertiaryColor: (color: string) => void;
 }
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
+  // Detect system preference
+  const getSystemTheme = (): "light" | "dark" => {
+    if (typeof window === "undefined") return "light";
+    return window.matchMedia("(prefers-color-scheme: dark)").matches
+      ? "dark"
+      : "light";
+  };
+
   const [theme, setThemeState] = useState<Theme>("light");
-  const [accentColor, setAccentColorState] = useState<string>("#3b82f6");
+  const [primaryColor, setPrimaryColorState] = useState<string>("#3b82f6");
+  const [secondaryColor, setSecondaryColorState] = useState<string>("#8b5cf6");
+  const [tertiaryColor, setTertiaryColorState] = useState<string>("#ec4899");
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
     setMounted(true);
     // Load theme from localStorage on mount
     const savedTheme = localStorage.getItem("theme") as Theme | null;
-    const savedAccentColor = localStorage.getItem("accentColor");
+    const savedPrimaryColor = localStorage.getItem("primaryColor");
+    const savedSecondaryColor = localStorage.getItem("secondaryColor");
+    const savedTertiaryColor = localStorage.getItem("tertiaryColor");
 
     if (savedTheme) {
+      // If user has explicitly selected a theme, use it
       setThemeState(savedTheme);
+    } else {
+      // Otherwise, use system preference (but don't save it yet)
+      const systemTheme = getSystemTheme();
+      setThemeState(systemTheme);
     }
-    if (savedAccentColor) {
-      setAccentColorState(savedAccentColor);
+
+    if (savedPrimaryColor) {
+      setPrimaryColorState(savedPrimaryColor);
+    }
+    if (savedSecondaryColor) {
+      setSecondaryColorState(savedSecondaryColor);
+    }
+    if (savedTertiaryColor) {
+      setTertiaryColorState(savedTertiaryColor);
     }
   }, []);
 
@@ -41,36 +69,69 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     root.classList.remove("light", "dark");
     root.removeAttribute("data-theme");
 
-    if (theme === "dark") {
-      root.classList.add("dark");
-    } else if (theme === "custom") {
+    if (theme === "custom") {
+      // Custom theme - apply custom colors (ignore system preference)
       root.setAttribute("data-theme", "custom");
-      // Set CSS variable for accent color
-      root.style.setProperty("--accent-color", hexToOklch(accentColor));
+      root.style.setProperty("--primary-color", hexToOklch(primaryColor));
+      root.style.setProperty("--secondary-color", hexToOklch(secondaryColor));
+      root.style.setProperty("--tertiary-color", hexToOklch(tertiaryColor));
+    } else if (theme === "dark") {
+      // Explicit dark mode
+      root.classList.add("dark");
+    } else {
+      // Light mode (explicit or system default)
+      root.classList.remove("dark");
     }
+  }, [theme, mounted, primaryColor, secondaryColor, tertiaryColor]);
 
-    // Save to localStorage
-    localStorage.setItem("theme", theme);
-  }, [theme, mounted, accentColor]);
+  // Listen to system theme changes (only if user hasn't explicitly set a theme)
+  useEffect(() => {
+    if (!mounted) return;
+
+    const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
+    const handleChange = (e: MediaQueryListEvent) => {
+      // Only update if no explicit theme is saved in localStorage
+      const savedTheme = localStorage.getItem("theme");
+      if (!savedTheme) {
+        // No explicit theme, follow system preference
+        setThemeState(e.matches ? "dark" : "light");
+      }
+    };
+
+    mediaQuery.addEventListener("change", handleChange);
+    return () => mediaQuery.removeEventListener("change", handleChange);
+  }, [mounted]);
 
   useEffect(() => {
     if (!mounted) return;
-    localStorage.setItem("accentColor", accentColor);
+    
+    localStorage.setItem("primaryColor", primaryColor);
+    localStorage.setItem("secondaryColor", secondaryColor);
+    localStorage.setItem("tertiaryColor", tertiaryColor);
 
     if (theme === "custom") {
-      document.documentElement.style.setProperty(
-        "--accent-color",
-        hexToOklch(accentColor)
-      );
+      document.documentElement.style.setProperty("--primary-color", hexToOklch(primaryColor));
+      document.documentElement.style.setProperty("--secondary-color", hexToOklch(secondaryColor));
+      document.documentElement.style.setProperty("--tertiary-color", hexToOklch(tertiaryColor));
     }
-  }, [accentColor, mounted, theme]);
+  }, [primaryColor, secondaryColor, tertiaryColor, mounted, theme]);
 
   const setTheme = (newTheme: Theme) => {
     setThemeState(newTheme);
+    // Save to localStorage when user explicitly sets a theme
+    localStorage.setItem("theme", newTheme);
   };
 
-  const setAccentColor = (color: string) => {
-    setAccentColorState(color);
+  const setPrimaryColor = (color: string) => {
+    setPrimaryColorState(color);
+  };
+
+  const setSecondaryColor = (color: string) => {
+    setSecondaryColorState(color);
+  };
+
+  const setTertiaryColor = (color: string) => {
+    setTertiaryColorState(color);
   };
 
   // Prevent flash of unstyled content
@@ -80,7 +141,16 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <ThemeContext.Provider
-      value={{ theme, accentColor, setTheme, setAccentColor }}
+      value={{
+        theme,
+        primaryColor,
+        secondaryColor,
+        tertiaryColor,
+        setTheme,
+        setPrimaryColor,
+        setSecondaryColor,
+        setTertiaryColor,
+      }}
     >
       {children}
     </ThemeContext.Provider>

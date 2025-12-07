@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Plus, Loader2, UserPlus, Search, UserCheck } from "lucide-react";
+import DashboardLoading from "./loading";
 import {
   Dialog,
   DialogContent,
@@ -242,11 +243,7 @@ export default function DashboardPage() {
   };
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    );
+    return <DashboardLoading />;
   }
 
   return (

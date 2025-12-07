@@ -30,6 +30,7 @@ import {
   SelectLabel,
 } from "@/components/ui/select";
 import { Loader2, Car, LogOut, Star, ChevronDown, ChevronUp } from "lucide-react";
+import SessionsLoading from "./loading";
 import {
   Dialog,
   DialogContent,
@@ -258,11 +259,7 @@ export default function SessionsPage() {
   };
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    );
+    return <SessionsLoading />;
   }
 
   return (
