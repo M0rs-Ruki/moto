@@ -1,0 +1,138 @@
+{
+  "info": {
+    "name": "WhatsApp API Test",
+    "description": "Test collection for WhatsApp API endpoints",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Create Contact",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer 23c7d69f5d690f7dcd839eb9e38b80f37fea9b3d73287bf205a6c17c79ad49db",
+            "type": "text"
+          },
+          {
+            "key": "x-access-key",
+            "value": "0485be83343ed0ab35e74fb84398bf31",
+            "type": "text"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json",
+            "type": "text"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"firstName\": \"Test\",\n  \"lastName\": \"User\",\n  \"contact_number\": \"+919876543210\",\n  \"email\": \"test@example.com\",\n  \"address\": \"Test Address\"\n}"
+        },
+        "url": {
+          "raw": "https://api.chati.ai/v1/public/api/contact",
+          "protocol": "https",
+          "host": ["api", "chati", "ai"],
+          "path": ["v1", "public", "api", "contact"]
+        }
+      }
+    },
+    {
+      "name": "Get Contact by Phone",
+      "request": {
+        "method": "GET",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer 23c7d69f5d690f7dcd839eb9e38b80f37fea9b3d73287bf205a6c17c79ad49db",
+            "type": "text"
+          },
+          {
+            "key": "x-access-key",
+            "value": "0485be83343ed0ab35e74fb84398bf31",
+            "type": "text"
+          }
+        ],
+        "url": {
+          "raw": "https://api.chati.ai/v1/public/api/contact?contact_number=+917735322819",
+          "protocol": "https",
+          "host": ["api", "chati", "ai"],
+          "path": ["v1", "public", "api", "contact"],
+          "query": [
+            {
+              "key": "contact_number",
+              "value": "+917735322819"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "name": "Send Template Message",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer 23c7d69f5d690f7dcd839eb9e38b80f37fea9b3d73287bf205a6c17c79ad49db",
+            "type": "text"
+          },
+          {
+            "key": "x-access-key",
+            "value": "0485be83343ed0ab35e74fb84398bf31",
+            "type": "text"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json",
+            "type": "text"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"phoneNumberId\": \"816371744883836\",\n  \"contactId\": \"693580a00aaec4ef13eec123\",\n  \"contactNumber\": \"+917735322819\",\n  \"templateName\": \"service_reminder\",\n  \"templateId\": \"788018717207249\",\n  \"templateLanguage\": \"en_US\",\n  \"defaultMedia\": false,\n  \"mediaType\": \"\",\n  \"mediaLink\": \"\",\n  \"parameters\": [\"Mors\"],\n  \"couponCode\": \"\"\n}"
+        },
+        "url": {
+          "raw": "https://api.chati.ai/v1/public/api/send-template/",
+          "protocol": "https",
+          "host": ["api", "chati", "ai"],
+          "path": ["v1", "public", "api", "send-template", ""]
+        }
+      }
+    },
+    {
+      "name": "Send Template - Minimal",
+      "request": {
+        "method": "POST",
+        "header": [
+          {
+            "key": "Authorization",
+            "value": "Bearer 23c7d69f5d690f7dcd839eb9e38b80f37fea9b3d73287bf205a6c17c79ad49db",
+            "type": "text"
+          },
+          {
+            "key": "x-access-key",
+            "value": "0485be83343ed0ab35e74fb84398bf31",
+            "type": "text"
+          },
+          {
+            "key": "Content-Type",
+            "value": "application/json",
+            "type": "text"
+          }
+        ],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"phoneNumberId\": \"816371744883836\",\n  \"contactNumber\": \"+917735322819\",\n  \"templateName\": \"service_reminder\",\n  \"templateId\": \"788018717207249\",\n  \"parameters\": [\"Mors\"]\n}"
+        },
+        "url": {
+          "raw": "https://api.chati.ai/v1/public/api/send-template/",
+          "protocol": "https",
+          "host": ["api", "chati", "ai"],
+          "path": ["v1", "public", "api", "send-template", ""]
+        }
+      }
+    }
+  ]
+}

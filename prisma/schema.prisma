@@ -1,0 +1,193 @@
+// Prisma schema for showroom visitor management system
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// User authentication and management
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  password  String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Dealership association
+  dealership   Dealership? @relation(fields: [dealershipId], references: [id])
+  dealershipId String?
+
+  // Theme preferences
+  theme       String @default("light") // light, dark, custom
+  accentColor String @default("#3b82f6") // hex color for custom theme
+
+  @@index([dealershipId])
+}
+
+// Dealership/Company information
+model Dealership {
+  id       String @id @default(cuid())
+  name     String
+  location String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  users              User[]
+  vehicleCategories  VehicleCategory[]
+  visitors           Visitor[]
+  whatsappTemplates  WhatsAppTemplate[]
+}
+
+// Vehicle categories (e.g., Car, Bike, Coupe, SUV, etc.)
+model VehicleCategory {
+  id   String @id @default(cuid())
+  name String
+
+  dealership   Dealership @relation(fields: [dealershipId], references: [id], onDelete: Cascade)
+  dealershipId String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  models VehicleModel[]
+
+  @@unique([dealershipId, name])
+  @@index([dealershipId])
+}
+
+// Vehicle models under categories
+model VehicleModel {
+  id    String @id @default(cuid())
+  name  String
+  year  Int?
+
+  category   VehicleCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  categoryId String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  visitorInterests VisitorInterest[]
+  testDrives       TestDrive[]
+
+  @@index([categoryId])
+}
+
+// Visitor contact information
+model Visitor {
+  id             String  @id @default(cuid())
+  firstName      String
+  lastName       String
+  whatsappNumber String
+  email          String?
+  address        String?
+
+  // WhatsApp contact ID from the API
+  whatsappContactId String?
+
+  dealership   Dealership @relation(fields: [dealershipId], references: [id], onDelete: Cascade)
+  dealershipId String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  sessions  VisitorSession[]
+  interests VisitorInterest[]
+
+  @@index([dealershipId])
+  @@index([whatsappNumber])
+}
+
+// Visitor session tracking
+model VisitorSession {
+  id     String @id @default(cuid())
+  reason String // Why they're visiting
+
+  // Session status: intake, test_drive, completed, exited
+  status String @default("intake")
+
+  // Exit feedback
+  exitFeedback String?
+  exitRating   Int? // 1-5 scale
+
+  visitor   Visitor @relation(fields: [visitorId], references: [id], onDelete: Cascade)
+  visitorId String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  testDrives TestDrive[]
+
+  @@index([visitorId])
+  @@index([status])
+}
+
+// Vehicle models the visitor is interested in
+model VisitorInterest {
+  id String @id @default(cuid())
+
+  visitor   Visitor @relation(fields: [visitorId], references: [id], onDelete: Cascade)
+  visitorId String
+
+  model   VehicleModel @relation(fields: [modelId], references: [id], onDelete: Cascade)
+  modelId String
+
+  createdAt DateTime @default(now())
+
+  @@unique([visitorId, modelId])
+  @@index([visitorId])
+  @@index([modelId])
+}
+
+// Test drive records
+model TestDrive {
+  id String @id @default(cuid())
+
+  session   VisitorSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  sessionId String
+
+  model   VehicleModel @relation(fields: [modelId], references: [id], onDelete: Cascade)
+  modelId String
+
+  // Test drive outcome: excellent, good, fair, poor
+  outcome String?
+
+  feedback String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([sessionId])
+  @@index([modelId])
+}
+
+// WhatsApp template configurations
+model WhatsAppTemplate {
+  id           String @id @default(cuid())
+  name         String // Internal name
+  templateId   String // API template ID
+  templateName String // API template name
+  language     String @default("en_US")
+
+  // Template type: welcome, test_drive, exit
+  type String
+
+  dealership   Dealership @relation(fields: [dealershipId], references: [id], onDelete: Cascade)
+  dealershipId String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([dealershipId, type])
+  @@index([dealershipId])
+}
