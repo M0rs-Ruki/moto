@@ -64,10 +64,7 @@ export async function POST(request: NextRequest) {
           templateName: template.templateName,
           templateId: template.templateId,
           templateLanguage: template.language,
-          parameters: [
-            session.visitor.firstName,
-            new Date().toLocaleDateString(),
-          ],
+          parameters: [session.visitor.firstName],
         });
       } catch (error: any) {
         console.error("Failed to send exit message:", error);
