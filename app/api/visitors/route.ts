@@ -40,11 +40,8 @@ export async function POST(request: NextRequest) {
         email: email || "",
         address: address || "",
       });
-      whatsappContactId =
-        contactResult.contactId ||
-        contactResult.id ||
-        contactResult.contact_id ||
-        "";
+
+      whatsappContactId = contactResult.contactId;
 
       if (!whatsappContactId) {
         throw new Error("No contact ID returned from WhatsApp API");
