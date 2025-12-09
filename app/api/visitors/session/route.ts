@@ -36,10 +36,7 @@ export async function POST(request: NextRequest) {
     });
 
     if (!visitor) {
-      return NextResponse.json(
-        { error: "Visitor not found" },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: "Visitor not found" }, { status: 404 });
     }
 
     // Count existing sessions to determine visit number
@@ -67,7 +64,9 @@ export async function POST(request: NextRequest) {
         },
       });
 
-      const existingModelIds = new Set(existingInterests.map((ei) => ei.modelId));
+      const existingModelIds = new Set(
+        existingInterests.map((ei) => ei.modelId)
+      );
 
       // Create new interests that don't already exist, linked to this session
       const newModelIds = modelIds.filter(
@@ -126,17 +125,28 @@ export async function POST(request: NextRequest) {
 
     if (templateToUse && visitor.whatsappContactId) {
       try {
+        const visitLabel =
+          visitNumber === 1
+            ? "1st"
+            : visitNumber === 2
+            ? "2nd"
+            : visitNumber === 3
+            ? "3rd"
+            : `${visitNumber}th`;
+
+        // Align parameter count to template type to avoid 500s
+        const parameters =
+          templateToUse.type === "return_visit"
+            ? [visitor.firstName, visitLabel]
+            : [visitor.firstName, new Date().toLocaleDateString()];
+
         await whatsappClient.sendTemplate({
           contactId: visitor.whatsappContactId,
           contactNumber: visitor.whatsappNumber,
           templateName: templateToUse.templateName,
           templateId: templateToUse.templateId,
           templateLanguage: templateToUse.language,
-          parameters: [
-            visitor.firstName,
-            visitNumber === 2 ? "2nd" : visitNumber === 3 ? "3rd" : `${visitNumber}th`,
-            new Date().toLocaleDateString(),
-          ],
+          parameters,
         });
         messageStatus = "sent";
       } catch (error: any) {
@@ -171,4 +181,3 @@ export async function POST(request: NextRequest) {
     );
   }
 }
-

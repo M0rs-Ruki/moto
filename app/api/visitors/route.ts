@@ -97,6 +97,8 @@ export async function POST(request: NextRequest) {
 
     let messageStatus = "not_sent";
     let messageError = null;
+    const name = `${firstName} ${lastName}`;
+    const CRM = 9999999999;
 
     if (welcomeTemplate) {
       try {
@@ -106,7 +108,7 @@ export async function POST(request: NextRequest) {
           templateName: welcomeTemplate.templateName,
           templateId: welcomeTemplate.templateId,
           templateLanguage: welcomeTemplate.language,
-          parameters: [firstName, new Date().toLocaleDateString()],
+          parameters: [name, CRM.toString()],
         });
         messageStatus = "sent";
       } catch (error: any) {

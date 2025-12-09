@@ -46,6 +46,9 @@ export async function POST(request: NextRequest) {
         outcome: outcome || null,
         feedback: feedback || null,
       },
+      include: {
+        model: true,
+      },
     });
 
     // Update session status
@@ -64,16 +67,18 @@ export async function POST(request: NextRequest) {
 
     if (template && session.visitor.whatsappNumber) {
       try {
+        const fullName = `${session.visitor.firstName} ${
+          session.visitor.lastName || ""
+        }`.trim();
+        const modelName = testDrive.model.name;
+
         await whatsappClient.sendTemplate({
           contactId: session.visitor.whatsappContactId || undefined,
           contactNumber: session.visitor.whatsappNumber,
           templateName: template.templateName,
           templateId: template.templateId,
           templateLanguage: template.language,
-          parameters: [
-            session.visitor.firstName,
-            new Date().toLocaleDateString(),
-          ],
+          parameters: [fullName, modelName],
         });
       } catch (error: any) {
         console.error("Failed to send test drive message:", error);

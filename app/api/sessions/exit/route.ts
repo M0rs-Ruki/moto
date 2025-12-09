@@ -58,13 +58,14 @@ export async function POST(request: NextRequest) {
 
     if (template && session.visitor.whatsappNumber) {
       try {
+        const CRM = 999999999;
         await whatsappClient.sendTemplate({
           contactId: session.visitor.whatsappContactId || undefined,
           contactNumber: session.visitor.whatsappNumber,
           templateName: template.templateName,
           templateId: template.templateId,
           templateLanguage: template.language,
-          parameters: [session.visitor.firstName],
+          parameters: [CRM.toString()],
         });
       } catch (error: any) {
         console.error("Failed to send exit message:", error);
