@@ -27,7 +27,7 @@ export async function GET(request: NextRequest) {
     });
 
     return NextResponse.json({ categories });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Get categories error:", error);
     return NextResponse.json(
       { error: "Internal server error" },
@@ -62,7 +62,7 @@ export async function POST(request: NextRequest) {
     });
 
     return NextResponse.json({ success: true, category });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Create category error:", error);
     return NextResponse.json(
       { error: "Internal server error" },

@@ -80,7 +80,7 @@ export async function POST(request: NextRequest) {
           templateLanguage: template.language,
           parameters: [fullName, modelName],
         });
-      } catch (error: any) {
+      } catch (error: unknown) {
         console.error("Failed to send test drive message:", error);
       }
     }
@@ -91,7 +91,7 @@ export async function POST(request: NextRequest) {
         id: testDrive.id,
       },
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Create test drive error:", error);
     return NextResponse.json(
       { error: "Internal server error" },
@@ -134,7 +134,7 @@ export async function GET(request: NextRequest) {
     });
 
     return NextResponse.json({ testDrives });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Get test drives error:", error);
     return NextResponse.json(
       { error: "Internal server error" },

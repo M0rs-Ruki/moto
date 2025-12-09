@@ -48,7 +48,7 @@ export async function GET(request: NextRequest) {
     });
 
     return NextResponse.json({ sessions });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Get sessions error:", error);
     return NextResponse.json(
       { error: "Internal server error" },

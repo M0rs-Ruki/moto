@@ -46,10 +46,16 @@ export async function POST(request: NextRequest) {
       if (!whatsappContactId) {
         throw new Error("No contact ID returned from WhatsApp API");
       }
-    } catch (error: any) {
-      console.error("Failed to create WhatsApp contact:", error.message);
+    } catch (error: unknown) {
+      console.error(
+        "Failed to create WhatsApp contact:",
+        (error as Error).message
+      );
       return NextResponse.json(
-        { error: "Failed to create WhatsApp contact", details: error.message },
+        {
+          error: "Failed to create WhatsApp contact",
+          details: (error as Error).message,
+        },
         { status: 500 }
       );
     }
@@ -111,10 +117,11 @@ export async function POST(request: NextRequest) {
           parameters: [name, CRM.toString()],
         });
         messageStatus = "sent";
-      } catch (error: any) {
+      } catch (error: unknown) {
         console.error("Failed to send welcome message:", error);
         messageStatus = "failed";
-        messageError = error.message || "Failed to send welcome message";
+        messageError =
+          (error as Error).message || "Failed to send welcome message";
         // Don't fail the whole operation if message sending fails
       }
     }
@@ -135,7 +142,7 @@ export async function POST(request: NextRequest) {
         error: messageError,
       },
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Create visitor error:", error);
     return NextResponse.json(
       { error: "Internal server error" },
@@ -228,7 +235,7 @@ export async function GET(request: NextRequest) {
     });
 
     return NextResponse.json({ visitors });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Get visitors error:", error);
     return NextResponse.json(
       { error: "Internal server error" },

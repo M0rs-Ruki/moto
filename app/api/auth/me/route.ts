@@ -33,7 +33,7 @@ export async function GET(request: NextRequest) {
     }
 
     return NextResponse.json({ user: fullUser });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Get user error:", error);
     return NextResponse.json(
       { error: "Internal server error" },

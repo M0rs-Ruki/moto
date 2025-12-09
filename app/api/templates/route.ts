@@ -20,7 +20,7 @@ export async function GET(request: NextRequest) {
     });
 
     return NextResponse.json({ templates });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Get templates error:", error);
     return NextResponse.json(
       { error: "Internal server error" },
@@ -73,7 +73,7 @@ export async function PUT(request: NextRequest) {
     });
 
     return NextResponse.json({ success: true, template });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Update template error:", error);
     return NextResponse.json(
       { error: "Internal server error" },

@@ -107,7 +107,7 @@ export async function POST(request: NextRequest) {
         dealership: user.dealership,
       },
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Register error:", error);
     return NextResponse.json(
       { error: "Internal server error" },

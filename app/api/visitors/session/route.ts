@@ -149,10 +149,10 @@ export async function POST(request: NextRequest) {
           parameters,
         });
         messageStatus = "sent";
-      } catch (error: any) {
+      } catch (error: unknown) {
         console.error("Failed to send return visit message:", error);
         messageStatus = "failed";
-        messageError = error.message || "Failed to send message";
+        messageError = (error as Error).message || "Failed to send message";
       }
     }
 
@@ -173,7 +173,7 @@ export async function POST(request: NextRequest) {
         error: messageError,
       },
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Create session for existing visitor error:", error);
     return NextResponse.json(
       { error: "Internal server error" },

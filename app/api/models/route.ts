@@ -44,7 +44,7 @@ export async function POST(request: NextRequest) {
     });
 
     return NextResponse.json({ success: true, model });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Create model error:", error);
     return NextResponse.json(
       { error: "Internal server error" },

@@ -91,13 +91,20 @@ class WhatsAppClient {
       ) {
         // Search for the contact with matching phone number (without +)
         const phoneWithoutPlus = formattedPhone.replace("+", "");
-        const contact = response.data.data.contacts.find((c: any) => {
-          const contactPhone = c.countryCode + c.contact_number;
-          return (
-            contactPhone === phoneWithoutPlus ||
-            c.contact_number === phoneWithoutPlus
-          );
-        });
+        const contact = response.data.data.contacts.find(
+          (c: {
+            countryCode?: string;
+            contact_number?: string;
+            _id?: string;
+          }) => {
+            const contactPhone =
+              (c.countryCode || "") + (c.contact_number || "");
+            return (
+              contactPhone === phoneWithoutPlus ||
+              c.contact_number === phoneWithoutPlus
+            );
+          }
+        );
 
         if (contact && contact._id) {
           console.log(`Found existing contact with ID: ${contact._id}`);
@@ -122,7 +129,7 @@ class WhatsAppClient {
     } catch (error) {
       const axiosError = error as {
         response?: {
-          data?: any;
+          data?: Record<string, unknown>;
           status?: number;
         };
       };

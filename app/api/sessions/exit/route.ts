@@ -67,7 +67,7 @@ export async function POST(request: NextRequest) {
           templateLanguage: template.language,
           parameters: [CRM.toString()],
         });
-      } catch (error: any) {
+      } catch (error: unknown) {
         console.error("Failed to send exit message:", error);
       }
     }
@@ -75,7 +75,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: true,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Exit session error:", error);
     return NextResponse.json(
       { error: "Internal server error" },
