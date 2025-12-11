@@ -464,11 +464,16 @@ export default function DashboardPage() {
 
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
-                    <Label className="text-sm">Interested Models</Label>
+                    <Label className="text-sm font-semibold">
+                      Interested Models
+                    </Label>
                     {formData.modelIds.length > 0 && (
-                      <span className="text-xs text-muted-foreground">
+                      <Badge
+                        variant="secondary"
+                        className="text-xs font-medium"
+                      >
                         {formData.modelIds.length} selected
-                      </span>
+                      </Badge>
                     )}
                   </div>
                   {categories.length === 0 ? (
@@ -477,23 +482,23 @@ export default function DashboardPage() {
                       models in Settings.
                     </p>
                   ) : (
-                    <div className="border rounded-lg overflow-hidden">
+                    <div className="border rounded-lg overflow-hidden bg-card shadow-sm">
                       {/* Search Bar */}
-                      <div className="p-3 border-b bg-muted/30">
+                      <div className="p-4 border-b bg-gradient-to-r from-muted/50 to-muted/30">
                         <div className="relative">
-                          <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                           <Input
                             placeholder="Search models or variants..."
                             value={modelSearchQuery}
                             onChange={(e) =>
                               setModelSearchQuery(e.target.value)
                             }
-                            className="pl-8 pr-8 h-9 text-sm"
+                            className="pl-9 pr-9 h-10 text-sm bg-background border-border/50 focus:border-primary"
                           />
                           {modelSearchQuery && (
                             <button
                               onClick={() => setModelSearchQuery("")}
-                              className="absolute right-2 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                              className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors rounded-full p-0.5 hover:bg-muted"
                             >
                               <X className="h-4 w-4" />
                             </button>
@@ -502,26 +507,10 @@ export default function DashboardPage() {
                       </div>
 
                       {/* Models List */}
-                      <div className="max-h-80 overflow-y-auto p-3 space-y-2">
+                      <div className="max-h-80 overflow-y-auto p-4 space-y-3 bg-background">
                         {categories
-                          .filter((category) => {
-                            if (!modelSearchQuery) return true;
-                            const query = modelSearchQuery.toLowerCase();
-                            return (
-                              category.name.toLowerCase().includes(query) ||
-                              category.models.some(
-                                (model) =>
-                                  model.name.toLowerCase().includes(query) ||
-                                  model.variants?.some((v) =>
-                                    v.name.toLowerCase().includes(query)
-                                  )
-                              )
-                            );
-                          })
                           .map((category) => {
-                            const isCategoryOpen = openModelCategories.has(
-                              category.id
-                            );
+                            // Filter models that match search query
                             const filteredModels = category.models.filter(
                               (model) => {
                                 if (!modelSearchQuery) return true;
@@ -535,13 +524,23 @@ export default function DashboardPage() {
                               }
                             );
 
-                            if (filteredModels.length === 0) return null;
+                            // Only show category if it has matching models
+                            if (modelSearchQuery && filteredModels.length === 0) {
+                              return null;
+                            }
+
+                            // Auto-expand categories when searching
+                            const isCategoryOpen = modelSearchQuery
+                              ? true
+                              : openModelCategories.has(category.id);
 
                             return (
                               <Collapsible
                                 key={category.id}
                                 open={isCategoryOpen}
                                 onOpenChange={(open) => {
+                                  // Don't allow closing when searching
+                                  if (modelSearchQuery) return;
                                   setOpenModelCategories((prev) => {
                                     const newSet = new Set(prev);
                                     if (open) {
@@ -553,28 +552,33 @@ export default function DashboardPage() {
                                   });
                                 }}
                               >
-                                <div className="border rounded-md">
+                                <div className="border rounded-lg overflow-hidden bg-card shadow-sm hover:shadow-md transition-shadow">
                                   <CollapsibleTrigger className="w-full">
-                                    <div className="flex items-center justify-between p-2 hover:bg-muted/50 transition-colors">
-                                      <div className="flex items-center gap-2">
+                                    <div className="flex items-center justify-between p-3 hover:bg-muted/40 transition-colors cursor-pointer">
+                                      <div className="flex items-center gap-3">
                                         <ChevronDown
-                                          className={`h-4 w-4 transition-transform duration-200 ${
+                                          className={`h-4 w-4 text-muted-foreground transition-transform duration-200 ${
                                             isCategoryOpen
-                                              ? "transform rotate-180"
+                                              ? "transform rotate-180 text-primary"
                                               : ""
                                           }`}
                                         />
-                                        <span className="font-semibold text-sm">
+                                        <span className="font-semibold text-sm text-foreground">
                                           {category.name}
                                         </span>
-                                        <span className="text-xs text-muted-foreground">
-                                          ({filteredModels.length})
-                                        </span>
+                                        {filteredModels.length > 0 && (
+                                          <Badge
+                                            variant="secondary"
+                                            className="text-xs font-normal"
+                                          >
+                                            {filteredModels.length}
+                                          </Badge>
+                                        )}
                                       </div>
                                     </div>
                                   </CollapsibleTrigger>
                                   <CollapsibleContent>
-                                    <div className="p-2 space-y-2 border-t">
+                                    <div className="p-3 space-y-1.5 bg-muted/20 border-t">
                                       {filteredModels.map((model) => {
                                         const hasVariants =
                                           model.variants &&
@@ -592,25 +596,63 @@ export default function DashboardPage() {
                                         return (
                                           <div
                                             key={model.id}
-                                            className="space-y-1.5 pl-2"
+                                            className="space-y-1"
                                           >
                                             {/* Base Model Checkbox */}
-                                            <label className="flex items-center gap-2 cursor-pointer hover:bg-muted/30 p-1.5 rounded">
-                                              <input
-                                                type="checkbox"
-                                                checked={isModelSelected}
-                                                onChange={() =>
-                                                  handleModelToggle(model.id)
-                                                }
-                                                className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
-                                              />
-                                              <span className="text-sm flex-1">
-                                                {model.name}
-                                                {model.year
-                                                  ? ` (${model.year})`
-                                                  : ""}
-                                                {hasVariants && " (Base)"}
-                                              </span>
+                                            <label
+                                              className={`flex items-center gap-3 cursor-pointer p-2.5 rounded-md transition-all ${
+                                                isModelSelected
+                                                  ? "bg-primary/10 border border-primary/20"
+                                                  : "hover:bg-muted/50 border border-transparent"
+                                              }`}
+                                            >
+                                              <div className="relative flex items-center justify-center shrink-0">
+                                                <input
+                                                  type="checkbox"
+                                                  checked={isModelSelected}
+                                                  onChange={() =>
+                                                    handleModelToggle(model.id)
+                                                  }
+                                                  className="peer h-5 w-5 appearance-none rounded border-2 border-muted-foreground/40 bg-background cursor-pointer transition-all duration-200 checked:bg-primary checked:border-primary hover:border-primary/60 hover:scale-110 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
+                                                />
+                                                <svg
+                                                  className="absolute h-5 w-5 pointer-events-none opacity-0 peer-checked:opacity-100 transition-opacity duration-200 text-primary-foreground"
+                                                  fill="none"
+                                                  viewBox="0 0 24 24"
+                                                  stroke="currentColor"
+                                                  strokeWidth={3}
+                                                >
+                                                  <path
+                                                    strokeLinecap="round"
+                                                    strokeLinejoin="round"
+                                                    d="M5 13l4 4L19 7"
+                                                  />
+                                                </svg>
+                                              </div>
+                                              <div className="flex-1 flex items-center gap-2">
+                                                <span
+                                                  className={`text-sm font-medium ${
+                                                    isModelSelected
+                                                      ? "text-primary"
+                                                      : "text-foreground"
+                                                  }`}
+                                                >
+                                                  {model.name}
+                                                </span>
+                                                {model.year && (
+                                                  <span className="text-xs text-muted-foreground">
+                                                    ({model.year})
+                                                  </span>
+                                                )}
+                                                {hasVariants && (
+                                                  <Badge
+                                                    variant="outline"
+                                                    className="text-xs font-normal"
+                                                  >
+                                                    Base
+                                                  </Badge>
+                                                )}
+                                              </div>
                                             </label>
 
                                             {/* Variants */}
@@ -644,28 +686,59 @@ export default function DashboardPage() {
                                                   return (
                                                     <label
                                                       key={variant.id}
-                                                      className="flex items-center gap-2 cursor-pointer hover:bg-muted/30 p-1.5 rounded ml-6"
+                                                      className={`flex items-center gap-3 cursor-pointer p-2 rounded-md transition-all ml-8 ${
+                                                        isVariantSelected
+                                                          ? "bg-primary/10 border border-primary/20"
+                                                          : "hover:bg-muted/40 border border-transparent"
+                                                      }`}
                                                     >
-                                                      <input
-                                                        type="checkbox"
-                                                        checked={
-                                                          isVariantSelected
-                                                        }
-                                                        onChange={() =>
-                                                          handleModelToggle(
-                                                            model.id,
-                                                            variant.id
-                                                          )
-                                                        }
-                                                        className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
-                                                      />
-                                                      <span className="text-sm flex-1">
-                                                        {model.name}.
-                                                        {variant.name}
-                                                        {model.year
-                                                          ? ` (${model.year})`
-                                                          : ""}
-                                                      </span>
+                                                      <div className="relative flex items-center justify-center shrink-0">
+                                                        <input
+                                                          type="checkbox"
+                                                          checked={
+                                                            isVariantSelected
+                                                          }
+                                                          onChange={() =>
+                                                            handleModelToggle(
+                                                              model.id,
+                                                              variant.id
+                                                            )
+                                                          }
+                                                          className="peer h-5 w-5 appearance-none rounded border-2 border-muted-foreground/40 bg-background cursor-pointer transition-all duration-200 checked:bg-primary checked:border-primary hover:border-primary/60 hover:scale-110 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
+                                                        />
+                                                        <svg
+                                                          className="absolute h-5 w-5 pointer-events-none opacity-0 peer-checked:opacity-100 transition-opacity duration-200 text-primary-foreground"
+                                                          fill="none"
+                                                          viewBox="0 0 24 24"
+                                                          stroke="currentColor"
+                                                          strokeWidth={3}
+                                                        >
+                                                          <path
+                                                            strokeLinecap="round"
+                                                            strokeLinejoin="round"
+                                                            d="M5 13l4 4L19 7"
+                                                          />
+                                                        </svg>
+                                                      </div>
+                                                      <div className="flex-1 flex items-center gap-2">
+                                                        <span className="text-xs text-muted-foreground">
+                                                          {model.name}.
+                                                        </span>
+                                                        <span
+                                                          className={`text-sm font-medium ${
+                                                            isVariantSelected
+                                                              ? "text-primary"
+                                                              : "text-foreground"
+                                                          }`}
+                                                        >
+                                                          {variant.name}
+                                                        </span>
+                                                        {model.year && (
+                                                          <span className="text-xs text-muted-foreground">
+                                                            ({model.year})
+                                                          </span>
+                                                        )}
+                                                      </div>
                                                     </label>
                                                   );
                                                 })}
@@ -678,23 +751,32 @@ export default function DashboardPage() {
                               </Collapsible>
                             );
                           })}
-                        {categories.filter((category) => {
-                          if (!modelSearchQuery) return true;
-                          const query = modelSearchQuery.toLowerCase();
-                          return (
-                            category.name.toLowerCase().includes(query) ||
-                            category.models.some(
-                              (model) =>
-                                model.name.toLowerCase().includes(query) ||
-                                model.variants?.some((v) =>
-                                  v.name.toLowerCase().includes(query)
-                                )
-                            )
-                          );
-                        }).length === 0 && (
-                          <p className="text-xs text-muted-foreground text-center py-4">
-                            No models found matching "{modelSearchQuery}"
-                          </p>
+                        {categories
+                          .map((category) => {
+                            if (!modelSearchQuery) return category;
+                            const filteredModels = category.models.filter(
+                              (model) => {
+                                const query = modelSearchQuery.toLowerCase();
+                                return (
+                                  model.name.toLowerCase().includes(query) ||
+                                  model.variants?.some((v) =>
+                                    v.name.toLowerCase().includes(query)
+                                  )
+                                );
+                              }
+                            );
+                            return filteredModels.length > 0 ? category : null;
+                          })
+                          .filter(Boolean).length === 0 && (
+                          <div className="flex flex-col items-center justify-center py-12 text-center">
+                            <Search className="h-8 w-8 text-muted-foreground mb-2 opacity-50" />
+                            <p className="text-sm text-muted-foreground">
+                              No models found matching
+                            </p>
+                            <p className="text-sm font-medium text-foreground mt-1">
+                              "{modelSearchQuery}"
+                            </p>
+                          </div>
                         )}
                       </div>
                     </div>
@@ -886,9 +968,19 @@ export default function DashboardPage() {
                   </div>
 
                   <div className="space-y-2">
-                    <Label className="text-sm">
-                      Vehicle Interests (Optional - Update if changed)
-                    </Label>
+                    <div className="flex items-center justify-between">
+                      <Label className="text-sm font-semibold">
+                        Vehicle Interests (Optional - Update if changed)
+                      </Label>
+                      {existingVisitorModelIds.length > 0 && (
+                        <Badge
+                          variant="secondary"
+                          className="text-xs font-medium"
+                        >
+                          {existingVisitorModelIds.length} selected
+                        </Badge>
+                      )}
+                    </div>
                     <p className="text-xs text-muted-foreground mb-2">
                       Select vehicles the visitor is interested in for this
                       visit. Previous interests are pre-selected.
@@ -899,11 +991,11 @@ export default function DashboardPage() {
                         models in Settings.
                       </p>
                     ) : (
-                      <div className="border rounded-lg overflow-hidden">
+                      <div className="border rounded-lg overflow-hidden bg-card shadow-sm">
                         {/* Search Bar */}
-                        <div className="p-3 border-b bg-muted/30">
+                        <div className="p-4 border-b bg-gradient-to-r from-muted/50 to-muted/30">
                           <div className="relative">
-                            <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                             <Input
                               placeholder="Search models or variants..."
                               value={existingVisitorModelSearchQuery}
@@ -912,14 +1004,14 @@ export default function DashboardPage() {
                                   e.target.value
                                 )
                               }
-                              className="pl-8 pr-8 h-9 text-sm"
+                              className="pl-9 pr-9 h-10 text-sm bg-background border-border/50 focus:border-primary"
                             />
                             {existingVisitorModelSearchQuery && (
                               <button
                                 onClick={() =>
                                   setExistingVisitorModelSearchQuery("")
                                 }
-                                className="absolute right-2 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors rounded-full p-0.5 hover:bg-muted"
                               >
                                 <X className="h-4 w-4" />
                               </button>
@@ -928,26 +1020,10 @@ export default function DashboardPage() {
                         </div>
 
                         {/* Models List */}
-                        <div className="max-h-80 overflow-y-auto p-3 space-y-2">
+                        <div className="max-h-80 overflow-y-auto p-4 space-y-3 bg-background">
                           {categories
-                            .filter((category) => {
-                              if (!existingVisitorModelSearchQuery) return true;
-                              const query =
-                                existingVisitorModelSearchQuery.toLowerCase();
-                              return (
-                                category.name.toLowerCase().includes(query) ||
-                                category.models.some(
-                                  (model) =>
-                                    model.name.toLowerCase().includes(query) ||
-                                    model.variants?.some((v) =>
-                                      v.name.toLowerCase().includes(query)
-                                    )
-                                )
-                              );
-                            })
                             .map((category) => {
-                              const isCategoryOpen =
-                                openExistingVisitorCategories.has(category.id);
+                              // Filter models that match search query
                               const filteredModels = category.models.filter(
                                 (model) => {
                                   if (!existingVisitorModelSearchQuery)
@@ -963,13 +1039,28 @@ export default function DashboardPage() {
                                 }
                               );
 
-                              if (filteredModels.length === 0) return null;
+                              // Only show category if it has matching models
+                              if (
+                                existingVisitorModelSearchQuery &&
+                                filteredModels.length === 0
+                              ) {
+                                return null;
+                              }
+
+                              // Auto-expand categories when searching
+                              const isCategoryOpen = existingVisitorModelSearchQuery
+                                ? true
+                                : openExistingVisitorCategories.has(
+                                    category.id
+                                  );
 
                               return (
                                 <Collapsible
                                   key={category.id}
                                   open={isCategoryOpen}
                                   onOpenChange={(open) => {
+                                    // Don't allow closing when searching
+                                    if (existingVisitorModelSearchQuery) return;
                                     setOpenExistingVisitorCategories((prev) => {
                                       const newSet = new Set(prev);
                                       if (open) {
@@ -981,28 +1072,31 @@ export default function DashboardPage() {
                                     });
                                   }}
                                 >
-                                  <div className="border rounded-md">
+                                  <div className="border rounded-lg overflow-hidden bg-card shadow-sm hover:shadow-md transition-shadow">
                                     <CollapsibleTrigger className="w-full">
-                                      <div className="flex items-center justify-between p-2 hover:bg-muted/50 transition-colors">
-                                        <div className="flex items-center gap-2">
+                                      <div className="flex items-center justify-between p-3 hover:bg-muted/40 transition-colors cursor-pointer">
+                                        <div className="flex items-center gap-3">
                                           <ChevronDown
-                                            className={`h-4 w-4 transition-transform duration-200 ${
+                                            className={`h-4 w-4 text-muted-foreground transition-transform duration-200 ${
                                               isCategoryOpen
-                                                ? "transform rotate-180"
+                                                ? "transform rotate-180 text-primary"
                                                 : ""
                                             }`}
                                           />
-                                          <span className="font-semibold text-sm">
+                                          <span className="font-semibold text-sm text-foreground">
                                             {category.name}
                                           </span>
-                                          <span className="text-xs text-muted-foreground">
-                                            ({filteredModels.length})
-                                          </span>
+                                          <Badge
+                                            variant="secondary"
+                                            className="text-xs font-normal"
+                                          >
+                                            {filteredModels.length}
+                                          </Badge>
                                         </div>
                                       </div>
                                     </CollapsibleTrigger>
                                     <CollapsibleContent>
-                                      <div className="p-2 space-y-2 border-t">
+                                      <div className="p-3 space-y-1.5 bg-muted/20 border-t">
                                         {filteredModels.map((model) => {
                                           const hasVariants =
                                             model.variants &&
@@ -1028,35 +1122,71 @@ export default function DashboardPage() {
                                             >
                                               {/* Base Model Checkbox */}
                                               <label
-                                                className={`flex items-center gap-2 cursor-pointer hover:bg-muted/30 p-1.5 rounded ${
-                                                  wasPreviousInterest &&
-                                                  !isModelSelected
-                                                    ? "bg-primary/5 border border-primary/20"
-                                                    : ""
+                                                className={`flex items-center gap-3 cursor-pointer p-2.5 rounded-md transition-all ${
+                                                  isModelSelected
+                                                    ? "bg-primary/10 border border-primary/20"
+                                                    : wasPreviousInterest
+                                                    ? "bg-primary/5 border border-primary/10"
+                                                    : "hover:bg-muted/50 border border-transparent"
                                                 }`}
                                               >
-                                                <input
-                                                  type="checkbox"
-                                                  checked={isModelSelected}
-                                                  onChange={() =>
-                                                    handleExistingVisitorModelToggle(
-                                                      model.id
-                                                    )
-                                                  }
-                                                  className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
-                                                />
-                                                <span className="text-sm flex-1">
-                                                  {model.name}
-                                                  {model.year
-                                                    ? ` (${model.year})`
-                                                    : ""}
-                                                  {hasVariants && " (Base)"}
-                                                  {wasPreviousInterest && (
-                                                    <span className="ml-1 text-xs text-muted-foreground">
-                                                      (Previous)
+                                                <div className="relative flex items-center justify-center shrink-0">
+                                                  <input
+                                                    type="checkbox"
+                                                    checked={isModelSelected}
+                                                    onChange={() =>
+                                                      handleExistingVisitorModelToggle(
+                                                        model.id
+                                                      )
+                                                    }
+                                                    className="peer h-5 w-5 appearance-none rounded border-2 border-muted-foreground/40 bg-background cursor-pointer transition-all duration-200 checked:bg-primary checked:border-primary hover:border-primary/60 hover:scale-110 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
+                                                  />
+                                                  <svg
+                                                    className="absolute h-5 w-5 pointer-events-none opacity-0 peer-checked:opacity-100 transition-opacity duration-200 text-primary-foreground"
+                                                    fill="none"
+                                                    viewBox="0 0 24 24"
+                                                    stroke="currentColor"
+                                                    strokeWidth={3}
+                                                  >
+                                                    <path
+                                                      strokeLinecap="round"
+                                                      strokeLinejoin="round"
+                                                      d="M5 13l4 4L19 7"
+                                                    />
+                                                  </svg>
+                                                </div>
+                                                <div className="flex-1 flex items-center gap-2">
+                                                  <span
+                                                    className={`text-sm font-medium ${
+                                                      isModelSelected
+                                                        ? "text-primary"
+                                                        : "text-foreground"
+                                                    }`}
+                                                  >
+                                                    {model.name}
+                                                  </span>
+                                                  {model.year && (
+                                                    <span className="text-xs text-muted-foreground">
+                                                      ({model.year})
                                                     </span>
                                                   )}
-                                                </span>
+                                                  {hasVariants && (
+                                                    <Badge
+                                                      variant="outline"
+                                                      className="text-xs font-normal"
+                                                    >
+                                                      Base
+                                                    </Badge>
+                                                  )}
+                                                  {wasPreviousInterest && (
+                                                    <Badge
+                                                      variant="secondary"
+                                                      className="text-xs font-normal"
+                                                    >
+                                                      Previous
+                                                    </Badge>
+                                                  )}
+                                                </div>
                                               </label>
 
                                               {/* Variants */}
@@ -1092,28 +1222,59 @@ export default function DashboardPage() {
                                                     return (
                                                       <label
                                                         key={variant.id}
-                                                        className="flex items-center gap-2 cursor-pointer hover:bg-muted/30 p-1.5 rounded ml-6"
+                                                        className={`flex items-center gap-3 cursor-pointer p-2 rounded-md transition-all ml-8 ${
+                                                          isVariantSelected
+                                                            ? "bg-primary/10 border border-primary/20"
+                                                            : "hover:bg-muted/40 border border-transparent"
+                                                        }`}
                                                       >
-                                                        <input
-                                                          type="checkbox"
-                                                          checked={
-                                                            isVariantSelected
-                                                          }
-                                                          onChange={() =>
-                                                            handleExistingVisitorModelToggle(
-                                                              model.id,
-                                                              variant.id
-                                                            )
-                                                          }
-                                                          className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
-                                                        />
-                                                        <span className="text-sm flex-1">
-                                                          {model.name}.
-                                                          {variant.name}
-                                                          {model.year
-                                                            ? ` (${model.year})`
-                                                            : ""}
-                                                        </span>
+                                                        <div className="relative flex items-center justify-center shrink-0">
+                                                          <input
+                                                            type="checkbox"
+                                                            checked={
+                                                              isVariantSelected
+                                                            }
+                                                            onChange={() =>
+                                                              handleExistingVisitorModelToggle(
+                                                                model.id,
+                                                                variant.id
+                                                              )
+                                                            }
+                                                            className="peer h-5 w-5 appearance-none rounded border-2 border-muted-foreground/40 bg-background cursor-pointer transition-all duration-200 checked:bg-primary checked:border-primary hover:border-primary/60 hover:scale-110 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2"
+                                                          />
+                                                          <svg
+                                                            className="absolute h-5 w-5 pointer-events-none opacity-0 peer-checked:opacity-100 transition-opacity duration-200 text-primary-foreground"
+                                                            fill="none"
+                                                            viewBox="0 0 24 24"
+                                                            stroke="currentColor"
+                                                            strokeWidth={3}
+                                                          >
+                                                            <path
+                                                              strokeLinecap="round"
+                                                              strokeLinejoin="round"
+                                                              d="M5 13l4 4L19 7"
+                                                            />
+                                                          </svg>
+                                                        </div>
+                                                        <div className="flex-1 flex items-center gap-2">
+                                                          <span className="text-xs text-muted-foreground">
+                                                            {model.name}.
+                                                          </span>
+                                                          <span
+                                                            className={`text-sm font-medium ${
+                                                              isVariantSelected
+                                                                ? "text-primary"
+                                                                : "text-foreground"
+                                                            }`}
+                                                          >
+                                                            {variant.name}
+                                                          </span>
+                                                          {model.year && (
+                                                            <span className="text-xs text-muted-foreground">
+                                                              ({model.year})
+                                                            </span>
+                                                          )}
+                                                        </div>
                                                       </label>
                                                     );
                                                   })}
@@ -1126,25 +1287,36 @@ export default function DashboardPage() {
                                 </Collapsible>
                               );
                             })}
-                          {categories.filter((category) => {
-                            if (!existingVisitorModelSearchQuery) return true;
-                            const query =
-                              existingVisitorModelSearchQuery.toLowerCase();
-                            return (
-                              category.name.toLowerCase().includes(query) ||
-                              category.models.some(
-                                (model) =>
-                                  model.name.toLowerCase().includes(query) ||
-                                  model.variants?.some((v) =>
-                                    v.name.toLowerCase().includes(query)
-                                  )
-                              )
-                            );
-                          }).length === 0 && (
-                            <p className="text-xs text-muted-foreground text-center py-4">
-                              No models found matching "
-                              {existingVisitorModelSearchQuery}"
-                            </p>
+                          {categories
+                            .map((category) => {
+                              if (!existingVisitorModelSearchQuery)
+                                return category;
+                              const filteredModels = category.models.filter(
+                                (model) => {
+                                  const query =
+                                    existingVisitorModelSearchQuery.toLowerCase();
+                                  return (
+                                    model.name.toLowerCase().includes(query) ||
+                                    model.variants?.some((v) =>
+                                      v.name.toLowerCase().includes(query)
+                                    )
+                                  );
+                                }
+                              );
+                              return filteredModels.length > 0
+                                ? category
+                                : null;
+                            })
+                            .filter(Boolean).length === 0 && (
+                            <div className="flex flex-col items-center justify-center py-12 text-center">
+                              <Search className="h-8 w-8 text-muted-foreground mb-2 opacity-50" />
+                              <p className="text-sm text-muted-foreground">
+                                No models found matching
+                              </p>
+                              <p className="text-sm font-medium text-foreground mt-1">
+                                "{existingVisitorModelSearchQuery}"
+                              </p>
+                            </div>
                           )}
                         </div>
                       </div>
