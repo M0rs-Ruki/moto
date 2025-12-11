@@ -75,10 +75,30 @@ model VehicleModel {
   updatedAt DateTime @updatedAt
 
   // Relations
+  variants         VehicleVariant[]
   visitorInterests VisitorInterest[]
   testDrives       TestDrive[]
 
   @@index([categoryId])
+}
+
+// Vehicle variants under models (e.g., test3.xl, test3.s)
+model VehicleVariant {
+  id   String @id @default(cuid())
+  name String // Variant name like "xl", "s", "base"
+
+  model   VehicleModel @relation(fields: [modelId], references: [id], onDelete: Cascade)
+  modelId String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  visitorInterests VisitorInterest[]
+  testDrives       TestDrive[]
+
+  @@unique([modelId, name])
+  @@index([modelId])
 }
 
 // Visitor contact information
@@ -143,15 +163,20 @@ model VisitorInterest {
   model   VehicleModel @relation(fields: [modelId], references: [id], onDelete: Cascade)
   modelId String
 
+  // Optional variant selection
+  variant   VehicleVariant? @relation(fields: [variantId], references: [id], onDelete: Cascade)
+  variantId String?
+
   // Link to session to track which visit this interest is from
   session   VisitorSession? @relation(fields: [sessionId], references: [id], onDelete: Cascade)
   sessionId String?
 
   createdAt DateTime @default(now())
 
-  @@unique([visitorId, modelId, sessionId])
+  @@unique([visitorId, modelId, variantId, sessionId])
   @@index([visitorId])
   @@index([modelId])
+  @@index([variantId])
   @@index([sessionId])
 }
 
@@ -165,6 +190,10 @@ model TestDrive {
   model   VehicleModel @relation(fields: [modelId], references: [id], onDelete: Cascade)
   modelId String
 
+  // Optional variant selection
+  variant   VehicleVariant? @relation(fields: [variantId], references: [id], onDelete: Cascade)
+  variantId String?
+
   // Test drive outcome: excellent, good, fair, poor
   outcome String?
 
@@ -175,6 +204,7 @@ model TestDrive {
 
   @@index([sessionId])
   @@index([modelId])
+  @@index([variantId])
 }
 
 // WhatsApp template configurations

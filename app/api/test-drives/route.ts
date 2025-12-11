@@ -12,7 +12,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { sessionId, modelId, outcome, feedback } = body;
+    const { sessionId, modelId, variantId, outcome, feedback } = body;
 
     if (!sessionId || !modelId) {
       return NextResponse.json(
@@ -70,7 +70,9 @@ export async function POST(request: NextRequest) {
         const fullName = `${session.visitor.firstName} ${
           session.visitor.lastName || ""
         }`.trim();
-        const modelName = testDrive.model.name;
+        const modelName = testDrive.variant
+          ? `${testDrive.model.name}.${testDrive.variant.name}`
+          : testDrive.model.name;
 
         await whatsappClient.sendTemplate({
           contactId: session.visitor.whatsappContactId || undefined,

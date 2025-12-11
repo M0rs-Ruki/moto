@@ -29,7 +29,14 @@ import {
   SelectGroup,
   SelectLabel,
 } from "@/components/ui/select";
-import { Loader2, Car, LogOut, Star, ChevronDown, ChevronUp } from "lucide-react";
+import {
+  Loader2,
+  Car,
+  LogOut,
+  Star,
+  ChevronDown,
+  ChevronUp,
+} from "lucide-react";
 import SessionsLoading from "./loading";
 import {
   Dialog,
@@ -75,10 +82,16 @@ interface Session {
   }>;
 }
 
+interface VehicleVariant {
+  id: string;
+  name: string;
+}
+
 interface VehicleModel {
   id: string;
   name: string;
   year: number | null;
+  variants?: VehicleVariant[];
 }
 
 interface VehicleCategory {
@@ -104,6 +117,7 @@ export default function SessionsPage() {
   // Test drive form
   const [testDriveData, setTestDriveData] = useState({
     modelId: "",
+    variantId: "",
     outcome: "",
     feedback: "",
   });
@@ -149,11 +163,21 @@ export default function SessionsPage() {
               behavior: "smooth",
               block: "center",
             });
-            
+
             // Highlight the session briefly
-            element.classList.add("ring-2", "ring-primary", "ring-offset-2", "rounded-lg");
+            element.classList.add(
+              "ring-2",
+              "ring-primary",
+              "ring-offset-2",
+              "rounded-lg"
+            );
             setTimeout(() => {
-              element.classList.remove("ring-2", "ring-primary", "ring-offset-2", "rounded-lg");
+              element.classList.remove(
+                "ring-2",
+                "ring-primary",
+                "ring-offset-2",
+                "rounded-lg"
+              );
             }, 2000);
           }
         }, 400);
@@ -169,7 +193,7 @@ export default function SessionsPage() {
       ]);
       setSessions(sessionsRes.data.sessions);
       setCategories(categoriesRes.data.categories);
-      
+
       // Only expand active (non-exited) sessions by default
       const activeSessions = sessionsRes.data.sessions
         .filter((s: Session) => s.status !== "exited")
@@ -205,13 +229,26 @@ export default function SessionsPage() {
 
     setSubmitting(true);
     try {
+      // Parse modelId and variantId if variant is selected
+      const [modelId, variantId] = testDriveData.modelId.includes(":")
+        ? testDriveData.modelId.split(":")
+        : [testDriveData.modelId, undefined];
+
       await axios.post("/api/test-drives", {
         sessionId: selectedSession.id,
-        ...testDriveData,
+        modelId,
+        variantId: variantId || testDriveData.variantId || undefined,
+        outcome: testDriveData.outcome,
+        feedback: testDriveData.feedback,
       });
 
       setTestDriveDialogOpen(false);
-      setTestDriveData({ modelId: "", outcome: "", feedback: "" });
+      setTestDriveData({
+        modelId: "",
+        variantId: "",
+        outcome: "",
+        feedback: "",
+      });
       fetchData();
     } catch (error) {
       console.error("Failed to create test drive:", error);
@@ -233,14 +270,14 @@ export default function SessionsPage() {
 
       setExitDialogOpen(false);
       setExitData({ exitFeedback: "", exitRating: "" });
-      
+
       // Collapse the session after exit
       setExpandedSessions((prev) => {
         const newSet = new Set(prev);
         newSet.delete(selectedSession.id);
         return newSet;
       });
-      
+
       fetchData();
     } catch (error) {
       console.error("Failed to exit session:", error);
@@ -289,9 +326,10 @@ export default function SessionsPage() {
             const isExpanded = expandedSessions.has(session.id);
             const isExited = session.status === "exited";
             const hasTestDrives = session.testDrives.length > 0;
-            const reasonPreview = session.reason.length > 60 
-              ? session.reason.substring(0, 60) + "..." 
-              : session.reason;
+            const reasonPreview =
+              session.reason.length > 60
+                ? session.reason.substring(0, 60) + "..."
+                : session.reason;
 
             return (
               <Card
@@ -318,7 +356,8 @@ export default function SessionsPage() {
                           </div>
                           <div className="min-w-0 flex-1">
                             <CardTitle className="text-sm sm:text-base md:text-lg truncate">
-                              {session.visitor.firstName} {session.visitor.lastName}
+                              {session.visitor.firstName}{" "}
+                              {session.visitor.lastName}
                             </CardTitle>
                             <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-3 mt-1">
                               <CardDescription className="text-xs sm:text-sm truncate">
@@ -372,24 +411,26 @@ export default function SessionsPage() {
                         </p>
                       </div>
 
-                      {session.visitorInterests && session.visitorInterests.length > 0 && (
-                        <div>
-                          <p className="text-xs sm:text-sm font-semibold mb-2">
-                            Vehicle Interests for This Visit:
-                          </p>
-                          <div className="flex flex-wrap gap-2">
-                            {session.visitorInterests.map((interest) => (
-                              <Badge
-                                key={interest.id}
-                                variant="secondary"
-                                className="text-xs"
-                              >
-                                {interest.model.category.name} - {interest.model.name}
-                              </Badge>
-                            ))}
+                      {session.visitorInterests &&
+                        session.visitorInterests.length > 0 && (
+                          <div>
+                            <p className="text-xs sm:text-sm font-semibold mb-2">
+                              Vehicle Interests for This Visit:
+                            </p>
+                            <div className="flex flex-wrap gap-2">
+                              {session.visitorInterests.map((interest) => (
+                                <Badge
+                                  key={interest.id}
+                                  variant="secondary"
+                                  className="text-xs"
+                                >
+                                  {interest.model.category.name} -{" "}
+                                  {interest.model.name}
+                                </Badge>
+                              ))}
+                            </div>
                           </div>
-                        </div>
-                      )}
+                        )}
 
                       {hasTestDrives && (
                         <div>
@@ -470,8 +511,8 @@ export default function SessionsPage() {
                                   Add Test Drive
                                 </DialogTitle>
                                 <DialogDescription className="text-xs sm:text-sm">
-                                  Record a test drive and send a follow-up WhatsApp
-                                  message.
+                                  Record a test drive and send a follow-up
+                                  WhatsApp message.
                                 </DialogDescription>
                               </DialogHeader>
                               <form
@@ -484,12 +525,14 @@ export default function SessionsPage() {
                                   </Label>
                                   <Select
                                     value={testDriveData.modelId}
-                                    onValueChange={(value) =>
+                                    onValueChange={(value) => {
+                                      // Reset variant when model changes
                                       setTestDriveData({
                                         ...testDriveData,
                                         modelId: value,
-                                      })
-                                    }
+                                        variantId: "",
+                                      });
+                                    }}
                                   >
                                     <SelectTrigger className="w-full">
                                       <SelectValue placeholder="Select a model" />
@@ -498,20 +541,59 @@ export default function SessionsPage() {
                                       {categories.map((cat) => (
                                         <SelectGroup key={cat.id}>
                                           <SelectLabel>{cat.name}</SelectLabel>
-                                          {cat.models.map((model) => (
-                                            <SelectItem
-                                              key={model.id}
-                                              value={model.id}
-                                            >
-                                              {model.name}{" "}
-                                              {model.year ? `(${model.year})` : ""}
-                                            </SelectItem>
-                                          ))}
+                                          {cat.models.map((model) => {
+                                            const hasVariants =
+                                              model.variants &&
+                                              model.variants.length > 0;
+                                            if (!hasVariants) {
+                                              return (
+                                                <SelectItem
+                                                  key={model.id}
+                                                  value={model.id}
+                                                >
+                                                  {model.name}{" "}
+                                                  {model.year
+                                                    ? `(${model.year})`
+                                                    : ""}
+                                                </SelectItem>
+                                              );
+                                            }
+                                            return (
+                                              <div key={model.id}>
+                                                <SelectItem value={model.id}>
+                                                  {model.name} (Base){" "}
+                                                  {model.year
+                                                    ? `(${model.year})`
+                                                    : ""}
+                                                </SelectItem>
+                                                {model.variants?.map(
+                                                  (variant) => (
+                                                    <SelectItem
+                                                      key={variant.id}
+                                                      value={`${model.id}:${variant.id}`}
+                                                    >
+                                                      {model.name}.
+                                                      {variant.name}{" "}
+                                                      {model.year
+                                                        ? `(${model.year})`
+                                                        : ""}
+                                                    </SelectItem>
+                                                  )
+                                                )}
+                                              </div>
+                                            );
+                                          })}
                                         </SelectGroup>
                                       ))}
                                     </SelectContent>
                                   </Select>
                                 </div>
+                                {testDriveData.modelId.includes(":") && (
+                                  <div className="text-xs text-muted-foreground">
+                                    Variant selected:{" "}
+                                    {testDriveData.modelId.split(":")[1]}
+                                  </div>
+                                )}
 
                                 <div className="space-y-2">
                                   <Label htmlFor="outcome" className="text-sm">
@@ -530,7 +612,9 @@ export default function SessionsPage() {
                                       <SelectValue placeholder="Select outcome" />
                                     </SelectTrigger>
                                     <SelectContent>
-                                      <SelectItem value="excellent">Excellent</SelectItem>
+                                      <SelectItem value="excellent">
+                                        Excellent
+                                      </SelectItem>
                                       <SelectItem value="good">Good</SelectItem>
                                       <SelectItem value="fair">Fair</SelectItem>
                                       <SelectItem value="poor">Poor</SelectItem>
@@ -559,7 +643,9 @@ export default function SessionsPage() {
                                   <Button
                                     type="button"
                                     variant="outline"
-                                    onClick={() => setTestDriveDialogOpen(false)}
+                                    onClick={() =>
+                                      setTestDriveDialogOpen(false)
+                                    }
                                     className="w-full sm:w-auto"
                                   >
                                     Cancel
@@ -582,7 +668,8 @@ export default function SessionsPage() {
 
                           <Dialog
                             open={
-                              exitDialogOpen && selectedSession?.id === session.id
+                              exitDialogOpen &&
+                              selectedSession?.id === session.id
                             }
                             onOpenChange={setExitDialogOpen}
                           >
@@ -612,7 +699,10 @@ export default function SessionsPage() {
                                 className="space-y-4 mt-4"
                               >
                                 <div className="space-y-2">
-                                  <Label htmlFor="exitFeedback" className="text-sm">
+                                  <Label
+                                    htmlFor="exitFeedback"
+                                    className="text-sm"
+                                  >
                                     Feedback
                                   </Label>
                                   <Textarea
@@ -630,7 +720,10 @@ export default function SessionsPage() {
                                 </div>
 
                                 <div className="space-y-2">
-                                  <Label htmlFor="exitRating" className="text-sm">
+                                  <Label
+                                    htmlFor="exitRating"
+                                    className="text-sm"
+                                  >
                                     Rating (1-5)
                                   </Label>
                                   <Select
@@ -646,11 +739,21 @@ export default function SessionsPage() {
                                       <SelectValue placeholder="Select rating" />
                                     </SelectTrigger>
                                     <SelectContent>
-                                      <SelectItem value="1">1 - Poor</SelectItem>
-                                      <SelectItem value="2">2 - Fair</SelectItem>
-                                      <SelectItem value="3">3 - Good</SelectItem>
-                                      <SelectItem value="4">4 - Very Good</SelectItem>
-                                      <SelectItem value="5">5 - Excellent</SelectItem>
+                                      <SelectItem value="1">
+                                        1 - Poor
+                                      </SelectItem>
+                                      <SelectItem value="2">
+                                        2 - Fair
+                                      </SelectItem>
+                                      <SelectItem value="3">
+                                        3 - Good
+                                      </SelectItem>
+                                      <SelectItem value="4">
+                                        4 - Very Good
+                                      </SelectItem>
+                                      <SelectItem value="5">
+                                        5 - Excellent
+                                      </SelectItem>
                                     </SelectContent>
                                   </Select>
                                 </div>

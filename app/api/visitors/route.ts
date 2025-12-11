@@ -85,11 +85,25 @@ export async function POST(request: NextRequest) {
     // Step 4: Add vehicle interests linked to the session
     if (modelIds && modelIds.length > 0) {
       await prisma.visitorInterest.createMany({
-        data: modelIds.map((modelId: string) => ({
-          visitorId: visitor.id,
-          modelId,
-          sessionId: session.id, // Link interests to the first session
-        })),
+        data: modelIds.map(
+          (item: string | { modelId: string; variantId?: string }) => {
+            // Support both old format (string) and new format (object with variantId)
+            if (typeof item === "string") {
+              return {
+                visitorId: visitor.id,
+                modelId: item,
+                sessionId: session.id,
+              };
+            } else {
+              return {
+                visitorId: visitor.id,
+                modelId: item.modelId,
+                variantId: item.variantId || null,
+                sessionId: session.id,
+              };
+            }
+          }
+        ),
       });
     }
 

@@ -192,7 +192,34 @@ Create a new vehicle category.
 
 ---
 
-### 7. Create Vehicle Model
+### 7. Delete Category
+
+**DELETE** `/categories`
+
+Delete a vehicle category and all its models.
+
+**Request Body:**
+
+```json
+{
+  "id": "cat_123"
+}
+```
+
+**Response (200):**
+
+```json
+{
+  "success": true,
+  "message": "Category deleted"
+}
+```
+
+**Note:** Deleting a category will also delete all models in that category (cascade delete).
+
+---
+
+### 8. Create Vehicle Model
 
 **POST** `/models`
 
@@ -224,9 +251,36 @@ Add a new vehicle model under a category.
 
 ---
 
+### 9. Delete Vehicle Model
+
+**DELETE** `/models`
+
+Delete a vehicle model.
+
+**Request Body:**
+
+```json
+{
+  "id": "model_123"
+}
+```
+
+**Response (200):**
+
+```json
+{
+  "success": true,
+  "message": "Model deleted"
+}
+```
+
+**Note:** Deleting a model will also delete all related visitor interests and test drives (cascade delete).
+
+---
+
 ## 👥 Visitor Management Endpoints
 
-### 8. Create Visitor (New)
+### 10. Create Visitor (New)
 
 **POST** `/visitors`
 
@@ -315,7 +369,7 @@ Retrieve all visitors for the dealership.
 
 ---
 
-### 10. Create Return Visit Session
+### 12. Create Return Visit Session
 
 **POST** `/visitors/session`
 
@@ -357,7 +411,7 @@ Register a returning visitor for a new session and send return visit message.
 
 ## 📋 Session Management Endpoints
 
-### 11. Get All Sessions
+### 13. Get All Sessions
 
 **GET** `/sessions`
 
@@ -405,7 +459,7 @@ Retrieve all visitor sessions.
 
 ---
 
-### 12. Create Test Drive
+### 14. Create Test Drive
 
 **POST** `/test-drives`
 
@@ -443,7 +497,7 @@ Schedule and record a test drive for a visitor. Sends WhatsApp message with test
 
 ---
 
-### 13. Exit Session
+### 15. Exit Session
 
 **POST** `/sessions/exit`
 
@@ -481,7 +535,7 @@ Mark session as exited and send exit/thank you WhatsApp message.
 
 ## 📝 WhatsApp Template Management Endpoints
 
-### 14. Get All Templates
+### 16. Get All Templates
 
 **GET** `/templates`
 
@@ -523,7 +577,7 @@ Retrieve all WhatsApp message templates for the dealership.
 
 ---
 
-### 15. Update Template
+### 17. Update Template
 
 **PUT** `/templates`
 

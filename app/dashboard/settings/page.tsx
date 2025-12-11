@@ -13,7 +13,12 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Loader2, Plus, Save } from "lucide-react";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
+import { Loader2, Plus, Save, Trash2, ChevronDown } from "lucide-react";
 import { useTheme } from "@/lib/theme-provider";
 import SettingsLoading from "./loading";
 import {
@@ -25,10 +30,16 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 
+interface VehicleVariant {
+  id: string;
+  name: string;
+}
+
 interface VehicleModel {
   id: string;
   name: string;
   year: number | null;
+  variants: VehicleVariant[];
 }
 
 interface VehicleCategory {
@@ -72,6 +83,32 @@ export default function SettingsPage() {
     categoryId: "",
     name: "",
     year: "",
+  });
+
+  // Delete confirmation dialogs
+  const [deleteCategoryDialogOpen, setDeleteCategoryDialogOpen] =
+    useState(false);
+  const [deleteModelDialogOpen, setDeleteModelDialogOpen] = useState(false);
+  const [deleteVariantDialogOpen, setDeleteVariantDialogOpen] = useState(false);
+  const [categoryToDelete, setCategoryToDelete] = useState<string | null>(null);
+  const [modelToDelete, setModelToDelete] = useState<{
+    id: string;
+    name: string;
+  } | null>(null);
+  const [variantToDelete, setVariantToDelete] = useState<{
+    id: string;
+    name: string;
+    modelName: string;
+  } | null>(null);
+
+  // Collapsible state - all categories closed by default
+  const [openCategories, setOpenCategories] = useState<Set<string>>(new Set());
+
+  // Variant form
+  const [variantDialogOpen, setVariantDialogOpen] = useState(false);
+  const [newVariant, setNewVariant] = useState({
+    modelId: "",
+    name: "",
   });
 
   // Theme settings
@@ -135,6 +172,66 @@ export default function SettingsPage() {
       fetchData();
     } catch (error) {
       console.error("Failed to create model:", error);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDeleteCategory = async () => {
+    if (!categoryToDelete) return;
+    setSaving(true);
+    try {
+      await axios.delete("/api/categories", { data: { id: categoryToDelete } });
+      setDeleteCategoryDialogOpen(false);
+      setCategoryToDelete(null);
+      fetchData();
+    } catch (error) {
+      console.error("Failed to delete category:", error);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDeleteModel = async () => {
+    if (!modelToDelete) return;
+    setSaving(true);
+    try {
+      await axios.delete("/api/models", { data: { id: modelToDelete.id } });
+      setDeleteModelDialogOpen(false);
+      setModelToDelete(null);
+      fetchData();
+    } catch (error) {
+      console.error("Failed to delete model:", error);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleCreateVariant = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSaving(true);
+    try {
+      await axios.post("/api/variants", newVariant);
+      setNewVariant({ modelId: "", name: "" });
+      setVariantDialogOpen(false);
+      fetchData();
+    } catch (error) {
+      console.error("Failed to create variant:", error);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDeleteVariant = async () => {
+    if (!variantToDelete) return;
+    setSaving(true);
+    try {
+      await axios.delete("/api/variants", { data: { id: variantToDelete.id } });
+      setDeleteVariantDialogOpen(false);
+      setVariantToDelete(null);
+      fetchData();
+    } catch (error) {
+      console.error("Failed to delete variant:", error);
     } finally {
       setSaving(false);
     }
@@ -362,6 +459,93 @@ export default function SettingsPage() {
                       </form>
                     </DialogContent>
                   </Dialog>
+
+                  <Dialog
+                    open={variantDialogOpen}
+                    onOpenChange={setVariantDialogOpen}
+                  >
+                    <DialogContent className="max-w-md p-4 sm:p-6">
+                      <DialogHeader>
+                        <DialogTitle className="text-lg">
+                          Add Variant
+                        </DialogTitle>
+                        <DialogDescription className="text-xs sm:text-sm">
+                          Add a variant to a vehicle model (e.g., "xl", "s",
+                          "base")
+                        </DialogDescription>
+                      </DialogHeader>
+                      <form
+                        onSubmit={handleCreateVariant}
+                        className="space-y-4 mt-4"
+                      >
+                        <div className="space-y-2">
+                          <Label htmlFor="variant-model" className="text-sm">
+                            Model
+                          </Label>
+                          <select
+                            id="variant-model"
+                            className="w-full p-2 border rounded text-sm"
+                            value={newVariant.modelId}
+                            onChange={(e) =>
+                              setNewVariant({
+                                ...newVariant,
+                                modelId: e.target.value,
+                              })
+                            }
+                            required
+                          >
+                            <option value="">Select model</option>
+                            {categories.map((cat) =>
+                              cat.models.map((model) => (
+                                <option key={model.id} value={model.id}>
+                                  {cat.name} - {model.name}
+                                  {model.year ? ` (${model.year})` : ""}
+                                </option>
+                              ))
+                            )}
+                          </select>
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="variant-name" className="text-sm">
+                            Variant Name
+                          </Label>
+                          <Input
+                            id="variant-name"
+                            value={newVariant.name}
+                            onChange={(e) =>
+                              setNewVariant({
+                                ...newVariant,
+                                name: e.target.value,
+                              })
+                            }
+                            placeholder="e.g., xl, s, base"
+                            required
+                          />
+                        </div>
+                        <div className="flex flex-col sm:flex-row justify-end gap-2">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            onClick={() => setVariantDialogOpen(false)}
+                            className="w-full sm:w-auto"
+                          >
+                            Cancel
+                          </Button>
+                          <Button
+                            type="submit"
+                            disabled={saving}
+                            className="w-full sm:w-auto"
+                          >
+                            {saving ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              "Create"
+                            )}
+                          </Button>
+                        </div>
+                      </form>
+                    </DialogContent>
+                  </Dialog>
                 </div>
               </div>
             </CardHeader>
@@ -372,38 +556,286 @@ export default function SettingsPage() {
                 </p>
               ) : (
                 <div className="space-y-4 sm:space-y-6">
-                  {categories.map((category) => (
-                    <div key={category.id}>
-                      <h3 className="font-semibold text-sm sm:text-base mb-2">
-                        {category.name}
-                      </h3>
-                      {category.models.length === 0 ? (
-                        <p className="text-xs sm:text-sm text-muted-foreground pl-4">
-                          No models in this category
-                        </p>
-                      ) : (
-                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2 pl-4">
-                          {category.models.map((model) => (
-                            <div
-                              key={model.id}
-                              className="border rounded p-2 text-xs sm:text-sm overflow-hidden"
-                            >
-                              <div className="truncate">{model.name}</div>
-                              {model.year && (
-                                <div className="text-muted-foreground text-xs truncate">
-                                  ({model.year})
-                                </div>
-                              )}
+                  {categories.map((category) => {
+                    const isOpen = openCategories.has(category.id);
+                    return (
+                      <Collapsible
+                        key={category.id}
+                        open={isOpen}
+                        onOpenChange={(open) => {
+                          setOpenCategories((prev) => {
+                            const newSet = new Set(prev);
+                            if (open) {
+                              newSet.add(category.id);
+                            } else {
+                              newSet.delete(category.id);
+                            }
+                            return newSet;
+                          });
+                        }}
+                      >
+                        <div className="border rounded-lg p-3 sm:p-4">
+                          <CollapsibleTrigger asChild>
+                            <div className="flex items-center justify-between mb-2 cursor-pointer hover:bg-muted/50 -m-3 sm:-m-4 p-3 sm:p-4 rounded-lg transition-colors">
+                              <div className="flex items-center gap-2">
+                                <ChevronDown
+                                  className={`h-4 w-4 transition-transform duration-200 ${
+                                    isOpen ? "transform rotate-180" : ""
+                                  }`}
+                                />
+                                <h3 className="font-semibold text-sm sm:text-base">
+                                  {category.name}
+                                </h3>
+                              </div>
+                              <Button
+                                size="sm"
+                                variant="destructive"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setCategoryToDelete(category.id);
+                                  setDeleteCategoryDialogOpen(true);
+                                }}
+                                className="text-xs sm:text-sm"
+                              >
+                                <Trash2 className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
+                                Delete
+                              </Button>
                             </div>
-                          ))}
+                          </CollapsibleTrigger>
+                          <CollapsibleContent>
+                            {category.models.length === 0 ? (
+                              <p className="text-xs sm:text-sm text-muted-foreground pl-4">
+                                No models in this category
+                              </p>
+                            ) : (
+                              <div className="space-y-3 pl-4">
+                                {category.models.map((model) => (
+                                  <div
+                                    key={model.id}
+                                    className="border rounded-lg p-3 space-y-2"
+                                  >
+                                    <div className="flex items-center justify-between">
+                                      <div>
+                                        <div className="font-medium text-sm">
+                                          {model.name}
+                                        </div>
+                                        {model.year && (
+                                          <div className="text-muted-foreground text-xs">
+                                            ({model.year})
+                                          </div>
+                                        )}
+                                      </div>
+                                      <div className="flex gap-2">
+                                        <Button
+                                          size="sm"
+                                          variant="outline"
+                                          onClick={() => {
+                                            setNewVariant({
+                                              modelId: model.id,
+                                              name: "",
+                                            });
+                                            setVariantDialogOpen(true);
+                                          }}
+                                          className="text-xs"
+                                        >
+                                          <Plus className="h-3 w-3 mr-1" />
+                                          Add Variant
+                                        </Button>
+                                        <Button
+                                          size="sm"
+                                          variant="ghost"
+                                          className="h-8 w-8 p-0"
+                                          onClick={() => {
+                                            setModelToDelete({
+                                              id: model.id,
+                                              name: model.name,
+                                            });
+                                            setDeleteModelDialogOpen(true);
+                                          }}
+                                        >
+                                          <Trash2 className="h-3 w-3 text-destructive" />
+                                        </Button>
+                                      </div>
+                                    </div>
+                                    {model.variants &&
+                                      model.variants.length > 0 && (
+                                        <div className="pl-4 border-l-2 space-y-1">
+                                          <div className="text-xs text-muted-foreground mb-1">
+                                            Variants:
+                                          </div>
+                                          <div className="flex flex-wrap gap-2">
+                                            {model.variants.map((variant) => (
+                                              <div
+                                                key={variant.id}
+                                                className="flex items-center gap-1 bg-muted px-2 py-1 rounded text-xs group/variant"
+                                              >
+                                                <span>
+                                                  {model.name}.{variant.name}
+                                                </span>
+                                                <Button
+                                                  size="sm"
+                                                  variant="ghost"
+                                                  className="h-4 w-4 p-0 opacity-0 group-hover/variant:opacity-100 transition-opacity"
+                                                  onClick={() => {
+                                                    setVariantToDelete({
+                                                      id: variant.id,
+                                                      name: variant.name,
+                                                      modelName: model.name,
+                                                    });
+                                                    setDeleteVariantDialogOpen(
+                                                      true
+                                                    );
+                                                  }}
+                                                >
+                                                  <Trash2 className="h-2.5 w-2.5 text-destructive" />
+                                                </Button>
+                                              </div>
+                                            ))}
+                                          </div>
+                                        </div>
+                                      )}
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </CollapsibleContent>
                         </div>
-                      )}
-                    </div>
-                  ))}
+                      </Collapsible>
+                    );
+                  })}
                 </div>
               )}
             </CardContent>
           </Card>
+
+          {/* Delete Category Confirmation Dialog */}
+          <Dialog
+            open={deleteCategoryDialogOpen}
+            onOpenChange={setDeleteCategoryDialogOpen}
+          >
+            <DialogContent className="max-w-md">
+              <DialogHeader>
+                <DialogTitle>Delete Category</DialogTitle>
+                <DialogDescription>
+                  Are you sure you want to delete this category? This will also
+                  delete all models in this category and cannot be undone.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="flex flex-col sm:flex-row justify-end gap-2 mt-4">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    setDeleteCategoryDialogOpen(false);
+                    setCategoryToDelete(null);
+                  }}
+                  className="w-full sm:w-auto"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="button"
+                  variant="destructive"
+                  onClick={handleDeleteCategory}
+                  disabled={saving}
+                  className="w-full sm:w-auto"
+                >
+                  {saving ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    "Delete"
+                  )}
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
+
+          {/* Delete Model Confirmation Dialog */}
+          <Dialog
+            open={deleteModelDialogOpen}
+            onOpenChange={setDeleteModelDialogOpen}
+          >
+            <DialogContent className="max-w-md">
+              <DialogHeader>
+                <DialogTitle>Delete Model</DialogTitle>
+                <DialogDescription>
+                  Are you sure you want to delete the model "
+                  {modelToDelete?.name}"? This will also delete all related
+                  visitor interests and test drives, and cannot be undone.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="flex flex-col sm:flex-row justify-end gap-2 mt-4">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    setDeleteModelDialogOpen(false);
+                    setModelToDelete(null);
+                  }}
+                  className="w-full sm:w-auto"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="button"
+                  variant="destructive"
+                  onClick={handleDeleteModel}
+                  disabled={saving}
+                  className="w-full sm:w-auto"
+                >
+                  {saving ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    "Delete"
+                  )}
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
+
+          {/* Delete Variant Confirmation Dialog */}
+          <Dialog
+            open={deleteVariantDialogOpen}
+            onOpenChange={setDeleteVariantDialogOpen}
+          >
+            <DialogContent className="max-w-md">
+              <DialogHeader>
+                <DialogTitle>Delete Variant</DialogTitle>
+                <DialogDescription>
+                  Are you sure you want to delete the variant "
+                  {variantToDelete?.modelName}.{variantToDelete?.name}"? This
+                  will also delete all related visitor interests and test
+                  drives, and cannot be undone.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="flex flex-col sm:flex-row justify-end gap-2 mt-4">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    setDeleteVariantDialogOpen(false);
+                    setVariantToDelete(null);
+                  }}
+                  className="w-full sm:w-auto"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="button"
+                  variant="destructive"
+                  onClick={handleDeleteVariant}
+                  disabled={saving}
+                  className="w-full sm:w-auto"
+                >
+                  {saving ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    "Delete"
+                  )}
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
         </TabsContent>
 
         <TabsContent value="templates" className="space-y-4">
@@ -537,7 +969,10 @@ export default function SettingsPage() {
               {themeSettings.theme === "custom" && (
                 <div className="space-y-4">
                   <div className="space-y-2">
-                    <Label htmlFor="primary-color" className="text-sm font-semibold">
+                    <Label
+                      htmlFor="primary-color"
+                      className="text-sm font-semibold"
+                    >
                       Primary Color (Main)
                     </Label>
                     <p className="text-xs text-muted-foreground">
@@ -571,7 +1006,10 @@ export default function SettingsPage() {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="secondary-color" className="text-sm font-semibold">
+                    <Label
+                      htmlFor="secondary-color"
+                      className="text-sm font-semibold"
+                    >
                       Secondary Color
                     </Label>
                     <p className="text-xs text-muted-foreground">
@@ -605,7 +1043,10 @@ export default function SettingsPage() {
                   </div>
 
                   <div className="space-y-2">
-                    <Label htmlFor="tertiary-color" className="text-sm font-semibold">
+                    <Label
+                      htmlFor="tertiary-color"
+                      className="text-sm font-semibold"
+                    >
                       Tertiary Color
                     </Label>
                     <p className="text-xs text-muted-foreground">

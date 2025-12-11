@@ -61,45 +61,70 @@ export async function POST(request: NextRequest) {
         },
         select: {
           modelId: true,
+          variantId: true,
         },
       });
 
-      const existingModelIds = new Set(
-        existingInterests.map((ei) => ei.modelId)
+      const existingInterestsSet = new Set(
+        existingInterests.map((ei) => `${ei.modelId}:${ei.variantId || ""}`)
       );
 
-      // Create new interests that don't already exist, linked to this session
-      const newModelIds = modelIds.filter(
-        (modelId: string) => !existingModelIds.has(modelId)
-      );
+      // Process modelIds (support both old string format and new object format)
+      const interestsToCreate = modelIds
+        .map((item: string | { modelId: string; variantId?: string }) => {
+          const modelId = typeof item === "string" ? item : item.modelId;
+          const variantId =
+            typeof item === "object" ? item.variantId : undefined;
+          const key = `${modelId}:${variantId || ""}`;
 
-      if (newModelIds.length > 0) {
+          if (!existingInterestsSet.has(key)) {
+            return {
+              visitorId: visitor.id,
+              modelId,
+              variantId: variantId || null,
+              sessionId: session.id,
+            };
+          }
+          return null;
+        })
+        .filter((item) => item !== null);
+
+      if (interestsToCreate.length > 0) {
         await prisma.visitorInterest.createMany({
-          data: newModelIds.map((modelId: string) => ({
-            visitorId: visitor.id,
-            modelId,
-            sessionId: session.id,
-          })),
+          data: interestsToCreate,
         });
       }
 
       // Also link existing interests to this session if they were selected
-      const selectedExistingModelIds = modelIds.filter((modelId: string) =>
-        existingModelIds.has(modelId)
+      const selectedItems = modelIds.filter(
+        (item: string | { modelId: string; variantId?: string }) => {
+          const modelId = typeof item === "string" ? item : item.modelId;
+          const variantId =
+            typeof item === "object" ? item.variantId : undefined;
+          const key = `${modelId}:${variantId || ""}`;
+          return existingInterestsSet.has(key);
+        }
       );
 
-      if (selectedExistingModelIds.length > 0) {
+      if (selectedItems.length > 0) {
         // Update existing interests to link them to this session
-        await prisma.visitorInterest.updateMany({
-          where: {
-            visitorId: visitor.id,
-            modelId: { in: selectedExistingModelIds },
-            sessionId: null, // Only update interests not already linked to a session
-          },
-          data: {
-            sessionId: session.id,
-          },
-        });
+        for (const item of selectedItems) {
+          const modelId = typeof item === "string" ? item : item.modelId;
+          const variantId =
+            typeof item === "object" ? item.variantId : undefined;
+
+          await prisma.visitorInterest.updateMany({
+            where: {
+              visitorId: visitor.id,
+              modelId,
+              variantId: variantId || null,
+              sessionId: null, // Only update interests not already linked to a session
+            },
+            data: {
+              sessionId: session.id,
+            },
+          });
+        }
       }
     }
 

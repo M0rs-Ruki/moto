@@ -15,7 +15,20 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Loader2, UserPlus, Search, UserCheck } from "lucide-react";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
+import {
+  Plus,
+  Loader2,
+  UserPlus,
+  Search,
+  UserCheck,
+  ChevronDown,
+  X,
+} from "lucide-react";
 import DashboardLoading from "./loading";
 import {
   Dialog,
@@ -26,10 +39,16 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 
+interface VehicleVariant {
+  id: string;
+  name: string;
+}
+
 interface VehicleModel {
   id: string;
   name: string;
   year: number | null;
+  variants?: VehicleVariant[];
 }
 
 interface VehicleCategory {
@@ -65,7 +84,8 @@ export default function DashboardPage() {
   const [visitors, setVisitors] = useState<Visitor[]>([]);
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
-  const [existingVisitorDialogOpen, setExistingVisitorDialogOpen] = useState(false);
+  const [existingVisitorDialogOpen, setExistingVisitorDialogOpen] =
+    useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
   const [searching, setSearching] = useState(false);
@@ -73,7 +93,19 @@ export default function DashboardPage() {
   const [foundVisitor, setFoundVisitor] = useState<any>(null);
   const [visitReason, setVisitReason] = useState("");
   const [creatingSession, setCreatingSession] = useState(false);
-  const [existingVisitorModelIds, setExistingVisitorModelIds] = useState<string[]>([]);
+  const [existingVisitorModelIds, setExistingVisitorModelIds] = useState<
+    Array<string | { modelId: string; variantId?: string }>
+  >([]);
+
+  // Search and filter state for model selection
+  const [modelSearchQuery, setModelSearchQuery] = useState("");
+  const [openModelCategories, setOpenModelCategories] = useState<Set<string>>(
+    new Set()
+  );
+  const [existingVisitorModelSearchQuery, setExistingVisitorModelSearchQuery] =
+    useState("");
+  const [openExistingVisitorCategories, setOpenExistingVisitorCategories] =
+    useState<Set<string>>(new Set());
 
   // Form state
   const [formData, setFormData] = useState({
@@ -83,7 +115,7 @@ export default function DashboardPage() {
     email: "",
     address: "",
     reason: "",
-    modelIds: [] as string[],
+    modelIds: [] as Array<string | { modelId: string; variantId?: string }>,
   });
 
   useEffect(() => {
@@ -105,13 +137,35 @@ export default function DashboardPage() {
     }
   };
 
-  const handleModelToggle = (modelId: string) => {
-    setFormData((prev) => ({
-      ...prev,
-      modelIds: prev.modelIds.includes(modelId)
-        ? prev.modelIds.filter((id) => id !== modelId)
-        : [...prev.modelIds, modelId],
-    }));
+  const handleModelToggle = (modelId: string, variantId?: string) => {
+    setFormData((prev) => {
+      const item = variantId ? { modelId, variantId } : modelId;
+      const isSelected = prev.modelIds.some((id) => {
+        if (typeof id === "string") {
+          return id === modelId && !variantId;
+        } else {
+          return id.modelId === modelId && id.variantId === variantId;
+        }
+      });
+
+      if (isSelected) {
+        return {
+          ...prev,
+          modelIds: prev.modelIds.filter((id) => {
+            if (typeof id === "string") {
+              return id !== modelId || variantId !== undefined;
+            } else {
+              return !(id.modelId === modelId && id.variantId === variantId);
+            }
+          }),
+        };
+      } else {
+        return {
+          ...prev,
+          modelIds: [...prev.modelIds, item],
+        };
+      }
+    });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -144,10 +198,11 @@ export default function DashboardPage() {
 
   const handleVisitorClick = (visitor: Visitor) => {
     // Get the most recent session ID, or use visitor ID if no session
-    const sessionId = visitor.sessions && visitor.sessions.length > 0 
-      ? visitor.sessions[0].id 
-      : null;
-    
+    const sessionId =
+      visitor.sessions && visitor.sessions.length > 0
+        ? visitor.sessions[0].id
+        : null;
+
     if (sessionId) {
       // Navigate to sessions page with session ID
       router.push(`/dashboard/sessions?sessionId=${sessionId}`);
@@ -169,8 +224,10 @@ export default function DashboardPage() {
     setExistingVisitorModelIds([]);
 
     try {
-      const response = await axios.get(`/api/visitors?phone=${encodeURIComponent(searchPhone.trim())}`);
-      
+      const response = await axios.get(
+        `/api/visitors?phone=${encodeURIComponent(searchPhone.trim())}`
+      );
+
       if (response.data.found && response.data.visitor) {
         setFoundVisitor(response.data.visitor);
         // Pre-select existing interests
@@ -212,10 +269,12 @@ export default function DashboardPage() {
       setFoundVisitor(null);
       setExistingVisitorModelIds([]);
       setExistingVisitorDialogOpen(false);
-      
+
       // Navigate to the new session
       if (response.data.session) {
-        router.push(`/dashboard/sessions?sessionId=${response.data.session.id}`);
+        router.push(
+          `/dashboard/sessions?sessionId=${response.data.session.id}`
+        );
       } else {
         fetchData(); // Refresh visitors list
       }
@@ -234,12 +293,32 @@ export default function DashboardPage() {
     setError("");
   };
 
-  const handleExistingVisitorModelToggle = (modelId: string) => {
-    setExistingVisitorModelIds((prev) =>
-      prev.includes(modelId)
-        ? prev.filter((id) => id !== modelId)
-        : [...prev, modelId]
-    );
+  const handleExistingVisitorModelToggle = (
+    modelId: string,
+    variantId?: string
+  ) => {
+    setExistingVisitorModelIds((prev) => {
+      const item = variantId ? { modelId, variantId } : modelId;
+      const isSelected = prev.some((id) => {
+        if (typeof id === "string") {
+          return id === modelId && !variantId;
+        } else {
+          return id.modelId === modelId && id.variantId === variantId;
+        }
+      });
+
+      if (isSelected) {
+        return prev.filter((id) => {
+          if (typeof id === "string") {
+            return id !== modelId || variantId !== undefined;
+          } else {
+            return !(id.modelId === modelId && id.variantId === variantId);
+          }
+        });
+      } else {
+        return [...prev, item];
+      }
+    });
   };
 
   if (loading) {
@@ -271,421 +350,871 @@ export default function DashboardPage() {
                 New Visitor
               </Button>
             </DialogTrigger>
-          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto p-4 sm:p-6">
-            <DialogHeader className="space-y-2">
-              <DialogTitle>Add New Visitor</DialogTitle>
-              <DialogDescription className="text-xs sm:text-sm">
-                Fill in visitor details and select interested models. A WhatsApp
-                welcome message will be sent automatically.
-              </DialogDescription>
-            </DialogHeader>
+            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto p-4 sm:p-6">
+              <DialogHeader className="space-y-2">
+                <DialogTitle>Add New Visitor</DialogTitle>
+                <DialogDescription className="text-xs sm:text-sm">
+                  Fill in visitor details and select interested models. A
+                  WhatsApp welcome message will be sent automatically.
+                </DialogDescription>
+              </DialogHeader>
 
-            <form onSubmit={handleSubmit} className="space-y-4 mt-4">
-              {error && (
-                <div className="bg-destructive/10 text-destructive text-xs sm:text-sm p-3 rounded">
-                  {error}
-                </div>
-              )}
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="firstName" className="text-sm">
-                    First Name *
-                  </Label>
-                  <Input
-                    id="firstName"
-                    placeholder="John"
-                    value={formData.firstName}
-                    onChange={(e) =>
-                      setFormData({ ...formData, firstName: e.target.value })
-                    }
-                    required
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="lastName" className="text-sm">
-                    Last Name *
-                  </Label>
-                  <Input
-                    id="lastName"
-                    placeholder="Doe"
-                    value={formData.lastName}
-                    onChange={(e) =>
-                      setFormData({ ...formData, lastName: e.target.value })
-                    }
-                    required
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="whatsappNumber" className="text-sm">
-                  WhatsApp Number *
-                </Label>
-                <Input
-                  id="whatsappNumber"
-                  type="tel"
-                  placeholder="+1234567890"
-                  value={formData.whatsappNumber}
-                  onChange={(e) =>
-                    setFormData({ ...formData, whatsappNumber: e.target.value })
-                  }
-                  required
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="email" className="text-sm">
-                  Email
-                </Label>
-                <Input
-                  id="email"
-                  type="email"
-                  placeholder="john@example.com"
-                  value={formData.email}
-                  onChange={(e) =>
-                    setFormData({ ...formData, email: e.target.value })
-                  }
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="address" className="text-sm">
-                  Address
-                </Label>
-                <Input
-                  id="address"
-                  placeholder="123 Main St"
-                  value={formData.address}
-                  onChange={(e) =>
-                    setFormData({ ...formData, address: e.target.value })
-                  }
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="reason" className="text-sm">
-                  Reason for Visit *
-                </Label>
-                <Textarea
-                  id="reason"
-                  placeholder="Why is the visitor here? (e.g., Looking to buy a new car, Trade-in inquiry, etc.)"
-                  value={formData.reason}
-                  onChange={(e) =>
-                    setFormData({ ...formData, reason: e.target.value })
-                  }
-                  required
-                  className="min-h-24"
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label className="text-sm">Interested Models</Label>
-                {categories.length === 0 ? (
-                  <p className="text-xs sm:text-sm text-muted-foreground">
-                    No vehicle models available. Please add categories and
-                    models in Settings.
-                  </p>
-                ) : (
-                  <div className="space-y-3 border rounded-lg p-3 sm:p-4 max-h-64 overflow-y-auto">
-                    {categories.map((category) => (
-                      <div key={category.id}>
-                        <h4 className="font-semibold text-sm mb-2">
-                          {category.name}
-                        </h4>
-                        <div className="flex flex-wrap gap-2">
-                          {category.models.map((model) => (
-                            <Badge
-                              key={model.id}
-                              variant={
-                                formData.modelIds.includes(model.id)
-                                  ? "default"
-                                  : "outline"
-                              }
-                              className="cursor-pointer text-xs sm:text-sm"
-                              onClick={() => handleModelToggle(model.id)}
-                            >
-                              {model.name} {model.year ? `(${model.year})` : ""}
-                            </Badge>
-                          ))}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              <div className="flex flex-col sm:flex-row justify-end gap-2 pt-4">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setDialogOpen(false)}
-                  className="w-full sm:w-auto"
-                >
-                  Cancel
-                </Button>
-                <Button
-                  type="submit"
-                  disabled={submitting}
-                  className="w-full sm:w-auto"
-                >
-                  {submitting ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Creating...
-                    </>
-                  ) : (
-                    "Create & Send Welcome"
-                  )}
-                </Button>
-              </div>
-            </form>
-          </DialogContent>
-        </Dialog>
-
-        <Dialog open={existingVisitorDialogOpen} onOpenChange={setExistingVisitorDialogOpen}>
-          <DialogTrigger asChild>
-            <Button
-              size="lg"
-              variant="outline"
-              className="w-full sm:w-auto shadow-md hover:shadow-lg"
-            >
-              <UserCheck className="mr-2 h-5 w-5" />
-              Existing Visitor
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto p-4 sm:p-6">
-            <DialogHeader className="space-y-2">
-              <DialogTitle>Existing Visitor - New Visit</DialogTitle>
-              <DialogDescription className="text-xs sm:text-sm">
-                Search for an existing visitor by phone number to create a new visit session.
-              </DialogDescription>
-            </DialogHeader>
-
-            {!foundVisitor ? (
-              <div className="space-y-4 mt-4">
-                <div className="space-y-2">
-                  <Label htmlFor="searchPhone" className="text-sm">
-                    Search by WhatsApp Number *
-                  </Label>
-                  <div className="flex gap-2">
-                    <Input
-                      id="searchPhone"
-                      type="tel"
-                      placeholder="+1234567890"
-                      value={searchPhone}
-                      onChange={(e) => setSearchPhone(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") {
-                          e.preventDefault();
-                          handleSearchVisitor();
-                        }
-                      }}
-                      className="flex-1"
-                    />
-                    <Button
-                      type="button"
-                      onClick={handleSearchVisitor}
-                      disabled={searching || !searchPhone.trim()}
-                    >
-                      {searching ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : (
-                        <Search className="h-4 w-4" />
-                      )}
-                    </Button>
-                  </div>
-                </div>
-
+              <form onSubmit={handleSubmit} className="space-y-4 mt-4">
                 {error && (
                   <div className="bg-destructive/10 text-destructive text-xs sm:text-sm p-3 rounded">
                     {error}
                   </div>
                 )}
 
-                {error && error.includes("not found") && (
-                  <div className="pt-2">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => {
-                        setExistingVisitorDialogOpen(false);
-                        setDialogOpen(true);
-                      }}
-                      className="w-full"
-                    >
-                      <UserPlus className="mr-2 h-4 w-4" />
-                      Create New Visitor Instead
-                    </Button>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="firstName" className="text-sm">
+                      First Name *
+                    </Label>
+                    <Input
+                      id="firstName"
+                      placeholder="John"
+                      value={formData.firstName}
+                      onChange={(e) =>
+                        setFormData({ ...formData, firstName: e.target.value })
+                      }
+                      required
+                    />
                   </div>
-                )}
-              </div>
-            ) : (
-              <form onSubmit={handleCreateSessionForExistingVisitor} className="space-y-4 mt-4">
-                <div className="bg-muted/30 p-4 rounded-lg space-y-2">
-                  <div className="flex items-center justify-between">
-                    <h3 className="font-semibold text-sm">Visitor Information</h3>
-                    <Badge variant="secondary" className="text-xs">
-                      {foundVisitor.sessionCount === 1
-                        ? "2nd Visit"
-                        : foundVisitor.sessionCount === 2
-                        ? "3rd Visit"
-                        : `${foundVisitor.sessionCount + 1}th Visit`}
-                    </Badge>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="lastName" className="text-sm">
+                      Last Name *
+                    </Label>
+                    <Input
+                      id="lastName"
+                      placeholder="Doe"
+                      value={formData.lastName}
+                      onChange={(e) =>
+                        setFormData({ ...formData, lastName: e.target.value })
+                      }
+                      required
+                    />
                   </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
-                    <div>
-                      <span className="text-muted-foreground text-xs">Name:</span>
-                      <p className="font-medium">
-                        {foundVisitor.firstName} {foundVisitor.lastName}
-                      </p>
-                    </div>
-                    <div>
-                      <span className="text-muted-foreground text-xs">Phone:</span>
-                      <p className="font-medium">{foundVisitor.whatsappNumber}</p>
-                    </div>
-                    {foundVisitor.email && (
-                      <div>
-                        <span className="text-muted-foreground text-xs">Email:</span>
-                        <p className="font-medium">{foundVisitor.email}</p>
-                      </div>
-                    )}
-                    {foundVisitor.address && (
-                      <div>
-                        <span className="text-muted-foreground text-xs">Address:</span>
-                        <p className="font-medium">{foundVisitor.address}</p>
-                      </div>
-                    )}
-                  </div>
-                  {foundVisitor.interests && foundVisitor.interests.length > 0 && (
-                    <div className="pt-2 border-t">
-                      <span className="text-muted-foreground text-xs">Previous Interests:</span>
-                      <div className="flex flex-wrap gap-2 mt-1">
-                        {foundVisitor.interests.map((interest: any, idx: number) => (
-                          <Badge key={idx} variant="outline" className="text-xs">
-                            {interest.categoryName} - {interest.modelName}
-                          </Badge>
-                        ))}
-                      </div>
-                    </div>
-                  )}
                 </div>
 
                 <div className="space-y-2">
-                  <Label className="text-sm">
-                    Vehicle Interests (Optional - Update if changed)
+                  <Label htmlFor="whatsappNumber" className="text-sm">
+                    WhatsApp Number *
                   </Label>
-                  <p className="text-xs text-muted-foreground mb-2">
-                    Select vehicles the visitor is interested in for this visit. Previous interests are pre-selected.
-                  </p>
-                  {categories.length === 0 ? (
-                    <p className="text-xs sm:text-sm text-muted-foreground">
-                      No vehicle models available. Please add categories and models in Settings.
-                    </p>
-                  ) : (
-                    <div className="space-y-3 border rounded-lg p-3 sm:p-4 max-h-64 overflow-y-auto">
-                      {categories.map((category) => (
-                        <div key={category.id}>
-                          <h4 className="font-semibold text-sm mb-2">
-                            {category.name}
-                          </h4>
-                          <div className="flex flex-wrap gap-2">
-                            {category.models.map((model) => {
-                              const isSelected = existingVisitorModelIds.includes(model.id);
-                              const wasPreviousInterest = foundVisitor.interests?.some(
-                                (i: any) => i.modelId === model.id
-                              );
-                              return (
-                                <Badge
-                                  key={model.id}
-                                  variant={isSelected ? "default" : "outline"}
-                                  className={`cursor-pointer text-xs sm:text-sm ${
-                                    wasPreviousInterest && !isSelected
-                                      ? "border-primary/50 bg-primary/5"
-                                      : ""
-                                  }`}
-                                  onClick={() => handleExistingVisitorModelToggle(model.id)}
-                                >
-                                  {model.name} {model.year ? `(${model.year})` : ""}
-                                  {wasPreviousInterest && (
-                                    <span className="ml-1 text-xs opacity-70">
-                                      (Previous)
-                                    </span>
-                                  )}
-                                </Badge>
-                              );
-                            })}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  )}
+                  <Input
+                    id="whatsappNumber"
+                    type="tel"
+                    placeholder="+1234567890"
+                    value={formData.whatsappNumber}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        whatsappNumber: e.target.value,
+                      })
+                    }
+                    required
+                  />
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="visitReason" className="text-sm">
-                    Reason for This Visit *
+                  <Label htmlFor="email" className="text-sm">
+                    Email
+                  </Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    placeholder="john@example.com"
+                    value={formData.email}
+                    onChange={(e) =>
+                      setFormData({ ...formData, email: e.target.value })
+                    }
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="address" className="text-sm">
+                    Address
+                  </Label>
+                  <Input
+                    id="address"
+                    placeholder="123 Main St"
+                    value={formData.address}
+                    onChange={(e) =>
+                      setFormData({ ...formData, address: e.target.value })
+                    }
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="reason" className="text-sm">
+                    Reason for Visit *
                   </Label>
                   <Textarea
-                    id="visitReason"
-                    placeholder="Why is the visitor here today? (e.g., Follow-up on previous inquiry, Test drive, etc.)"
-                    value={visitReason}
-                    onChange={(e) => setVisitReason(e.target.value)}
+                    id="reason"
+                    placeholder="Why is the visitor here? (e.g., Looking to buy a new car, Trade-in inquiry, etc.)"
+                    value={formData.reason}
+                    onChange={(e) =>
+                      setFormData({ ...formData, reason: e.target.value })
+                    }
                     required
                     className="min-h-24"
                   />
                 </div>
 
-                {error && (
-                  <div className="bg-destructive/10 text-destructive text-xs sm:text-sm p-3 rounded">
-                    {error}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-sm">Interested Models</Label>
+                    {formData.modelIds.length > 0 && (
+                      <span className="text-xs text-muted-foreground">
+                        {formData.modelIds.length} selected
+                      </span>
+                    )}
                   </div>
-                )}
+                  {categories.length === 0 ? (
+                    <p className="text-xs sm:text-sm text-muted-foreground">
+                      No vehicle models available. Please add categories and
+                      models in Settings.
+                    </p>
+                  ) : (
+                    <div className="border rounded-lg overflow-hidden">
+                      {/* Search Bar */}
+                      <div className="p-3 border-b bg-muted/30">
+                        <div className="relative">
+                          <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                          <Input
+                            placeholder="Search models or variants..."
+                            value={modelSearchQuery}
+                            onChange={(e) =>
+                              setModelSearchQuery(e.target.value)
+                            }
+                            className="pl-8 pr-8 h-9 text-sm"
+                          />
+                          {modelSearchQuery && (
+                            <button
+                              onClick={() => setModelSearchQuery("")}
+                              className="absolute right-2 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                            >
+                              <X className="h-4 w-4" />
+                            </button>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Models List */}
+                      <div className="max-h-80 overflow-y-auto p-3 space-y-2">
+                        {categories
+                          .filter((category) => {
+                            if (!modelSearchQuery) return true;
+                            const query = modelSearchQuery.toLowerCase();
+                            return (
+                              category.name.toLowerCase().includes(query) ||
+                              category.models.some(
+                                (model) =>
+                                  model.name.toLowerCase().includes(query) ||
+                                  model.variants?.some((v) =>
+                                    v.name.toLowerCase().includes(query)
+                                  )
+                              )
+                            );
+                          })
+                          .map((category) => {
+                            const isCategoryOpen = openModelCategories.has(
+                              category.id
+                            );
+                            const filteredModels = category.models.filter(
+                              (model) => {
+                                if (!modelSearchQuery) return true;
+                                const query = modelSearchQuery.toLowerCase();
+                                return (
+                                  model.name.toLowerCase().includes(query) ||
+                                  model.variants?.some((v) =>
+                                    v.name.toLowerCase().includes(query)
+                                  )
+                                );
+                              }
+                            );
+
+                            if (filteredModels.length === 0) return null;
+
+                            return (
+                              <Collapsible
+                                key={category.id}
+                                open={isCategoryOpen}
+                                onOpenChange={(open) => {
+                                  setOpenModelCategories((prev) => {
+                                    const newSet = new Set(prev);
+                                    if (open) {
+                                      newSet.add(category.id);
+                                    } else {
+                                      newSet.delete(category.id);
+                                    }
+                                    return newSet;
+                                  });
+                                }}
+                              >
+                                <div className="border rounded-md">
+                                  <CollapsibleTrigger className="w-full">
+                                    <div className="flex items-center justify-between p-2 hover:bg-muted/50 transition-colors">
+                                      <div className="flex items-center gap-2">
+                                        <ChevronDown
+                                          className={`h-4 w-4 transition-transform duration-200 ${
+                                            isCategoryOpen
+                                              ? "transform rotate-180"
+                                              : ""
+                                          }`}
+                                        />
+                                        <span className="font-semibold text-sm">
+                                          {category.name}
+                                        </span>
+                                        <span className="text-xs text-muted-foreground">
+                                          ({filteredModels.length})
+                                        </span>
+                                      </div>
+                                    </div>
+                                  </CollapsibleTrigger>
+                                  <CollapsibleContent>
+                                    <div className="p-2 space-y-2 border-t">
+                                      {filteredModels.map((model) => {
+                                        const hasVariants =
+                                          model.variants &&
+                                          model.variants.length > 0;
+                                        const isModelSelected =
+                                          formData.modelIds.some(
+                                            (id) =>
+                                              (typeof id === "string" &&
+                                                id === model.id) ||
+                                              (typeof id === "object" &&
+                                                id.modelId === model.id &&
+                                                !id.variantId)
+                                          );
+
+                                        return (
+                                          <div
+                                            key={model.id}
+                                            className="space-y-1.5 pl-2"
+                                          >
+                                            {/* Base Model Checkbox */}
+                                            <label className="flex items-center gap-2 cursor-pointer hover:bg-muted/30 p-1.5 rounded">
+                                              <input
+                                                type="checkbox"
+                                                checked={isModelSelected}
+                                                onChange={() =>
+                                                  handleModelToggle(model.id)
+                                                }
+                                                className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+                                              />
+                                              <span className="text-sm flex-1">
+                                                {model.name}
+                                                {model.year
+                                                  ? ` (${model.year})`
+                                                  : ""}
+                                                {hasVariants && " (Base)"}
+                                              </span>
+                                            </label>
+
+                                            {/* Variants */}
+                                            {hasVariants &&
+                                              model.variants
+                                                .filter((variant) => {
+                                                  if (!modelSearchQuery)
+                                                    return true;
+                                                  const query =
+                                                    modelSearchQuery.toLowerCase();
+                                                  return (
+                                                    variant.name
+                                                      .toLowerCase()
+                                                      .includes(query) ||
+                                                    model.name
+                                                      .toLowerCase()
+                                                      .includes(query)
+                                                  );
+                                                })
+                                                .map((variant) => {
+                                                  const isVariantSelected =
+                                                    formData.modelIds.some(
+                                                      (id) =>
+                                                        typeof id ===
+                                                          "object" &&
+                                                        id.modelId ===
+                                                          model.id &&
+                                                        id.variantId ===
+                                                          variant.id
+                                                    );
+                                                  return (
+                                                    <label
+                                                      key={variant.id}
+                                                      className="flex items-center gap-2 cursor-pointer hover:bg-muted/30 p-1.5 rounded ml-6"
+                                                    >
+                                                      <input
+                                                        type="checkbox"
+                                                        checked={
+                                                          isVariantSelected
+                                                        }
+                                                        onChange={() =>
+                                                          handleModelToggle(
+                                                            model.id,
+                                                            variant.id
+                                                          )
+                                                        }
+                                                        className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+                                                      />
+                                                      <span className="text-sm flex-1">
+                                                        {model.name}.
+                                                        {variant.name}
+                                                        {model.year
+                                                          ? ` (${model.year})`
+                                                          : ""}
+                                                      </span>
+                                                    </label>
+                                                  );
+                                                })}
+                                          </div>
+                                        );
+                                      })}
+                                    </div>
+                                  </CollapsibleContent>
+                                </div>
+                              </Collapsible>
+                            );
+                          })}
+                        {categories.filter((category) => {
+                          if (!modelSearchQuery) return true;
+                          const query = modelSearchQuery.toLowerCase();
+                          return (
+                            category.name.toLowerCase().includes(query) ||
+                            category.models.some(
+                              (model) =>
+                                model.name.toLowerCase().includes(query) ||
+                                model.variants?.some((v) =>
+                                  v.name.toLowerCase().includes(query)
+                                )
+                            )
+                          );
+                        }).length === 0 && (
+                          <p className="text-xs text-muted-foreground text-center py-4">
+                            No models found matching "{modelSearchQuery}"
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
 
                 <div className="flex flex-col sm:flex-row justify-end gap-2 pt-4">
                   <Button
                     type="button"
                     variant="outline"
-                    onClick={handleResetSearch}
-                    className="w-full sm:w-auto"
-                  >
-                    Search Another
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => setExistingVisitorDialogOpen(false)}
+                    onClick={() => setDialogOpen(false)}
                     className="w-full sm:w-auto"
                   >
                     Cancel
                   </Button>
                   <Button
                     type="submit"
-                    disabled={creatingSession || !visitReason.trim()}
+                    disabled={submitting}
                     className="w-full sm:w-auto"
                   >
-                    {creatingSession ? (
+                    {submitting ? (
                       <>
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                         Creating...
                       </>
                     ) : (
-                      <>
-                        Create {foundVisitor.sessionCount === 1
-                          ? "2nd"
-                          : foundVisitor.sessionCount === 2
-                          ? "3rd"
-                          : `${foundVisitor.sessionCount + 1}th`}{" "}
-                        Visit Session
-                      </>
+                      "Create & Send Welcome"
                     )}
                   </Button>
                 </div>
               </form>
-            )}
-          </DialogContent>
-        </Dialog>
+            </DialogContent>
+          </Dialog>
+
+          <Dialog
+            open={existingVisitorDialogOpen}
+            onOpenChange={setExistingVisitorDialogOpen}
+          >
+            <DialogTrigger asChild>
+              <Button
+                size="lg"
+                variant="outline"
+                className="w-full sm:w-auto shadow-md hover:shadow-lg"
+              >
+                <UserCheck className="mr-2 h-5 w-5" />
+                Existing Visitor
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto p-4 sm:p-6">
+              <DialogHeader className="space-y-2">
+                <DialogTitle>Existing Visitor - New Visit</DialogTitle>
+                <DialogDescription className="text-xs sm:text-sm">
+                  Search for an existing visitor by phone number to create a new
+                  visit session.
+                </DialogDescription>
+              </DialogHeader>
+
+              {!foundVisitor ? (
+                <div className="space-y-4 mt-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="searchPhone" className="text-sm">
+                      Search by WhatsApp Number *
+                    </Label>
+                    <div className="flex gap-2">
+                      <Input
+                        id="searchPhone"
+                        type="tel"
+                        placeholder="+1234567890"
+                        value={searchPhone}
+                        onChange={(e) => setSearchPhone(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            e.preventDefault();
+                            handleSearchVisitor();
+                          }
+                        }}
+                        className="flex-1"
+                      />
+                      <Button
+                        type="button"
+                        onClick={handleSearchVisitor}
+                        disabled={searching || !searchPhone.trim()}
+                      >
+                        {searching ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <Search className="h-4 w-4" />
+                        )}
+                      </Button>
+                    </div>
+                  </div>
+
+                  {error && (
+                    <div className="bg-destructive/10 text-destructive text-xs sm:text-sm p-3 rounded">
+                      {error}
+                    </div>
+                  )}
+
+                  {error && error.includes("not found") && (
+                    <div className="pt-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => {
+                          setExistingVisitorDialogOpen(false);
+                          setDialogOpen(true);
+                        }}
+                        className="w-full"
+                      >
+                        <UserPlus className="mr-2 h-4 w-4" />
+                        Create New Visitor Instead
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <form
+                  onSubmit={handleCreateSessionForExistingVisitor}
+                  className="space-y-4 mt-4"
+                >
+                  <div className="bg-muted/30 p-4 rounded-lg space-y-2">
+                    <div className="flex items-center justify-between">
+                      <h3 className="font-semibold text-sm">
+                        Visitor Information
+                      </h3>
+                      <Badge variant="secondary" className="text-xs">
+                        {foundVisitor.sessionCount === 1
+                          ? "2nd Visit"
+                          : foundVisitor.sessionCount === 2
+                          ? "3rd Visit"
+                          : `${foundVisitor.sessionCount + 1}th Visit`}
+                      </Badge>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm">
+                      <div>
+                        <span className="text-muted-foreground text-xs">
+                          Name:
+                        </span>
+                        <p className="font-medium">
+                          {foundVisitor.firstName} {foundVisitor.lastName}
+                        </p>
+                      </div>
+                      <div>
+                        <span className="text-muted-foreground text-xs">
+                          Phone:
+                        </span>
+                        <p className="font-medium">
+                          {foundVisitor.whatsappNumber}
+                        </p>
+                      </div>
+                      {foundVisitor.email && (
+                        <div>
+                          <span className="text-muted-foreground text-xs">
+                            Email:
+                          </span>
+                          <p className="font-medium">{foundVisitor.email}</p>
+                        </div>
+                      )}
+                      {foundVisitor.address && (
+                        <div>
+                          <span className="text-muted-foreground text-xs">
+                            Address:
+                          </span>
+                          <p className="font-medium">{foundVisitor.address}</p>
+                        </div>
+                      )}
+                    </div>
+                    {foundVisitor.interests &&
+                      foundVisitor.interests.length > 0 && (
+                        <div className="pt-2 border-t">
+                          <span className="text-muted-foreground text-xs">
+                            Previous Interests:
+                          </span>
+                          <div className="flex flex-wrap gap-2 mt-1">
+                            {foundVisitor.interests.map(
+                              (interest: any, idx: number) => (
+                                <Badge
+                                  key={idx}
+                                  variant="outline"
+                                  className="text-xs"
+                                >
+                                  {interest.categoryName} - {interest.modelName}
+                                </Badge>
+                              )
+                            )}
+                          </div>
+                        </div>
+                      )}
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label className="text-sm">
+                      Vehicle Interests (Optional - Update if changed)
+                    </Label>
+                    <p className="text-xs text-muted-foreground mb-2">
+                      Select vehicles the visitor is interested in for this
+                      visit. Previous interests are pre-selected.
+                    </p>
+                    {categories.length === 0 ? (
+                      <p className="text-xs sm:text-sm text-muted-foreground">
+                        No vehicle models available. Please add categories and
+                        models in Settings.
+                      </p>
+                    ) : (
+                      <div className="border rounded-lg overflow-hidden">
+                        {/* Search Bar */}
+                        <div className="p-3 border-b bg-muted/30">
+                          <div className="relative">
+                            <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                            <Input
+                              placeholder="Search models or variants..."
+                              value={existingVisitorModelSearchQuery}
+                              onChange={(e) =>
+                                setExistingVisitorModelSearchQuery(
+                                  e.target.value
+                                )
+                              }
+                              className="pl-8 pr-8 h-9 text-sm"
+                            />
+                            {existingVisitorModelSearchQuery && (
+                              <button
+                                onClick={() =>
+                                  setExistingVisitorModelSearchQuery("")
+                                }
+                                className="absolute right-2 top-1/2 transform -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                              >
+                                <X className="h-4 w-4" />
+                              </button>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Models List */}
+                        <div className="max-h-80 overflow-y-auto p-3 space-y-2">
+                          {categories
+                            .filter((category) => {
+                              if (!existingVisitorModelSearchQuery) return true;
+                              const query =
+                                existingVisitorModelSearchQuery.toLowerCase();
+                              return (
+                                category.name.toLowerCase().includes(query) ||
+                                category.models.some(
+                                  (model) =>
+                                    model.name.toLowerCase().includes(query) ||
+                                    model.variants?.some((v) =>
+                                      v.name.toLowerCase().includes(query)
+                                    )
+                                )
+                              );
+                            })
+                            .map((category) => {
+                              const isCategoryOpen =
+                                openExistingVisitorCategories.has(category.id);
+                              const filteredModels = category.models.filter(
+                                (model) => {
+                                  if (!existingVisitorModelSearchQuery)
+                                    return true;
+                                  const query =
+                                    existingVisitorModelSearchQuery.toLowerCase();
+                                  return (
+                                    model.name.toLowerCase().includes(query) ||
+                                    model.variants?.some((v) =>
+                                      v.name.toLowerCase().includes(query)
+                                    )
+                                  );
+                                }
+                              );
+
+                              if (filteredModels.length === 0) return null;
+
+                              return (
+                                <Collapsible
+                                  key={category.id}
+                                  open={isCategoryOpen}
+                                  onOpenChange={(open) => {
+                                    setOpenExistingVisitorCategories((prev) => {
+                                      const newSet = new Set(prev);
+                                      if (open) {
+                                        newSet.add(category.id);
+                                      } else {
+                                        newSet.delete(category.id);
+                                      }
+                                      return newSet;
+                                    });
+                                  }}
+                                >
+                                  <div className="border rounded-md">
+                                    <CollapsibleTrigger className="w-full">
+                                      <div className="flex items-center justify-between p-2 hover:bg-muted/50 transition-colors">
+                                        <div className="flex items-center gap-2">
+                                          <ChevronDown
+                                            className={`h-4 w-4 transition-transform duration-200 ${
+                                              isCategoryOpen
+                                                ? "transform rotate-180"
+                                                : ""
+                                            }`}
+                                          />
+                                          <span className="font-semibold text-sm">
+                                            {category.name}
+                                          </span>
+                                          <span className="text-xs text-muted-foreground">
+                                            ({filteredModels.length})
+                                          </span>
+                                        </div>
+                                      </div>
+                                    </CollapsibleTrigger>
+                                    <CollapsibleContent>
+                                      <div className="p-2 space-y-2 border-t">
+                                        {filteredModels.map((model) => {
+                                          const hasVariants =
+                                            model.variants &&
+                                            model.variants.length > 0;
+                                          const isModelSelected =
+                                            existingVisitorModelIds.some(
+                                              (id) =>
+                                                (typeof id === "string" &&
+                                                  id === model.id) ||
+                                                (typeof id === "object" &&
+                                                  id.modelId === model.id &&
+                                                  !id.variantId)
+                                            );
+                                          const wasPreviousInterest =
+                                            foundVisitor.interests?.some(
+                                              (i: any) => i.modelId === model.id
+                                            );
+
+                                          return (
+                                            <div
+                                              key={model.id}
+                                              className="space-y-1.5 pl-2"
+                                            >
+                                              {/* Base Model Checkbox */}
+                                              <label
+                                                className={`flex items-center gap-2 cursor-pointer hover:bg-muted/30 p-1.5 rounded ${
+                                                  wasPreviousInterest &&
+                                                  !isModelSelected
+                                                    ? "bg-primary/5 border border-primary/20"
+                                                    : ""
+                                                }`}
+                                              >
+                                                <input
+                                                  type="checkbox"
+                                                  checked={isModelSelected}
+                                                  onChange={() =>
+                                                    handleExistingVisitorModelToggle(
+                                                      model.id
+                                                    )
+                                                  }
+                                                  className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+                                                />
+                                                <span className="text-sm flex-1">
+                                                  {model.name}
+                                                  {model.year
+                                                    ? ` (${model.year})`
+                                                    : ""}
+                                                  {hasVariants && " (Base)"}
+                                                  {wasPreviousInterest && (
+                                                    <span className="ml-1 text-xs text-muted-foreground">
+                                                      (Previous)
+                                                    </span>
+                                                  )}
+                                                </span>
+                                              </label>
+
+                                              {/* Variants */}
+                                              {hasVariants &&
+                                                model.variants
+                                                  .filter((variant) => {
+                                                    if (
+                                                      !existingVisitorModelSearchQuery
+                                                    )
+                                                      return true;
+                                                    const query =
+                                                      existingVisitorModelSearchQuery.toLowerCase();
+                                                    return (
+                                                      variant.name
+                                                        .toLowerCase()
+                                                        .includes(query) ||
+                                                      model.name
+                                                        .toLowerCase()
+                                                        .includes(query)
+                                                    );
+                                                  })
+                                                  .map((variant) => {
+                                                    const isVariantSelected =
+                                                      existingVisitorModelIds.some(
+                                                        (id) =>
+                                                          typeof id ===
+                                                            "object" &&
+                                                          id.modelId ===
+                                                            model.id &&
+                                                          id.variantId ===
+                                                            variant.id
+                                                      );
+                                                    return (
+                                                      <label
+                                                        key={variant.id}
+                                                        className="flex items-center gap-2 cursor-pointer hover:bg-muted/30 p-1.5 rounded ml-6"
+                                                      >
+                                                        <input
+                                                          type="checkbox"
+                                                          checked={
+                                                            isVariantSelected
+                                                          }
+                                                          onChange={() =>
+                                                            handleExistingVisitorModelToggle(
+                                                              model.id,
+                                                              variant.id
+                                                            )
+                                                          }
+                                                          className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+                                                        />
+                                                        <span className="text-sm flex-1">
+                                                          {model.name}.
+                                                          {variant.name}
+                                                          {model.year
+                                                            ? ` (${model.year})`
+                                                            : ""}
+                                                        </span>
+                                                      </label>
+                                                    );
+                                                  })}
+                                            </div>
+                                          );
+                                        })}
+                                      </div>
+                                    </CollapsibleContent>
+                                  </div>
+                                </Collapsible>
+                              );
+                            })}
+                          {categories.filter((category) => {
+                            if (!existingVisitorModelSearchQuery) return true;
+                            const query =
+                              existingVisitorModelSearchQuery.toLowerCase();
+                            return (
+                              category.name.toLowerCase().includes(query) ||
+                              category.models.some(
+                                (model) =>
+                                  model.name.toLowerCase().includes(query) ||
+                                  model.variants?.some((v) =>
+                                    v.name.toLowerCase().includes(query)
+                                  )
+                              )
+                            );
+                          }).length === 0 && (
+                            <p className="text-xs text-muted-foreground text-center py-4">
+                              No models found matching "
+                              {existingVisitorModelSearchQuery}"
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="visitReason" className="text-sm">
+                      Reason for This Visit *
+                    </Label>
+                    <Textarea
+                      id="visitReason"
+                      placeholder="Why is the visitor here today? (e.g., Follow-up on previous inquiry, Test drive, etc.)"
+                      value={visitReason}
+                      onChange={(e) => setVisitReason(e.target.value)}
+                      required
+                      className="min-h-24"
+                    />
+                  </div>
+
+                  {error && (
+                    <div className="bg-destructive/10 text-destructive text-xs sm:text-sm p-3 rounded">
+                      {error}
+                    </div>
+                  )}
+
+                  <div className="flex flex-col sm:flex-row justify-end gap-2 pt-4">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={handleResetSearch}
+                      className="w-full sm:w-auto"
+                    >
+                      Search Another
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => setExistingVisitorDialogOpen(false)}
+                      className="w-full sm:w-auto"
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      type="submit"
+                      disabled={creatingSession || !visitReason.trim()}
+                      className="w-full sm:w-auto"
+                    >
+                      {creatingSession ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Creating...
+                        </>
+                      ) : (
+                        <>
+                          Create{" "}
+                          {foundVisitor.sessionCount === 1
+                            ? "2nd"
+                            : foundVisitor.sessionCount === 2
+                            ? "3rd"
+                            : `${foundVisitor.sessionCount + 1}th`}{" "}
+                          Visit Session
+                        </>
+                      )}
+                    </Button>
+                  </div>
+                </form>
+              )}
+            </DialogContent>
+          </Dialog>
         </div>
       </div>
 
