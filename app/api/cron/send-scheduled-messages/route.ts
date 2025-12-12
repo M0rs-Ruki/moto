@@ -66,13 +66,20 @@ export async function GET(request: NextRequest) {
           return { success: false, reason: "No WhatsApp contact ID" };
         }
 
-        // Get delivery template
+        // Get delivery template (check section-specific first, then global)
         const template = await prisma.whatsAppTemplate.findFirst({
           where: {
             dealershipId: ticket.dealershipId,
             type: "delivery_reminder",
-            section: "delivery_update",
+            OR: [
+              { section: "delivery_update" },
+              { section: "global" },
+              { section: null },
+            ],
           },
+          orderBy: [
+            { section: "asc" }, // Prefer section-specific over global
+          ],
         });
 
         if (!template) {
@@ -84,6 +91,17 @@ export async function GET(request: NextRequest) {
             },
           });
           return { success: false, reason: "Template not found" };
+        }
+
+        if (!template.templateId || !template.templateName) {
+          await prisma.scheduledMessage.update({
+            where: { id: scheduledMessage.id },
+            data: {
+              status: "failed",
+              retryCount: scheduledMessage.retryCount + 1,
+            },
+          });
+          return { success: false, reason: "Template not fully configured (missing Template ID or Template Name)" };
         }
 
         try {

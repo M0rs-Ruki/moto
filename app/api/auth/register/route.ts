@@ -66,6 +66,7 @@ export async function POST(request: NextRequest) {
           templateName: "welcome_msg",
           language: "en_US",
           type: "welcome",
+          section: "global",
           dealershipId: dealership.id,
         },
         {
@@ -74,6 +75,7 @@ export async function POST(request: NextRequest) {
           templateName: "test_drive_msg",
           language: "en_US",
           type: "test_drive",
+          section: "global",
           dealershipId: dealership.id,
         },
         {
@@ -82,6 +84,16 @@ export async function POST(request: NextRequest) {
           templateName: "exit_msg",
           language: "en_US",
           type: "exit",
+          section: "global",
+          dealershipId: dealership.id,
+        },
+        {
+          name: "Delivery Reminder",
+          templateId: "",
+          templateName: "",
+          language: "en_US",
+          type: "delivery_reminder",
+          section: "delivery_update",
           dealershipId: dealership.id,
         },
       ],

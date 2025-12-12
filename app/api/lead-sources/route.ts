@@ -219,14 +219,6 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    // Prevent deletion of default sources
-    if (existing.isDefault) {
-      return NextResponse.json(
-        { error: "Cannot delete default lead source" },
-        { status: 400 }
-      );
-    }
-
     // Check if it's being used by any digital enquiries
     if (existing.digitalEnquiries.length > 0) {
       return NextResponse.json(

@@ -672,86 +672,105 @@ export default function VisitorsPage() {
           {visitors.map((visitor) => {
             const isExpanded = expandedVisitors.has(visitor.id);
             return (
-              <Collapsible
+              <Card
                 key={visitor.id}
-                open={isExpanded}
-                onOpenChange={(open) => {
-                  setExpandedVisitors((prev) => {
-                    const newSet = new Set(prev);
-                    if (open) {
-                      newSet.add(visitor.id);
-                    } else {
-                      newSet.delete(visitor.id);
-                    }
-                    return newSet;
-                  });
-                }}
+                className="overflow-hidden hover:shadow-md transition-all duration-200"
               >
-                <Card className="hover:shadow-lg transition-shadow">
+                <Collapsible
+                  open={isExpanded}
+                  onOpenChange={(open) => {
+                    setExpandedVisitors((prev) => {
+                      const newSet = new Set(prev);
+                      if (open) {
+                        newSet.add(visitor.id);
+                      } else {
+                        newSet.delete(visitor.id);
+                      }
+                      return newSet;
+                    });
+                  }}
+                >
                   <CollapsibleTrigger asChild>
-                    <CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors">
-                      <div className="flex items-center justify-between">
-                        <div className="flex-1">
-                          <CardTitle className="text-base sm:text-lg">
-                            {visitor.firstName} {visitor.lastName}
-                          </CardTitle>
-                          <CardDescription className="text-xs sm:text-sm">
-                            {visitor.whatsappNumber}
-                          </CardDescription>
+                    <CardHeader className="pb-3 bg-gradient-to-r from-muted/50 to-transparent border-b cursor-pointer hover:bg-muted/30 transition-colors">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-1 flex-wrap">
+                            <CardTitle className="text-base sm:text-lg font-semibold truncate">
+                              {visitor.firstName} {visitor.lastName}
+                            </CardTitle>
+                            <Badge variant="secondary" className="text-xs font-medium whitespace-nowrap">
+                              {visitor.sessions.length} session{visitor.sessions.length !== 1 ? "s" : ""}
+                            </Badge>
+                          </div>
+                          <div className="flex flex-col gap-1">
+                            <CardDescription className="text-xs sm:text-sm">
+                              {visitor.whatsappNumber}
+                            </CardDescription>
+                          </div>
                         </div>
-                        <ChevronDown
-                          className={`h-4 w-4 transition-transform ${
-                            isExpanded ? "rotate-180" : ""
-                          }`}
-                        />
+                        <div className="flex items-center flex-shrink-0">
+                          <ChevronDown
+                            className={`h-4 w-4 text-muted-foreground transition-transform ${
+                              isExpanded ? "rotate-180" : ""
+                            }`}
+                          />
+                        </div>
                       </div>
                     </CardHeader>
                   </CollapsibleTrigger>
                   <CollapsibleContent>
-                    <CardContent>
-                      <div className="space-y-3 text-xs sm:text-sm">
-                        {visitor.email && (
-                          <div>
-                            <span className="text-muted-foreground">Email: </span>
-                            <span>{visitor.email}</span>
-                          </div>
-                        )}
-                        <div className="flex items-center gap-2">
-                          <Badge variant="secondary">
-                            {visitor.sessions.length} session
-                            {visitor.sessions.length !== 1 ? "s" : ""}
-                          </Badge>
+                    <CardContent className="space-y-4 pt-4 pb-4 sm:pb-6">
+                      {visitor.email && (
+                        <div className="flex items-start gap-3 p-3 bg-muted/30 rounded-lg">
+                          <span className="text-xs font-semibold text-muted-foreground uppercase min-w-fit">
+                            Email:
+                          </span>
+                          <p className="text-xs sm:text-sm break-words flex-1">
+                            {visitor.email}
+                          </p>
                         </div>
-                        {visitor.interests.length > 0 && (
-                          <div>
-                            <span className="text-muted-foreground">
-                              Interested in:{" "}
-                            </span>
-                            <span>
-                              {visitor.interests
-                                .map((i) => i.model.name)
-                                .join(", ")}
-                            </span>
+                      )}
+                      <div className="flex items-center gap-2">
+                        <Badge variant="secondary" className="text-xs">
+                          {visitor.sessions.length} session
+                          {visitor.sessions.length !== 1 ? "s" : ""}
+                        </Badge>
+                      </div>
+                      {visitor.interests.length > 0 && (
+                        <div className="space-y-2">
+                          <span className="text-xs font-semibold text-muted-foreground uppercase">
+                            Interested in:
+                          </span>
+                          <div className="flex flex-wrap gap-1.5">
+                            {visitor.interests.map((interest, idx) => (
+                              <Badge
+                                key={idx}
+                                variant="outline"
+                                className="text-xs"
+                              >
+                                {interest.model.name}
+                              </Badge>
+                            ))}
                           </div>
-                        )}
-                        <div className="pt-2 border-t">
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="w-full"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleVisitorClick(visitor);
-                            }}
-                          >
-                            View Sessions
-                          </Button>
                         </div>
+                      )}
+                      <div className="pt-2 border-t">
+                        <Button
+                          size="sm"
+                          variant="default"
+                          className="w-full"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleVisitorClick(visitor);
+                          }}
+                        >
+                          View Sessions
+                        </Button>
                       </div>
                     </CardContent>
                   </CollapsibleContent>
-                </Card>
-              </Collapsible>
+                </Collapsible>
+              </Card>
             );
           })}
         </div>

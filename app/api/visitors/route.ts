@@ -231,7 +231,7 @@ export async function GET(request: NextRequest) {
       include: {
         sessions: {
           orderBy: { createdAt: "desc" },
-          take: 1,
+          // Get all sessions, not just one, so we can count them correctly
         },
         interests: {
           include: {

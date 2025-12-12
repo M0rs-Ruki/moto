@@ -47,17 +47,32 @@ export async function POST(
     }
 
     // Get WhatsApp template
+    // Get delivery template (check section-specific first, then global)
     const template = await prisma.whatsAppTemplate.findFirst({
       where: {
         dealershipId: user.dealershipId,
         type: "delivery_reminder",
-        section: "delivery_update",
+        OR: [
+          { section: "delivery_update" },
+          { section: "global" },
+          { section: null },
+        ],
       },
+      orderBy: [
+        { section: "asc" }, // Prefer section-specific over global
+      ],
     });
 
     if (!template) {
       return NextResponse.json(
-        { error: "Delivery template not configured" },
+        { error: "Delivery template not configured. Please add a Delivery Reminder template in Global Settings." },
+        { status: 400 }
+      );
+    }
+
+    if (!template.templateId || !template.templateName) {
+      return NextResponse.json(
+        { error: "Delivery template is not fully configured. Please fill in Template ID and Template Name in Global Settings." },
         { status: 400 }
       );
     }

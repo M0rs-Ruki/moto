@@ -19,6 +19,27 @@ export async function GET(request: NextRequest) {
       },
     });
 
+    // Ensure delivery_reminder template exists (for existing users)
+    const hasDeliveryReminder = templates.some(
+      (t) => t.type === "delivery_reminder"
+    );
+
+    if (!hasDeliveryReminder) {
+      // Create placeholder delivery reminder template
+      const deliveryTemplate = await prisma.whatsAppTemplate.create({
+        data: {
+          name: "Delivery Reminder",
+          templateId: "",
+          templateName: "",
+          language: "en_US",
+          type: "delivery_reminder",
+          section: "delivery_update",
+          dealershipId: user.dealershipId,
+        },
+      });
+      templates.push(deliveryTemplate);
+    }
+
     return NextResponse.json({ templates });
   } catch (error: unknown) {
     console.error("Get templates error:", error);

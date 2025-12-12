@@ -89,6 +89,7 @@ export default function SettingsPage() {
   const [deleteLeadSourceDialogOpen, setDeleteLeadSourceDialogOpen] = useState(false);
   const [leadSourceToDelete, setLeadSourceToDelete] = useState<string | null>(null);
 
+
   // Category form
   const [newCategory, setNewCategory] = useState("");
   const [categoryDialogOpen, setCategoryDialogOpen] = useState(false);
@@ -905,68 +906,74 @@ export default function SettingsPage() {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-3 sm:space-y-4">
-              {templates.map((template) => (
-                <div
-                  key={template.id}
-                  className="border rounded-lg p-3 sm:p-4 space-y-3"
-                >
-                  <div className="flex items-center justify-between gap-2">
-                    <h3 className="font-semibold text-sm sm:text-base truncate">
-                      {template.name}
-                    </h3>
-                    <span className="text-xs text-muted-foreground uppercase whitespace-nowrap">
-                      {template.type}
-                    </span>
-                  </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div className="space-y-1">
-                      <Label className="text-xs">Template ID</Label>
-                      <Input
-                        value={template.templateId}
-                        onChange={(e) => {
-                          const updated = templates.map((t) =>
-                            t.id === template.id
-                              ? { ...t, templateId: e.target.value }
-                              : t
-                          );
-                          setTemplates(updated);
-                        }}
-                        placeholder="e.g., 728805729727726"
-                        className="text-xs sm:text-sm"
-                      />
-                    </div>
-                    <div className="space-y-1">
-                      <Label className="text-xs">Template Name</Label>
-                      <Input
-                        value={template.templateName}
-                        onChange={(e) => {
-                          const updated = templates.map((t) =>
-                            t.id === template.id
-                              ? { ...t, templateName: e.target.value }
-                              : t
-                          );
-                          setTemplates(updated);
-                        }}
-                        placeholder="e.g., welcome_msg"
-                        className="text-xs sm:text-sm"
-                      />
-                    </div>
-                  </div>
-                  <Button
-                    size="sm"
-                    onClick={() => handleUpdateTemplate(template)}
-                    disabled={saving}
-                    className="w-full sm:w-auto text-xs sm:text-sm"
+              {templates.length === 0 ? (
+                <p className="text-xs sm:text-sm text-muted-foreground text-center py-8">
+                  Loading templates...
+                </p>
+              ) : (
+                templates.map((template) => (
+                  <div
+                    key={template.id}
+                    className="border rounded-lg p-3 sm:p-4 space-y-3"
                   >
-                    {saving ? (
-                      <Loader2 className="mr-2 h-3 w-3 sm:h-4 sm:w-4 animate-spin" />
-                    ) : (
-                      <Save className="mr-2 h-3 w-3 sm:h-4 sm:w-4" />
-                    )}
-                    Save
-                  </Button>
-                </div>
-              ))}
+                    <div className="flex items-center justify-between gap-2">
+                      <h3 className="font-semibold text-sm sm:text-base truncate">
+                        {template.name}
+                      </h3>
+                      <span className="text-xs text-muted-foreground uppercase whitespace-nowrap">
+                        {template.type}
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div className="space-y-1">
+                        <Label className="text-xs">Template ID</Label>
+                        <Input
+                          value={template.templateId || ""}
+                          onChange={(e) => {
+                            const updated = templates.map((t) =>
+                              t.id === template.id
+                                ? { ...t, templateId: e.target.value }
+                                : t
+                            );
+                            setTemplates(updated);
+                          }}
+                          placeholder="e.g., 728805729727726"
+                          className="text-xs sm:text-sm"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs">Template Name</Label>
+                        <Input
+                          value={template.templateName || ""}
+                          onChange={(e) => {
+                            const updated = templates.map((t) =>
+                              t.id === template.id
+                                ? { ...t, templateName: e.target.value }
+                                : t
+                            );
+                            setTemplates(updated);
+                          }}
+                          placeholder="e.g., welcome_msg"
+                          className="text-xs sm:text-sm"
+                        />
+                      </div>
+                    </div>
+                    <Button
+                      size="sm"
+                      onClick={() => handleUpdateTemplate(template)}
+                      disabled={saving}
+                      className="w-full sm:w-auto text-xs sm:text-sm"
+                    >
+                      {saving ? (
+                        <Loader2 className="mr-2 h-3 w-3 sm:h-4 sm:w-4 animate-spin" />
+                      ) : (
+                        <Save className="mr-2 h-3 w-3 sm:h-4 sm:w-4" />
+                      )}
+                      Save
+                    </Button>
+                  </div>
+                ))
+              )}
             </CardContent>
           </Card>
         </TabsContent>
@@ -1082,20 +1089,18 @@ export default function SettingsPage() {
                           </Badge>
                         )}
                       </div>
-                      {!source.isDefault && (
-                        <Button
-                          size="sm"
-                          variant="destructive"
-                          onClick={() => {
-                            setLeadSourceToDelete(source.id);
-                            setDeleteLeadSourceDialogOpen(true);
-                          }}
-                          className="text-xs sm:text-sm"
-                        >
-                          <Trash2 className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
-                          Delete
-                        </Button>
-                      )}
+                      <Button
+                        size="sm"
+                        variant="destructive"
+                        onClick={() => {
+                          setLeadSourceToDelete(source.id);
+                          setDeleteLeadSourceDialogOpen(true);
+                        }}
+                        className="text-xs sm:text-sm"
+                      >
+                        <Trash2 className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
+                        Delete
+                      </Button>
                     </div>
                   ))}
                 </div>
@@ -1112,7 +1117,7 @@ export default function SettingsPage() {
                 <DialogTitle>Delete Lead Source</DialogTitle>
                 <DialogDescription>
                   Are you sure you want to delete this lead source? This action
-                  cannot be undone.
+                  cannot be undone. If this lead source is being used by any digital enquiries, it cannot be deleted.
                 </DialogDescription>
               </DialogHeader>
               <div className="flex flex-col sm:flex-row justify-end gap-2 mt-4">
