@@ -38,7 +38,7 @@ export async function PUT(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { id, name, templateId, templateName, language } = body;
+    const { id, name, templateId, templateName, language, section } = body;
 
     if (!id || !name || !templateId || !templateName) {
       return NextResponse.json(
@@ -69,6 +69,7 @@ export async function PUT(request: NextRequest) {
         templateId,
         templateName,
         language: language || "en_US",
+        section: section || existingTemplate.section || "global",
       },
     });
 

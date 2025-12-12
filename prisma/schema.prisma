@@ -42,6 +42,9 @@ model Dealership {
   vehicleCategories VehicleCategory[]
   visitors          Visitor[]
   whatsappTemplates WhatsAppTemplate[]
+  leadSources       LeadSource[]
+  digitalEnquiries   DigitalEnquiry[]
+  deliveryTickets   DeliveryTicket[]
 }
 
 // Vehicle categories (e.g., Car, Bike, Coupe, SUV, etc.)
@@ -75,9 +78,11 @@ model VehicleModel {
   updatedAt DateTime @updatedAt
 
   // Relations
-  variants         VehicleVariant[]
-  visitorInterests VisitorInterest[]
-  testDrives       TestDrive[]
+  variants          VehicleVariant[]
+  visitorInterests  VisitorInterest[]
+  testDrives        TestDrive[]
+  digitalEnquiries  DigitalEnquiry[]
+  deliveryTickets   DeliveryTicket[]
 
   @@index([categoryId])
 }
@@ -215,8 +220,11 @@ model WhatsAppTemplate {
   templateName String // API template name
   language     String @default("en_US")
 
-  // Template type: welcome, test_drive, exit
+  // Template type: welcome, test_drive, exit, digital_enquiry, delivery_reminder
   type String
+
+  // Section: daily_walkins, digital_enquiry, delivery_update, or global
+  section String? @default("global")
 
   dealership   Dealership @relation(fields: [dealershipId], references: [id], onDelete: Cascade)
   dealershipId String
@@ -224,6 +232,109 @@ model WhatsAppTemplate {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  @@unique([dealershipId, type])
+  @@unique([dealershipId, type, section])
   @@index([dealershipId])
+}
+
+// Lead source options (configurable in Global Settings)
+model LeadSource {
+  id   String @id @default(cuid())
+  name String
+  order Int @default(0)
+  isDefault Boolean @default(false) // For default sources that can't be deleted
+
+  dealership   Dealership @relation(fields: [dealershipId], references: [id], onDelete: Cascade)
+  dealershipId String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  digitalEnquiries DigitalEnquiry[]
+
+  @@unique([dealershipId, name])
+  @@index([dealershipId])
+}
+
+// Digital enquiry/lead tracking
+model DigitalEnquiry {
+  id             String  @id @default(cuid())
+  firstName      String
+  lastName       String
+  whatsappNumber String
+  email          String?
+  address        String?
+  reason         String // Reason for enquiry
+  leadScope      String @default("medium") // Priority: high, medium, low
+
+  // WhatsApp contact ID from the API
+  whatsappContactId String?
+
+  dealership   Dealership @relation(fields: [dealershipId], references: [id], onDelete: Cascade)
+  dealershipId String
+
+  leadSource   LeadSource? @relation(fields: [leadSourceId], references: [id], onDelete: SetNull)
+  leadSourceId String?
+
+  model   VehicleModel? @relation(fields: [interestedModelId], references: [id], onDelete: SetNull)
+  interestedModelId String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([dealershipId])
+  @@index([whatsappNumber])
+  @@index([leadSourceId])
+}
+
+// Delivery ticket/client information
+model DeliveryTicket {
+  id             String  @id @default(cuid())
+  firstName      String
+  lastName       String
+  whatsappNumber String
+  email          String?
+  address        String?
+  description    String? // Description/notes
+  deliveryDate   DateTime
+  messageSent    Boolean @default(false) // Whether message has been sent
+
+  // WhatsApp contact ID from the API
+  whatsappContactId String?
+
+  dealership   Dealership @relation(fields: [dealershipId], references: [id], onDelete: Cascade)
+  dealershipId String
+
+  model   VehicleModel @relation(fields: [modelId], references: [id], onDelete: Cascade)
+  modelId String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  scheduledMessages ScheduledMessage[]
+
+  @@index([dealershipId])
+  @@index([whatsappNumber])
+  @@index([deliveryDate])
+  @@index([modelId])
+}
+
+// Scheduled WhatsApp messages for delivery reminders
+model ScheduledMessage {
+  id        String   @id @default(cuid())
+  scheduledFor DateTime // When to send the message
+  sentAt    DateTime? // When it was actually sent
+  status    String   @default("pending") // pending, sent, failed
+  retryCount Int     @default(0)
+
+  deliveryTicket   DeliveryTicket @relation(fields: [deliveryTicketId], references: [id], onDelete: Cascade)
+  deliveryTicketId String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([deliveryTicketId])
+  @@index([scheduledFor])
+  @@index([status])
 }

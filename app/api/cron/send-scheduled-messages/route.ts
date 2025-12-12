@@ -1,0 +1,185 @@
+import { NextRequest, NextResponse } from "next/server";
+import prisma from "@/lib/db";
+import { whatsappClient } from "@/lib/whatsapp";
+
+// Batch size for processing messages
+const BATCH_SIZE = 100;
+
+export async function GET(request: NextRequest) {
+  try {
+    // Optional: Add authentication for cron endpoint
+    const authHeader = request.headers.get("authorization");
+    const cronSecret = process.env.CRON_SECRET;
+
+    if (cronSecret && authHeader !== `Bearer ${cronSecret}`) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const now = new Date();
+
+    // Find all pending messages that should be sent now
+    const pendingMessages = await prisma.scheduledMessage.findMany({
+      where: {
+        status: "pending",
+        scheduledFor: {
+          lte: now,
+        },
+      },
+      include: {
+        deliveryTicket: {
+          include: {
+            model: true,
+          },
+        },
+      },
+      take: BATCH_SIZE,
+      orderBy: {
+        scheduledFor: "asc",
+      },
+    });
+
+    if (pendingMessages.length === 0) {
+      return NextResponse.json({
+        success: true,
+        processed: 0,
+        message: "No pending messages to process",
+      });
+    }
+
+    let sentCount = 0;
+    let failedCount = 0;
+
+    // Process messages in parallel (but limit concurrency)
+    const results = await Promise.allSettled(
+      pendingMessages.map(async (scheduledMessage) => {
+        const ticket = scheduledMessage.deliveryTicket;
+
+        if (!ticket.whatsappContactId) {
+          // Mark as failed if no contact ID
+          await prisma.scheduledMessage.update({
+            where: { id: scheduledMessage.id },
+            data: {
+              status: "failed",
+              retryCount: scheduledMessage.retryCount + 1,
+            },
+          });
+          return { success: false, reason: "No WhatsApp contact ID" };
+        }
+
+        // Get delivery template
+        const template = await prisma.whatsAppTemplate.findFirst({
+          where: {
+            dealershipId: ticket.dealershipId,
+            type: "delivery_reminder",
+            section: "delivery_update",
+          },
+        });
+
+        if (!template) {
+          await prisma.scheduledMessage.update({
+            where: { id: scheduledMessage.id },
+            data: {
+              status: "failed",
+              retryCount: scheduledMessage.retryCount + 1,
+            },
+          });
+          return { success: false, reason: "Template not found" };
+        }
+
+        try {
+          const name = `${ticket.firstName} ${ticket.lastName}`;
+          const deliveryDateStr = new Date(
+            ticket.deliveryDate
+          ).toLocaleDateString();
+
+          await whatsappClient.sendTemplate({
+            contactId: ticket.whatsappContactId,
+            contactNumber: ticket.whatsappNumber,
+            templateName: template.templateName,
+            templateId: template.templateId,
+            templateLanguage: template.language,
+            parameters: [name, deliveryDateStr],
+          });
+
+          // Mark as sent
+          await prisma.scheduledMessage.update({
+            where: { id: scheduledMessage.id },
+            data: {
+              status: "sent",
+              sentAt: new Date(),
+            },
+          });
+
+          // Update ticket
+          await prisma.deliveryTicket.update({
+            where: { id: ticket.id },
+            data: { messageSent: true },
+          });
+
+          return { success: true };
+        } catch (error: unknown) {
+          const retryCount = scheduledMessage.retryCount + 1;
+          const maxRetries = 3;
+
+          if (retryCount >= maxRetries) {
+            // Mark as failed after max retries
+            await prisma.scheduledMessage.update({
+              where: { id: scheduledMessage.id },
+              data: {
+                status: "failed",
+                retryCount,
+              },
+            });
+            return {
+              success: false,
+              reason: (error as Error).message || "Failed to send",
+            };
+          } else {
+            // Keep as pending for retry
+            await prisma.scheduledMessage.update({
+              where: { id: scheduledMessage.id },
+              data: {
+                retryCount,
+              },
+            });
+            return {
+              success: false,
+              reason: (error as Error).message || "Failed to send",
+              willRetry: true,
+            };
+          }
+        }
+      })
+    );
+
+    // Count results
+    results.forEach((result) => {
+      if (result.status === "fulfilled") {
+        if (result.value.success) {
+          sentCount++;
+        } else {
+          failedCount++;
+        }
+      } else {
+        failedCount++;
+      }
+    });
+
+    return NextResponse.json({
+      success: true,
+      processed: pendingMessages.length,
+      sent: sentCount,
+      failed: failedCount,
+    });
+  } catch (error: unknown) {
+    console.error("Cron job error:", error);
+    return NextResponse.json(
+      {
+        error: "Internal server error",
+        details: (error as Error).message,
+      },
+      { status: 500 }
+    );
+  }
+}
+
