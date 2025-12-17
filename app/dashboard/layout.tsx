@@ -50,7 +50,7 @@ export default function DashboardLayout({
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  
+
   // Track which sections are open
   const [openSections, setOpenSections] = useState<Set<string>>(
     new Set(["daily-walkins"]) // Default to open
@@ -150,76 +150,24 @@ export default function DashboardLayout({
               </Button>
             </Link>
 
-            {/* Daily Walkins Section */}
-            <Collapsible
-              open={openSections.has("daily-walkins")}
-              onOpenChange={(open) => {
-                setOpenSections((prev) => {
-                  const newSet = new Set(prev);
-                  if (open) {
-                    newSet.add("daily-walkins");
-                  } else {
-                    newSet.delete("daily-walkins");
-                  }
-                  return newSet;
-                });
-              }}
+            {/* Daily Walkins */}
+            <Link
+              href="/dashboard/daily-walkins"
+              onClick={() => setSidebarOpen(false)}
             >
-              <CollapsibleTrigger asChild>
-                <Button
-                  variant="ghost"
-                  className="w-full justify-between text-left"
-                >
-                  <div className="flex items-center">
-                    <DoorOpen className="mr-2 h-4 w-4 flex-shrink-0" />
-                    <span className="truncate">Daily Walkins</span>
-                  </div>
-                  <ChevronDown
-                    className={`h-4 w-4 transition-transform ${
-                      openSections.has("daily-walkins") ? "rotate-180" : ""
-                    }`}
-                  />
-                </Button>
-              </CollapsibleTrigger>
-              <CollapsibleContent>
-                <div className="ml-6 space-y-1 mt-1">
-                  <Link
-                    href="/dashboard/daily-walkins/visitors"
-                    onClick={() => setSidebarOpen(false)}
-                  >
-                    <Button
-                      variant={
-                        pathname === "/dashboard/daily-walkins/visitors"
-                          ? "secondary"
-                          : "ghost"
-                      }
-                      className="w-full justify-start text-left text-sm"
-                      size="sm"
-                    >
-                      <Users className="mr-2 h-3 w-3 flex-shrink-0" />
-                      <span className="truncate">Visitors</span>
-                    </Button>
-                  </Link>
-                  <Link
-                    href="/dashboard/daily-walkins/sessions"
-                    onClick={() => setSidebarOpen(false)}
-                  >
-                    <Button
-                      variant={
-                        pathname === "/dashboard/daily-walkins/sessions"
-                          ? "secondary"
-                          : "ghost"
-                      }
-                      className="w-full justify-start text-left text-sm"
-                      size="sm"
-                    >
-                      <FileText className="mr-2 h-3 w-3 flex-shrink-0" />
-                      <span className="truncate">Sessions</span>
-                    </Button>
-                  </Link>
-                </div>
-              </CollapsibleContent>
-            </Collapsible>
+              <Button
+                variant={
+                  pathname === "/dashboard/daily-walkins" ||
+                  pathname?.startsWith("/dashboard/daily-walkins/")
+                    ? "secondary"
+                    : "ghost"
+                }
+                className="w-full justify-start text-left"
+              >
+                <DoorOpen className="mr-2 h-4 w-4 flex-shrink-0" />
+                <span className="truncate">Daily Walkins</span>
+              </Button>
+            </Link>
 
             {/* Digital Enquiry Section */}
             <Collapsible
@@ -387,7 +335,9 @@ export default function DashboardLayout({
                     <Button
                       variant={
                         pathname === "/dashboard/delivery-update" ||
-                        pathname?.startsWith("/dashboard/delivery-update/tickets")
+                        pathname?.startsWith(
+                          "/dashboard/delivery-update/tickets"
+                        )
                           ? "secondary"
                           : "ghost"
                       }

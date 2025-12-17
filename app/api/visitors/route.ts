@@ -3,6 +3,20 @@ import { getCurrentUser } from "@/lib/auth";
 import prisma from "@/lib/db";
 import { whatsappClient } from "@/lib/whatsapp";
 
+// Normalize phone number for comparison (remove +, spaces, etc.)
+function normalizePhoneNumber(phone: string): string {
+  // Remove all non-digit characters
+  let cleaned = phone.replace(/\D/g, "");
+
+  // If it starts with 91 and is 12 digits, remove the 91 prefix for comparison
+  if (cleaned.length === 12 && cleaned.startsWith("91")) {
+    return cleaned.substring(2);
+  }
+
+  // Return last 10 digits (in case of any other formatting)
+  return cleaned.length >= 10 ? cleaned.slice(-10) : cleaned;
+}
+
 export async function POST(request: NextRequest) {
   try {
     const user = await getCurrentUser();
@@ -30,54 +44,147 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Step 1: Create WhatsApp contact
-    let whatsappContactId = "";
-    try {
-      const contactResult = await whatsappClient.createContact({
-        firstName,
-        lastName,
-        contact_number: whatsappNumber,
-        email: email || "",
-        address: address || "",
-      });
+    // Normalize phone number for comparison
+    const normalizedPhone = normalizePhoneNumber(whatsappNumber);
 
-      whatsappContactId = contactResult.contactId;
-
-      if (!whatsappContactId) {
-        throw new Error("No contact ID returned from WhatsApp API");
-      }
-    } catch (error: unknown) {
-      console.error(
-        "Failed to create WhatsApp contact:",
-        (error as Error).message
-      );
-      return NextResponse.json(
-        {
-          error: "Failed to create WhatsApp contact",
-          details: (error as Error).message,
+    // Check if visitor with this phone number already exists (check all formats)
+    // Get all visitors for this dealership and filter by normalized phone
+    const allPotentialVisitors = await prisma.visitor.findMany({
+      where: {
+        dealershipId: user.dealershipId,
+      },
+      include: {
+        sessions: {
+          orderBy: { createdAt: "desc" },
         },
+      },
+    });
+
+    // Find visitor with matching normalized phone number
+    let visitor = allPotentialVisitors.find(
+      (v) => normalizePhoneNumber(v.whatsappNumber) === normalizedPhone
+    );
+
+    let whatsappContactId = "";
+    const isNewVisitor = !visitor; // Track if this is a new visitor
+
+    if (visitor) {
+      // Visitor exists - use existing contact ID or create one if missing
+      whatsappContactId = visitor.whatsappContactId || "";
+
+      // If no contact ID exists, create one
+      if (!whatsappContactId) {
+        try {
+          const contactResult = await whatsappClient.createContact({
+            firstName: visitor.firstName,
+            lastName: visitor.lastName,
+            contact_number: visitor.whatsappNumber,
+            email: visitor.email || "",
+            address: visitor.address || "",
+          });
+
+          whatsappContactId = contactResult.contactId;
+
+          if (whatsappContactId) {
+            // Update visitor with the new contact ID
+            await prisma.visitor.update({
+              where: { id: visitor.id },
+              data: { whatsappContactId },
+            });
+          }
+        } catch (error: unknown) {
+          console.error(
+            "Failed to create WhatsApp contact for existing visitor:",
+            (error as Error).message
+          );
+          // Continue without contact ID - message sending will be skipped
+        }
+      }
+
+      // Update visitor info if provided (email, address, name might have changed)
+      visitor = await prisma.visitor.update({
+        where: { id: visitor.id },
+        data: {
+          firstName: firstName, // Update name in case it changed
+          lastName: lastName,
+          email: email || visitor.email,
+          address: address || visitor.address,
+        },
+        include: {
+          sessions: {
+            orderBy: { createdAt: "desc" },
+          },
+        },
+      });
+    } else {
+      // New visitor - create WhatsApp contact
+      try {
+        const contactResult = await whatsappClient.createContact({
+          firstName,
+          lastName,
+          contact_number: whatsappNumber,
+          email: email || "",
+          address: address || "",
+        });
+
+        whatsappContactId = contactResult.contactId;
+
+        if (!whatsappContactId) {
+          throw new Error("No contact ID returned from WhatsApp API");
+        }
+      } catch (error: unknown) {
+        console.error(
+          "Failed to create WhatsApp contact:",
+          (error as Error).message
+        );
+        return NextResponse.json(
+          {
+            error: "Failed to create WhatsApp contact",
+            details: (error as Error).message,
+          },
+          { status: 500 }
+        );
+      }
+
+      // Create new visitor in database
+      visitor = await prisma.visitor.create({
+        data: {
+          firstName,
+          lastName,
+          whatsappNumber,
+          email: email || null,
+          address: address || null,
+          whatsappContactId,
+          dealershipId: user.dealershipId,
+        },
+        include: {
+          sessions: {
+            orderBy: { createdAt: "desc" },
+          },
+        },
+      });
+    }
+
+    // At this point, visitor is guaranteed to exist (either found or created)
+    if (!visitor) {
+      return NextResponse.json(
+        { error: "Failed to create or find visitor" },
         { status: 500 }
       );
     }
 
-    // Step 2: Create visitor in database
-    const visitor = await prisma.visitor.create({
-      data: {
-        firstName,
-        lastName,
-        whatsappNumber,
-        email: email || null,
-        address: address || null,
-        whatsappContactId,
-        dealershipId: user.dealershipId,
-      },
-    });
+    // Store visitor ID for use below
+    const visitorId = visitor.id;
 
-    // Step 3: Create visitor session
+    // Count existing sessions to determine visit number
+    const sessionCount = visitor.sessions.length;
+    const visitNumber = sessionCount + 1;
+
+    // Create visitor session
     const session = await prisma.visitorSession.create({
       data: {
         reason,
-        visitorId: visitor.id,
+        visitorId: visitorId,
         status: "intake",
       },
     });
@@ -90,13 +197,13 @@ export async function POST(request: NextRequest) {
             // Support both old format (string) and new format (object with variantId)
             if (typeof item === "string") {
               return {
-                visitorId: visitor.id,
+                visitorId: visitorId,
                 modelId: item,
                 sessionId: session.id,
               };
             } else {
               return {
-                visitorId: visitor.id,
+                visitorId: visitorId,
                 modelId: item.modelId,
                 variantId: item.variantId || null,
                 sessionId: session.id,
@@ -107,36 +214,110 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    // Step 5: Get WhatsApp template and send welcome message
-    const welcomeTemplate = await prisma.whatsAppTemplate.findFirst({
-      where: {
-        dealershipId: user.dealershipId,
-        type: "welcome",
-      },
-    });
-
+    // Step 5: Get WhatsApp template and send message
+    // Always send a message when creating a session
     let messageStatus = "not_sent";
     let messageError = null;
     const name = `${firstName} ${lastName}`;
     const CRM = 9999999999;
 
-    if (welcomeTemplate) {
-      try {
-        await whatsappClient.sendTemplate({
-          contactId: whatsappContactId,
-          contactNumber: whatsappNumber,
-          templateName: welcomeTemplate.templateName,
-          templateId: welcomeTemplate.templateId,
-          templateLanguage: welcomeTemplate.language,
-          parameters: [name, CRM.toString()],
+    // Only send message if we have a contact ID
+    if (whatsappContactId) {
+      if (isNewVisitor && sessionCount === 0) {
+        // First visit for new visitor - send welcome message
+        const welcomeTemplate = await prisma.whatsAppTemplate.findFirst({
+          where: {
+            dealershipId: user.dealershipId,
+            type: "welcome",
+          },
         });
-        messageStatus = "sent";
-      } catch (error: unknown) {
-        console.error("Failed to send welcome message:", error);
-        messageStatus = "failed";
-        messageError =
-          (error as Error).message || "Failed to send welcome message";
-        // Don't fail the whole operation if message sending fails
+
+        if (welcomeTemplate) {
+          try {
+            await whatsappClient.sendTemplate({
+              contactId: whatsappContactId,
+              contactNumber: whatsappNumber,
+              templateName: welcomeTemplate.templateName,
+              templateId: welcomeTemplate.templateId,
+              templateLanguage: welcomeTemplate.language,
+              parameters: [name, CRM.toString()],
+            });
+            messageStatus = "sent";
+          } catch (error: unknown) {
+            console.error("Failed to send welcome message:", error);
+            messageStatus = "failed";
+            messageError =
+              (error as Error).message || "Failed to send welcome message";
+            // Don't fail the whole operation if message sending fails
+          }
+        }
+      } else {
+        // Returning visitor or new session for existing visitor - send return visit message
+        const returnVisitTemplate = await prisma.whatsAppTemplate.findFirst({
+          where: {
+            dealershipId: user.dealershipId,
+            type: "return_visit",
+          },
+        });
+
+        if (returnVisitTemplate) {
+          try {
+            const visitLabel =
+              visitNumber === 1
+                ? "1st"
+                : visitNumber === 2
+                ? "2nd"
+                : visitNumber === 3
+                ? "3rd"
+                : `${visitNumber}th`;
+
+            await whatsappClient.sendTemplate({
+              contactId: whatsappContactId,
+              contactNumber: whatsappNumber,
+              templateName: returnVisitTemplate.templateName,
+              templateId: returnVisitTemplate.templateId,
+              templateLanguage: returnVisitTemplate.language,
+              parameters: [visitor.firstName, visitLabel],
+            });
+            messageStatus = "sent";
+          } catch (error: unknown) {
+            console.error("Failed to send return visit message:", error);
+            messageStatus = "failed";
+            messageError =
+              (error as Error).message || "Failed to send return visit message";
+            // Don't fail the whole operation if message sending fails
+          }
+        } else {
+          // Fallback to welcome template if return_visit template doesn't exist
+          const welcomeTemplate = await prisma.whatsAppTemplate.findFirst({
+            where: {
+              dealershipId: user.dealershipId,
+              type: "welcome",
+            },
+          });
+
+          if (welcomeTemplate) {
+            try {
+              await whatsappClient.sendTemplate({
+                contactId: whatsappContactId,
+                contactNumber: whatsappNumber,
+                templateName: welcomeTemplate.templateName,
+                templateId: welcomeTemplate.templateId,
+                templateLanguage: welcomeTemplate.language,
+                parameters: [visitor.firstName, CRM.toString()],
+              });
+              messageStatus = "sent";
+            } catch (error: unknown) {
+              console.error(
+                "Failed to send welcome message (fallback):",
+                error
+              );
+              messageStatus = "failed";
+              messageError =
+                (error as Error).message || "Failed to send message";
+            }
+          }
+        }
       }
     }
 
@@ -178,11 +359,13 @@ export async function GET(request: NextRequest) {
     const phoneNumber = searchParams.get("phone");
 
     if (phoneNumber) {
-      // Search for visitor by phone number
-      const visitor = await prisma.visitor.findFirst({
+      // Normalize phone number for search
+      const normalizedPhone = normalizePhoneNumber(phoneNumber);
+
+      // Get all visitors and find by normalized phone
+      const allVisitors = await prisma.visitor.findMany({
         where: {
           dealershipId: user.dealershipId,
-          whatsappNumber: phoneNumber,
         },
         include: {
           sessions: {
@@ -199,6 +382,11 @@ export async function GET(request: NextRequest) {
           },
         },
       });
+
+      // Find visitor with matching normalized phone number
+      const visitor = allVisitors.find(
+        (v) => normalizePhoneNumber(v.whatsappNumber) === normalizedPhone
+      );
 
       if (!visitor) {
         return NextResponse.json({ visitor: null, found: false });
@@ -223,15 +411,15 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    // Return all visitors
-    const visitors = await prisma.visitor.findMany({
+    // Return all visitors, but group by phone number to avoid duplicates
+    // Get all visitors first
+    const allVisitors = await prisma.visitor.findMany({
       where: {
         dealershipId: user.dealershipId,
       },
       include: {
         sessions: {
           orderBy: { createdAt: "desc" },
-          // Get all sessions, not just one, so we can count them correctly
         },
         interests: {
           include: {
@@ -248,7 +436,72 @@ export async function GET(request: NextRequest) {
       },
     });
 
-    return NextResponse.json({ visitors });
+    // Group by normalized phone number and keep the visitor with most sessions (or most recent if equal)
+    const visitorMap = new Map<string, (typeof allVisitors)[0]>();
+
+    for (const visitor of allVisitors) {
+      const normalizedPhone = normalizePhoneNumber(visitor.whatsappNumber);
+      const existing = visitorMap.get(normalizedPhone);
+
+      if (!existing) {
+        // First visitor with this phone number
+        visitorMap.set(normalizedPhone, visitor);
+      } else {
+        // Check if this visitor has more sessions or is more recent
+        const existingSessionCount = existing.sessions.length;
+        const currentSessionCount = visitor.sessions.length;
+
+        if (
+          currentSessionCount > existingSessionCount ||
+          (currentSessionCount === existingSessionCount &&
+            new Date(visitor.createdAt) > new Date(existing.createdAt))
+        ) {
+          // Merge sessions from the duplicate visitor into the main one
+          const mergedSessions = [
+            ...existing.sessions,
+            ...visitor.sessions,
+          ].sort(
+            (a, b) =>
+              new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+          );
+
+          // Use the visitor with more sessions, but merge all sessions
+          visitorMap.set(normalizedPhone, {
+            ...visitor,
+            sessions: mergedSessions,
+          });
+        } else {
+          // Keep existing, but merge sessions
+          const mergedSessions = [
+            ...existing.sessions,
+            ...visitor.sessions,
+          ].sort(
+            (a, b) =>
+              new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+          );
+
+          visitorMap.set(normalizedPhone, {
+            ...existing,
+            sessions: mergedSessions,
+          });
+        }
+      }
+    }
+
+    // Convert map to array and sort by most recent session
+    const uniqueVisitors = Array.from(visitorMap.values()).sort((a, b) => {
+      const aLatest =
+        a.sessions.length > 0
+          ? new Date(a.sessions[0].createdAt).getTime()
+          : new Date(a.createdAt).getTime();
+      const bLatest =
+        b.sessions.length > 0
+          ? new Date(b.sessions[0].createdAt).getTime()
+          : new Date(b.createdAt).getTime();
+      return bLatest - aLatest;
+    });
+
+    return NextResponse.json({ visitors: uniqueVisitors });
   } catch (error: unknown) {
     console.error("Get visitors error:", error);
     return NextResponse.json(

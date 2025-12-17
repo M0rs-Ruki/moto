@@ -50,7 +50,9 @@ export default function DeliveryUpdatePage() {
   const router = useRouter();
   const [tickets, setTickets] = useState<DeliveryTicket[]>([]);
   const [loading, setLoading] = useState(true);
-  const [phoneLookups, setPhoneLookups] = useState<Record<string, PhoneLookup>>({});
+  const [phoneLookups, setPhoneLookups] = useState<Record<string, PhoneLookup>>(
+    {}
+  );
 
   useEffect(() => {
     fetchTickets();
@@ -60,18 +62,23 @@ export default function DeliveryUpdatePage() {
     try {
       const response = await axios.get("/api/delivery-tickets");
       setTickets(response.data.tickets);
-      
+
       // Fetch phone lookups for all tickets
       const lookups: Record<string, PhoneLookup> = {};
       await Promise.all(
         response.data.tickets.map(async (ticket: DeliveryTicket) => {
           try {
             const lookupRes = await axios.get(
-              `/api/phone-lookup?phone=${encodeURIComponent(ticket.whatsappNumber)}`
+              `/api/phone-lookup?phone=${encodeURIComponent(
+                ticket.whatsappNumber
+              )}`
             );
             lookups[ticket.whatsappNumber] = lookupRes.data;
           } catch (error) {
-            console.error(`Failed to lookup phone ${ticket.whatsappNumber}:`, error);
+            console.error(
+              `Failed to lookup phone ${ticket.whatsappNumber}:`,
+              error
+            );
           }
         })
       );
@@ -111,7 +118,9 @@ export default function DeliveryUpdatePage() {
       </div>
 
       <div className="flex justify-end">
-        <Button onClick={() => router.push("/dashboard/delivery-update/create")}>
+        <Button
+          onClick={() => router.push("/dashboard/delivery-update/create")}
+        >
           <Plus className="mr-2 h-4 w-4" />
           Create Ticket
         </Button>
@@ -123,7 +132,8 @@ export default function DeliveryUpdatePage() {
             <div className="text-center py-8 text-muted-foreground">
               <Package className="h-12 w-12 mx-auto mb-4 opacity-50" />
               <p className="text-sm sm:text-base">
-                No delivery tickets yet. Create your first ticket to get started.
+                No delivery tickets yet. Create your first ticket to get
+                started.
               </p>
             </div>
           </CardContent>
@@ -152,7 +162,7 @@ export default function DeliveryUpdatePage() {
                   {phoneLookups[ticket.whatsappNumber] && (
                     <div className="flex flex-wrap items-center gap-1.5 mt-2">
                       {phoneLookups[ticket.whatsappNumber].dailyWalkins && (
-                        <Link href="/dashboard/daily-walkins/visitors">
+                        <Link href="/dashboard/daily-walkins">
                           <Badge
                             variant="outline"
                             className="text-xs cursor-pointer hover:bg-primary/10 transition-colors"
@@ -221,4 +231,3 @@ export default function DeliveryUpdatePage() {
     </div>
   );
 }
-

@@ -81,12 +81,16 @@ export default function DigitalEnquirySessionsPage() {
   const [enquiries, setEnquiries] = useState<DigitalEnquiry[]>([]);
   const [loading, setLoading] = useState(true);
   const [sessionDialogOpen, setSessionDialogOpen] = useState(false);
-  const [selectedEnquiryId, setSelectedEnquiryId] = useState<string | null>(null);
+  const [selectedEnquiryId, setSelectedEnquiryId] = useState<string | null>(
+    null
+  );
   const [submitting, setSubmitting] = useState(false);
   const [expandedEnquiries, setExpandedEnquiries] = useState<Set<string>>(
     new Set()
   );
-  const [phoneLookups, setPhoneLookups] = useState<Record<string, PhoneLookup>>({});
+  const [phoneLookups, setPhoneLookups] = useState<Record<string, PhoneLookup>>(
+    {}
+  );
 
   const [sessionData, setSessionData] = useState({
     digitalEnquiryId: "",
@@ -102,18 +106,23 @@ export default function DigitalEnquirySessionsPage() {
     try {
       const response = await axios.get("/api/digital-enquiry/sessions");
       setEnquiries(response.data.enquiries);
-      
+
       // Fetch phone lookups for all enquiries
       const lookups: Record<string, PhoneLookup> = {};
       await Promise.all(
         response.data.enquiries.map(async (enquiry: DigitalEnquiry) => {
           try {
             const lookupRes = await axios.get(
-              `/api/phone-lookup?phone=${encodeURIComponent(enquiry.whatsappNumber)}`
+              `/api/phone-lookup?phone=${encodeURIComponent(
+                enquiry.whatsappNumber
+              )}`
             );
             lookups[enquiry.whatsappNumber] = lookupRes.data;
           } catch (error) {
-            console.error(`Failed to lookup phone ${enquiry.whatsappNumber}:`, error);
+            console.error(
+              `Failed to lookup phone ${enquiry.whatsappNumber}:`,
+              error
+            );
           }
         })
       );
@@ -143,7 +152,11 @@ export default function DigitalEnquirySessionsPage() {
 
   const openSessionDialog = (enquiryId: string) => {
     setSelectedEnquiryId(enquiryId);
-    setSessionData({ digitalEnquiryId: enquiryId, notes: "", status: "active" });
+    setSessionData({
+      digitalEnquiryId: enquiryId,
+      notes: "",
+      status: "active",
+    });
     setSessionDialogOpen(true);
   };
 
@@ -199,20 +212,28 @@ export default function DigitalEnquirySessionsPage() {
                 variant="secondary"
                 className="text-sm font-medium px-3 py-1.5 cursor-pointer hover:bg-primary/10 transition-colors"
               >
-                {enquiries.length} {enquiries.length === 1 ? "Inquiry" : "Inquiries"}
+                {enquiries.length}{" "}
+                {enquiries.length === 1 ? "Inquiry" : "Inquiries"}
               </Badge>
             </Link>
           )}
         </div>
       </div>
 
-      <Dialog open={sessionDialogOpen} onOpenChange={(open) => {
-        setSessionDialogOpen(open);
-        if (!open) {
-          setSelectedEnquiryId(null);
-          setSessionData({ digitalEnquiryId: "", notes: "", status: "active" });
-        }
-      }}>
+      <Dialog
+        open={sessionDialogOpen}
+        onOpenChange={(open) => {
+          setSessionDialogOpen(open);
+          if (!open) {
+            setSelectedEnquiryId(null);
+            setSessionData({
+              digitalEnquiryId: "",
+              notes: "",
+              status: "active",
+            });
+          }
+        }}
+      >
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>Create New Session</DialogTitle>
@@ -237,63 +258,68 @@ export default function DigitalEnquirySessionsPage() {
                   <SelectContent>
                     {enquiries.map((enquiry) => (
                       <SelectItem key={enquiry.id} value={enquiry.id}>
-                        {enquiry.firstName} {enquiry.lastName} - {enquiry.whatsappNumber}
+                        {enquiry.firstName} {enquiry.lastName} -{" "}
+                        {enquiry.whatsappNumber}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </div>
             )}
-              <div className="space-y-2">
-                <Label htmlFor="status">Status</Label>
-                <Select
-                  value={sessionData.status}
-                  onValueChange={(value) =>
-                    setSessionData({ ...sessionData, status: value })
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="active">Active</SelectItem>
-                    <SelectItem value="completed">Completed</SelectItem>
-                    <SelectItem value="closed">Closed</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="notes">Notes</Label>
-                <Textarea
-                  id="notes"
-                  value={sessionData.notes}
-                  onChange={(e) =>
-                    setSessionData({ ...sessionData, notes: e.target.value })
-                  }
-                  placeholder="Add session notes or follow-up information..."
-                  rows={4}
-                />
-              </div>
-              <div className="flex flex-col sm:flex-row justify-end gap-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setSessionDialogOpen(false)}
-                  className="w-full sm:w-auto"
-                >
-                  Cancel
-                </Button>
-                <Button type="submit" disabled={submitting} className="w-full sm:w-auto">
-                  {submitting ? (
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  ) : (
-                    "Create"
-                  )}
-                </Button>
-              </div>
-            </form>
-          </DialogContent>
-        </Dialog>
+            <div className="space-y-2">
+              <Label htmlFor="status">Status</Label>
+              <Select
+                value={sessionData.status}
+                onValueChange={(value) =>
+                  setSessionData({ ...sessionData, status: value })
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="active">Active</SelectItem>
+                  <SelectItem value="completed">Completed</SelectItem>
+                  <SelectItem value="closed">Closed</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="notes">Notes</Label>
+              <Textarea
+                id="notes"
+                value={sessionData.notes}
+                onChange={(e) =>
+                  setSessionData({ ...sessionData, notes: e.target.value })
+                }
+                placeholder="Add session notes or follow-up information..."
+                rows={4}
+              />
+            </div>
+            <div className="flex flex-col sm:flex-row justify-end gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setSessionDialogOpen(false)}
+                className="w-full sm:w-auto"
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                disabled={submitting}
+                className="w-full sm:w-auto"
+              >
+                {submitting ? (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                  "Create"
+                )}
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
 
       {enquiries.length === 0 ? (
         <Card>
@@ -340,7 +366,8 @@ export default function DigitalEnquirySessionsPage() {
                           </CardTitle>
                           {sessionCount > 0 && (
                             <Badge variant="secondary" className="text-xs">
-                              {sessionCount} {sessionCount === 1 ? "session" : "sessions"}
+                              {sessionCount}{" "}
+                              {sessionCount === 1 ? "session" : "sessions"}
                             </Badge>
                           )}
                           <Badge
@@ -355,8 +382,9 @@ export default function DigitalEnquirySessionsPage() {
                         </CardDescription>
                         {phoneLookups[enquiry.whatsappNumber] && (
                           <div className="flex flex-wrap items-center gap-1.5 mt-1">
-                            {phoneLookups[enquiry.whatsappNumber].dailyWalkins && (
-                              <Link href="/dashboard/daily-walkins/visitors">
+                            {phoneLookups[enquiry.whatsappNumber]
+                              .dailyWalkins && (
+                              <Link href="/dashboard/daily-walkins">
                                 <Badge
                                   variant="outline"
                                   className="text-xs cursor-pointer hover:bg-primary/10 transition-colors"
@@ -365,7 +393,8 @@ export default function DigitalEnquirySessionsPage() {
                                 </Badge>
                               </Link>
                             )}
-                            {phoneLookups[enquiry.whatsappNumber].deliveryUpdate && (
+                            {phoneLookups[enquiry.whatsappNumber]
+                              .deliveryUpdate && (
                               <Link href="/dashboard/delivery-update">
                                 <Badge
                                   variant="outline"
@@ -407,11 +436,13 @@ export default function DigitalEnquirySessionsPage() {
                       <div className="space-y-2 text-xs sm:text-sm">
                         {enquiry.email && (
                           <div className="text-muted-foreground">
-                            <span className="font-medium">Email:</span> {enquiry.email}
+                            <span className="font-medium">Email:</span>{" "}
+                            {enquiry.email}
                           </div>
                         )}
                         <div className="text-muted-foreground">
-                          <span className="font-medium">Reason:</span> {enquiry.reason}
+                          <span className="font-medium">Reason:</span>{" "}
+                          {enquiry.reason}
                         </div>
                         <div className="flex flex-wrap items-center gap-2">
                           {enquiry.leadSource && (
@@ -421,18 +452,22 @@ export default function DigitalEnquirySessionsPage() {
                           )}
                           {enquiry.model && (
                             <Badge variant="outline">
-                              {enquiry.model.category.name} - {enquiry.model.name}
+                              {enquiry.model.category.name} -{" "}
+                              {enquiry.model.name}
                             </Badge>
                           )}
                         </div>
                         <div className="text-xs text-muted-foreground pt-2">
-                          Enquiry created: {new Date(enquiry.createdAt).toLocaleString()}
+                          Enquiry created:{" "}
+                          {new Date(enquiry.createdAt).toLocaleString()}
                         </div>
                       </div>
 
                       {enquiry.sessions.length > 0 && (
                         <div className="border-t pt-4 space-y-3">
-                          <h4 className="text-sm font-semibold">Sessions ({sessionCount})</h4>
+                          <h4 className="text-sm font-semibold">
+                            Sessions ({sessionCount})
+                          </h4>
                           {enquiry.sessions.map((session) => (
                             <div
                               key={session.id}
@@ -469,4 +504,3 @@ export default function DigitalEnquirySessionsPage() {
     </div>
   );
 }
-

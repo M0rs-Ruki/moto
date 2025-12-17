@@ -56,6 +56,9 @@ export async function POST(request: NextRequest) {
       },
     });
 
+    let messageStatus = "not_sent";
+    let messageError = null;
+
     if (template && session.visitor.whatsappNumber) {
       try {
         const CRM = 999999999;
@@ -67,13 +70,22 @@ export async function POST(request: NextRequest) {
           templateLanguage: template.language,
           parameters: [CRM.toString()],
         });
+        messageStatus = "sent";
       } catch (error: unknown) {
         console.error("Failed to send exit message:", error);
+        messageStatus = "failed";
+        messageError =
+          (error as Error).message || "Failed to send exit message";
+        // Don't fail the whole operation if message sending fails
       }
     }
 
     return NextResponse.json({
       success: true,
+      message: {
+        status: messageStatus,
+        error: messageError,
+      },
     });
   } catch (error: unknown) {
     console.error("Exit session error:", error);

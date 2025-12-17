@@ -49,7 +49,9 @@ export default function DigitalEnquiryPage() {
   const router = useRouter();
   const [enquiries, setEnquiries] = useState<DigitalEnquiry[]>([]);
   const [loading, setLoading] = useState(true);
-  const [phoneLookups, setPhoneLookups] = useState<Record<string, PhoneLookup>>({});
+  const [phoneLookups, setPhoneLookups] = useState<Record<string, PhoneLookup>>(
+    {}
+  );
 
   useEffect(() => {
     fetchEnquiries();
@@ -59,18 +61,23 @@ export default function DigitalEnquiryPage() {
     try {
       const response = await axios.get("/api/digital-enquiry");
       setEnquiries(response.data.enquiries);
-      
+
       // Fetch phone lookups for all enquiries
       const lookups: Record<string, PhoneLookup> = {};
       await Promise.all(
         response.data.enquiries.map(async (enquiry: DigitalEnquiry) => {
           try {
             const lookupRes = await axios.get(
-              `/api/phone-lookup?phone=${encodeURIComponent(enquiry.whatsappNumber)}`
+              `/api/phone-lookup?phone=${encodeURIComponent(
+                enquiry.whatsappNumber
+              )}`
             );
             lookups[enquiry.whatsappNumber] = lookupRes.data;
           } catch (error) {
-            console.error(`Failed to lookup phone ${enquiry.whatsappNumber}:`, error);
+            console.error(
+              `Failed to lookup phone ${enquiry.whatsappNumber}:`,
+              error
+            );
           }
         })
       );
@@ -115,7 +122,9 @@ export default function DigitalEnquiryPage() {
       </div>
 
       <div className="flex justify-end">
-        <Button onClick={() => router.push("/dashboard/digital-enquiry/create")}>
+        <Button
+          onClick={() => router.push("/dashboard/digital-enquiry/create")}
+        >
           <Plus className="mr-2 h-4 w-4" />
           Create Inquiry
         </Button>
@@ -127,7 +136,8 @@ export default function DigitalEnquiryPage() {
             <div className="text-center py-8 text-muted-foreground">
               <MessageSquare className="h-12 w-12 mx-auto mb-4 opacity-50" />
               <p className="text-sm sm:text-base">
-                No digital enquiries yet. Create your first inquiry to get started.
+                No digital enquiries yet. Create your first inquiry to get
+                started.
               </p>
             </div>
           </CardContent>
@@ -149,7 +159,7 @@ export default function DigitalEnquiryPage() {
                 {phoneLookups[enquiry.whatsappNumber] && (
                   <div className="flex flex-wrap items-center gap-1.5 mt-2">
                     {phoneLookups[enquiry.whatsappNumber].dailyWalkins && (
-                      <Link href="/dashboard/daily-walkins/visitors">
+                      <Link href="/dashboard/daily-walkins">
                         <Badge
                           variant="outline"
                           className="text-xs cursor-pointer hover:bg-primary/10 transition-colors"
@@ -187,9 +197,7 @@ export default function DigitalEnquiryPage() {
                       {enquiry.leadScope.toUpperCase()}
                     </Badge>
                     {enquiry.leadSource && (
-                      <Badge variant="outline">
-                        {enquiry.leadSource.name}
-                      </Badge>
+                      <Badge variant="outline">{enquiry.leadSource.name}</Badge>
                     )}
                     {enquiry.model && (
                       <Badge variant="outline">
@@ -209,4 +217,3 @@ export default function DigitalEnquiryPage() {
     </div>
   );
 }
-

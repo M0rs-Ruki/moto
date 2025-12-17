@@ -120,13 +120,13 @@
   --sidebar-primary: var(--primary-color, oklch(0.582 0.22 255.77));
   --sidebar-primary-foreground: oklch(1 0 0);
   --ring: var(--primary-color, oklch(0.582 0.22 255.77));
-  
+
   /* Secondary Color - Secondary buttons, accents, highlights */
   --secondary: var(--secondary-color, oklch(0.696 0.17 162.48));
   --secondary-foreground: oklch(1 0 0);
   --accent: var(--secondary-color, oklch(0.696 0.17 162.48));
   --accent-foreground: oklch(1 0 0);
-  
+
   /* Tertiary Color - Borders, hover states, subtle backgrounds */
   --muted: var(--tertiary-color, oklch(0.769 0.188 70.08));
   --muted-foreground: oklch(0.145 0 0);
@@ -281,6 +281,61 @@
   textarea:focus,
   select:focus {
     @apply ring-2 ring-ring;
+  }
+
+  /* Custom checkbox styling for theme consistency */
+  input[type="checkbox"].custom-checkbox,
+  input.custom-checkbox[type="checkbox"] {
+    @apply appearance-none;
+    position: relative;
+    cursor: pointer;
+    width: 18px;
+    height: 18px;
+    min-width: 18px;
+    border: 2px solid hsl(var(--border));
+    border-radius: 4px;
+    background-color: hsl(var(--background));
+    transition: all 0.2s ease;
+  }
+
+  input[type="checkbox"].custom-checkbox:hover,
+  input.custom-checkbox[type="checkbox"]:hover {
+    border-color: hsl(var(--primary));
+    background-color: hsl(var(--muted));
+  }
+
+  input[type="checkbox"].custom-checkbox:checked,
+  input.custom-checkbox[type="checkbox"]:checked {
+    background-color: hsl(var(--primary));
+    border-color: hsl(var(--primary));
+  }
+
+  input[type="checkbox"].custom-checkbox:checked::before,
+  input.custom-checkbox[type="checkbox"]:checked::before {
+    content: "";
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%) rotate(45deg);
+    width: 5px;
+    height: 9px;
+    border: solid white;
+    border-width: 0 2px 2px 0;
+    border-radius: 0;
+  }
+
+  input[type="checkbox"].custom-checkbox:checked:hover,
+  input.custom-checkbox[type="checkbox"]:checked:hover {
+    background-color: hsl(var(--primary) / 0.9);
+    border-color: hsl(var(--primary) / 0.9);
+  }
+
+  input[type="checkbox"].custom-checkbox:focus,
+  input.custom-checkbox[type="checkbox"]:focus {
+    outline: none;
+    ring: 2px;
+    ring-color: hsl(var(--ring));
+    ring-offset: 2px;
   }
 
   /* Native select dark mode styling */

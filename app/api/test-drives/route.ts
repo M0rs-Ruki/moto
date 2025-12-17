@@ -67,14 +67,12 @@ export async function POST(request: NextRequest) {
       },
     });
 
+    let messageStatus = "not_sent";
+    let messageError = null;
+
     if (template && session.visitor.whatsappNumber) {
       try {
-        const fullName = `${session.visitor.firstName} ${
-          session.visitor.lastName || ""
-        }`.trim();
-        const modelName = testDrive.variant
-          ? `${testDrive.model.name}.${testDrive.variant.name}`
-          : testDrive.model.name;
+        const CRM = 999999999;
 
         await whatsappClient.sendTemplate({
           contactId: session.visitor.whatsappContactId || undefined,
@@ -82,10 +80,15 @@ export async function POST(request: NextRequest) {
           templateName: template.templateName,
           templateId: template.templateId,
           templateLanguage: template.language,
-          parameters: [fullName, modelName],
+          parameters: [CRM.toString()],
         });
+        messageStatus = "sent";
       } catch (error: unknown) {
         console.error("Failed to send test drive message:", error);
+        messageStatus = "failed";
+        messageError =
+          (error as Error).message || "Failed to send test drive message";
+        // Don't fail the whole operation if message sending fails
       }
     }
 
@@ -93,6 +96,10 @@ export async function POST(request: NextRequest) {
       success: true,
       testDrive: {
         id: testDrive.id,
+      },
+      message: {
+        status: messageStatus,
+        error: messageError,
       },
     });
   } catch (error: unknown) {
