@@ -272,6 +272,23 @@ export default function DashboardLayout({
                       <span className="truncate">Inquiries</span>
                     </Button>
                   </Link>
+                  <Link
+                    href="/dashboard/digital-enquiry/sessions"
+                    onClick={() => setSidebarOpen(false)}
+                  >
+                    <Button
+                      variant={
+                        pathname === "/dashboard/digital-enquiry/sessions"
+                          ? "secondary"
+                          : "ghost"
+                      }
+                      className="w-full justify-start text-left text-sm"
+                      size="sm"
+                    >
+                      <FileText className="mr-2 h-3 w-3 flex-shrink-0" />
+                      <span className="truncate">Sessions</span>
+                    </Button>
+                  </Link>
                 </div>
               </CollapsibleContent>
             </Collapsible>

@@ -23,7 +23,11 @@ export async function POST(
         dealershipId: user.dealershipId,
       },
       include: {
-        model: true,
+        model: {
+          include: {
+            category: true,
+          },
+        },
         scheduledMessages: {
           where: {
             status: "pending",
@@ -95,7 +99,6 @@ export async function POST(
     let messageError = null;
 
     try {
-      const name = `${ticket.firstName} ${ticket.lastName}`;
       const deliveryDateStr = new Date(ticket.deliveryDate).toLocaleDateString();
 
       await whatsappClient.sendTemplate({
@@ -104,7 +107,7 @@ export async function POST(
         templateName: template.templateName,
         templateId: template.templateId,
         templateLanguage: template.language,
-        parameters: [name, deliveryDateStr],
+        parameters: [deliveryDateStr],
       });
 
       // Update ticket

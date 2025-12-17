@@ -28,7 +28,11 @@ export async function GET(request: NextRequest) {
       include: {
         deliveryTicket: {
           include: {
-            model: true,
+            model: {
+              include: {
+                category: true,
+              },
+            },
           },
         },
       },
@@ -105,7 +109,6 @@ export async function GET(request: NextRequest) {
         }
 
         try {
-          const name = `${ticket.firstName} ${ticket.lastName}`;
           const deliveryDateStr = new Date(
             ticket.deliveryDate
           ).toLocaleDateString();
@@ -116,7 +119,7 @@ export async function GET(request: NextRequest) {
             templateName: template.templateName,
             templateId: template.templateId,
             templateLanguage: template.language,
-            parameters: [name, deliveryDateStr],
+            parameters: [deliveryDateStr],
           });
 
           // Mark as sent

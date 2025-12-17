@@ -37,6 +37,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import Link from "next/link";
 
 interface VehicleVariant {
   id: string;
@@ -77,6 +78,15 @@ interface Visitor {
   }>;
 }
 
+interface PhoneLookup {
+  dailyWalkins: boolean;
+  digitalEnquiry: boolean;
+  deliveryUpdate: boolean;
+  visitorId: string | null;
+  enquiryId: string | null;
+  ticketId: string | null;
+}
+
 export default function VisitorsPage() {
   const router = useRouter();
   const [categories, setCategories] = useState<VehicleCategory[]>([]);
@@ -109,6 +119,7 @@ export default function VisitorsPage() {
   const [expandedVisitors, setExpandedVisitors] = useState<Set<string>>(
     new Set()
   );
+  const [phoneLookups, setPhoneLookups] = useState<Record<string, PhoneLookup>>({});
 
   const [formData, setFormData] = useState({
     firstName: "",
@@ -132,6 +143,22 @@ export default function VisitorsPage() {
       ]);
       setCategories(categoriesRes.data.categories);
       setVisitors(visitorsRes.data.visitors);
+      
+      // Fetch phone lookups for all visitors
+      const lookups: Record<string, PhoneLookup> = {};
+      await Promise.all(
+        visitorsRes.data.visitors.map(async (visitor: Visitor) => {
+          try {
+            const lookupRes = await axios.get(
+              `/api/phone-lookup?phone=${encodeURIComponent(visitor.whatsappNumber)}`
+            );
+            lookups[visitor.whatsappNumber] = lookupRes.data;
+          } catch (error) {
+            console.error(`Failed to lookup phone ${visitor.whatsappNumber}:`, error);
+          }
+        })
+      );
+      setPhoneLookups(lookups);
     } catch (error) {
       console.error("Failed to fetch data:", error);
     } finally {
@@ -706,6 +733,30 @@ export default function VisitorsPage() {
                             <CardDescription className="text-xs sm:text-sm">
                               {visitor.whatsappNumber}
                             </CardDescription>
+                            {phoneLookups[visitor.whatsappNumber] && (
+                              <div className="flex flex-wrap items-center gap-1.5 mt-1">
+                                {phoneLookups[visitor.whatsappNumber].digitalEnquiry && (
+                                  <Link href="/dashboard/digital-enquiry">
+                                    <Badge
+                                      variant="outline"
+                                      className="text-xs cursor-pointer hover:bg-primary/10 transition-colors"
+                                    >
+                                      Digital Enquiry
+                                    </Badge>
+                                  </Link>
+                                )}
+                                {phoneLookups[visitor.whatsappNumber].deliveryUpdate && (
+                                  <Link href="/dashboard/delivery-update">
+                                    <Badge
+                                      variant="outline"
+                                      className="text-xs cursor-pointer hover:bg-primary/10 transition-colors"
+                                    >
+                                      Delivery Update
+                                    </Badge>
+                                  </Link>
+                                )}
+                              </div>
+                            )}
                           </div>
                         </div>
                         <div className="flex items-center flex-shrink-0">

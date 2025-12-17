@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Plus, Loader2, Package, Calendar, Send } from "lucide-react";
+import Link from "next/link";
 
 interface DeliveryTicket {
   id: string;
@@ -36,10 +37,20 @@ interface DeliveryTicket {
   }>;
 }
 
+interface PhoneLookup {
+  dailyWalkins: boolean;
+  digitalEnquiry: boolean;
+  deliveryUpdate: boolean;
+  visitorId: string | null;
+  enquiryId: string | null;
+  ticketId: string | null;
+}
+
 export default function DeliveryUpdatePage() {
   const router = useRouter();
   const [tickets, setTickets] = useState<DeliveryTicket[]>([]);
   const [loading, setLoading] = useState(true);
+  const [phoneLookups, setPhoneLookups] = useState<Record<string, PhoneLookup>>({});
 
   useEffect(() => {
     fetchTickets();
@@ -49,6 +60,22 @@ export default function DeliveryUpdatePage() {
     try {
       const response = await axios.get("/api/delivery-tickets");
       setTickets(response.data.tickets);
+      
+      // Fetch phone lookups for all tickets
+      const lookups: Record<string, PhoneLookup> = {};
+      await Promise.all(
+        response.data.tickets.map(async (ticket: DeliveryTicket) => {
+          try {
+            const lookupRes = await axios.get(
+              `/api/phone-lookup?phone=${encodeURIComponent(ticket.whatsappNumber)}`
+            );
+            lookups[ticket.whatsappNumber] = lookupRes.data;
+          } catch (error) {
+            console.error(`Failed to lookup phone ${ticket.whatsappNumber}:`, error);
+          }
+        })
+      );
+      setPhoneLookups(lookups);
     } catch (error) {
       console.error("Failed to fetch tickets:", error);
     } finally {
@@ -122,6 +149,30 @@ export default function DeliveryUpdatePage() {
                   <CardDescription className="text-xs sm:text-sm">
                     {ticket.whatsappNumber}
                   </CardDescription>
+                  {phoneLookups[ticket.whatsappNumber] && (
+                    <div className="flex flex-wrap items-center gap-1.5 mt-2">
+                      {phoneLookups[ticket.whatsappNumber].dailyWalkins && (
+                        <Link href="/dashboard/daily-walkins/visitors">
+                          <Badge
+                            variant="outline"
+                            className="text-xs cursor-pointer hover:bg-primary/10 transition-colors"
+                          >
+                            Daily Walkins
+                          </Badge>
+                        </Link>
+                      )}
+                      {phoneLookups[ticket.whatsappNumber].digitalEnquiry && (
+                        <Link href="/dashboard/digital-enquiry">
+                          <Badge
+                            variant="outline"
+                            className="text-xs cursor-pointer hover:bg-primary/10 transition-colors"
+                          >
+                            Digital Enquiry
+                          </Badge>
+                        </Link>
+                      )}
+                    </div>
+                  )}
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-2 text-xs sm:text-sm">

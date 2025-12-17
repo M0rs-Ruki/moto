@@ -279,12 +279,31 @@ model DigitalEnquiry {
   model   VehicleModel? @relation(fields: [interestedModelId], references: [id], onDelete: SetNull)
   interestedModelId String?
 
+  // Relations
+  sessions DigitalEnquirySession[]
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   @@index([dealershipId])
   @@index([whatsappNumber])
   @@index([leadSourceId])
+}
+
+// Digital Enquiry Session tracking
+model DigitalEnquirySession {
+  id     String @id @default(cuid())
+  notes  String? // Session notes or follow-up information
+  status String @default("active") // active, completed, closed
+
+  digitalEnquiry   DigitalEnquiry @relation(fields: [digitalEnquiryId], references: [id], onDelete: Cascade)
+  digitalEnquiryId String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([digitalEnquiryId])
+  @@index([status])
 }
 
 // Delivery ticket/client information

@@ -40,6 +40,27 @@ export async function GET(request: NextRequest) {
       templates.push(deliveryTemplate);
     }
 
+    // Ensure digital_enquiry template exists (for existing users)
+    const hasDigitalEnquiry = templates.some(
+      (t) => t.type === "digital_enquiry" && t.section === "digital_enquiry"
+    );
+
+    if (!hasDigitalEnquiry) {
+      // Create placeholder digital enquiry template
+      const digitalEnquiryTemplate = await prisma.whatsAppTemplate.create({
+        data: {
+          name: "Digital Enquiry",
+          templateId: "",
+          templateName: "",
+          language: "en_US",
+          type: "digital_enquiry",
+          section: "digital_enquiry",
+          dealershipId: user.dealershipId,
+        },
+      });
+      templates.push(digitalEnquiryTemplate);
+    }
+
     return NextResponse.json({ templates });
   } catch (error: unknown) {
     console.error("Get templates error:", error);

@@ -102,27 +102,27 @@ export async function POST(request: NextRequest) {
     let messageStatus = "not_sent";
     let messageError = null;
 
-    // Send template message if contact is new (not existing)
-    if (!existingEnquiry && template && whatsappContactId) {
+    // Send template message (always send when creating enquiry, template only, no parameters)
+    if (template && template.templateId && template.templateName && whatsappContactId) {
       try {
-        const name = `${firstName} ${lastName}`;
-        const CRM = 9999999999; // Default CRM number
-
         await whatsappClient.sendTemplate({
           contactId: whatsappContactId,
           contactNumber: whatsappNumber,
           templateName: template.templateName,
           templateId: template.templateId,
           templateLanguage: template.language,
-          parameters: [name, CRM.toString()],
+          parameters: [], // No parameters - just send the template
         });
         messageStatus = "sent";
       } catch (error: unknown) {
         console.error("Failed to send digital enquiry message:", error);
         messageStatus = "failed";
         messageError =
-          (error as Error).message || "Failed to send welcome message";
+          (error as Error).message || "Failed to send digital enquiry message";
       }
+    } else if (template && (!template.templateId || !template.templateName)) {
+      messageStatus = "not_configured";
+      messageError = "Template ID or Template Name not configured";
     }
 
     return NextResponse.json({

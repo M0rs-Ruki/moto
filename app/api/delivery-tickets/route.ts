@@ -25,7 +25,13 @@ export async function POST(request: NextRequest) {
     } = body;
 
     // Validation
-    if (!firstName || !lastName || !whatsappNumber || !deliveryDate || !modelId) {
+    if (
+      !firstName ||
+      !lastName ||
+      !whatsappNumber ||
+      !deliveryDate ||
+      !modelId
+    ) {
       return NextResponse.json(
         { error: "Missing required fields" },
         { status: 400 }
@@ -41,32 +47,33 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if contact already exists in any model (Visitor, DigitalEnquiry, or DeliveryTicket)
-    const [existingVisitor, existingEnquiry, existingTicket] = await Promise.all([
-      prisma.visitor.findFirst({
-        where: {
-          dealershipId: user.dealershipId,
-          whatsappNumber: whatsappNumber,
-          whatsappContactId: { not: null },
-        },
-        select: { whatsappContactId: true },
-      }),
-      prisma.digitalEnquiry.findFirst({
-        where: {
-          dealershipId: user.dealershipId,
-          whatsappNumber: whatsappNumber,
-          whatsappContactId: { not: null },
-        },
-        select: { whatsappContactId: true },
-      }),
-      prisma.deliveryTicket.findFirst({
-        where: {
-          dealershipId: user.dealershipId,
-          whatsappNumber: whatsappNumber,
-          whatsappContactId: { not: null },
-        },
-        select: { whatsappContactId: true },
-      }),
-    ]);
+    const [existingVisitor, existingEnquiry, existingTicket] =
+      await Promise.all([
+        prisma.visitor.findFirst({
+          where: {
+            dealershipId: user.dealershipId,
+            whatsappNumber: whatsappNumber,
+            whatsappContactId: { not: null },
+          },
+          select: { whatsappContactId: true },
+        }),
+        prisma.digitalEnquiry.findFirst({
+          where: {
+            dealershipId: user.dealershipId,
+            whatsappNumber: whatsappNumber,
+            whatsappContactId: { not: null },
+          },
+          select: { whatsappContactId: true },
+        }),
+        prisma.deliveryTicket.findFirst({
+          where: {
+            dealershipId: user.dealershipId,
+            whatsappNumber: whatsappNumber,
+            whatsappContactId: { not: null },
+          },
+          select: { whatsappContactId: true },
+        }),
+      ]);
 
     // Get contact ID from any existing record
     let whatsappContactId =
@@ -143,86 +150,63 @@ export async function POST(request: NextRequest) {
       ],
     });
 
-    // Always send template message if template is configured and contact exists
-    if (template && whatsappContactId && template.templateId && template.templateName) {
-      if (sendNow) {
-        // Send message immediately
-        try {
-          const name = `${firstName} ${lastName}`;
-          const deliveryDateStr = deliveryDateObj.toLocaleDateString();
+    // Always send template message immediately when ticket is created (if template is configured and contact exists)
+    if (
+      template &&
+      whatsappContactId &&
+      template.templateId &&
+      template.templateName
+    ) {
+      // Send message immediately with delivery data
+      try {
+        const deliveryDateStr = deliveryDateObj.toLocaleDateString();
 
-          await whatsappClient.sendTemplate({
-            contactId: whatsappContactId,
-            contactNumber: whatsappNumber,
-            templateName: template.templateName,
-            templateId: template.templateId,
-            templateLanguage: template.language,
-            parameters: [name, deliveryDateStr],
-          });
-          messageStatus = "sent";
+        await whatsappClient.sendTemplate({
+          contactId: whatsappContactId,
+          contactNumber: whatsappNumber,
+          templateName: template.templateName,
+          templateId: template.templateId,
+          templateLanguage: template.language,
+          parameters: [deliveryDateStr],
+        });
+        messageStatus = "sent";
 
-          // Update ticket
-          await prisma.deliveryTicket.update({
-            where: { id: ticket.id },
-            data: { messageSent: true },
-          });
-        } catch (error: unknown) {
-          console.error("Failed to send delivery message:", error);
-          messageStatus = "failed";
-          messageError =
-            (error as Error).message || "Failed to send message";
-        }
-      } else {
-        // Schedule message for 3 days before delivery
-        const scheduledFor = new Date(deliveryDateObj);
-        scheduledFor.setDate(scheduledFor.getDate() - 3);
+        // Update ticket
+        await prisma.deliveryTicket.update({
+          where: { id: ticket.id },
+          data: { messageSent: true },
+        });
+      } catch (error: unknown) {
+        console.error("Failed to send delivery message:", error);
+        messageStatus = "failed";
+        messageError = (error as Error).message || "Failed to send message";
+      }
 
-        // Only schedule if the date is in the future
-        if (scheduledFor > new Date()) {
-          const scheduledMessage = await prisma.scheduledMessage.create({
-            data: {
-              deliveryTicketId: ticket.id,
-              scheduledFor,
-              status: "pending",
-            },
-          });
-          scheduledMessageId = scheduledMessage.id;
-        } else {
-          // If 3 days before is in the past, send now (if template is configured)
-          if (template.templateId && template.templateName) {
-            try {
-              const name = `${firstName} ${lastName}`;
-              const deliveryDateStr = deliveryDateObj.toLocaleDateString();
+      // Also schedule reminder for 3 days before delivery (if date is in the future)
+      const scheduledFor = new Date(deliveryDateObj);
+      scheduledFor.setDate(scheduledFor.getDate() - 3);
 
-              await whatsappClient.sendTemplate({
-                contactId: whatsappContactId,
-                contactNumber: whatsappNumber,
-                templateName: template.templateName,
-                templateId: template.templateId,
-                templateLanguage: template.language,
-                parameters: [name, deliveryDateStr],
-              });
-              messageStatus = "sent";
-
-              await prisma.deliveryTicket.update({
-                where: { id: ticket.id },
-                data: { messageSent: true },
-              });
-            } catch (error: unknown) {
-              console.error("Failed to send delivery message:", error);
-              messageStatus = "failed";
-              messageError =
-                (error as Error).message || "Failed to send message";
-            }
-          }
-        }
+      // Only schedule if the date is in the future
+      if (scheduledFor > new Date()) {
+        const scheduledMessage = await prisma.scheduledMessage.create({
+          data: {
+            deliveryTicketId: ticket.id,
+            scheduledFor,
+            status: "pending",
+          },
+        });
+        scheduledMessageId = scheduledMessage.id;
       }
     } else if (template && !whatsappContactId) {
       // Template exists but contact creation failed - log warning
-      console.warn("Template configured but no contact ID available for delivery ticket");
+      console.warn(
+        "Template configured but no contact ID available for delivery ticket"
+      );
     } else if (template && (!template.templateId || !template.templateName)) {
       // Template exists but not fully configured - log warning
-      console.warn("Delivery reminder template exists but Template ID or Template Name is missing. Please configure it in Global Settings.");
+      console.warn(
+        "Delivery reminder template exists but Template ID or Template Name is missing. Please configure it in Global Settings."
+      );
     }
 
     return NextResponse.json({
@@ -289,4 +273,3 @@ export async function GET(request: NextRequest) {
     );
   }
 }
-
