@@ -70,8 +70,15 @@ export async function POST(request: NextRequest) {
       );
 
       // Process modelIds (support both old string format and new object format)
-      const interestsToCreate = modelIds
-        .map((item: string | { modelId: string; variantId?: string }) => {
+      type InterestToCreate = {
+        visitorId: string;
+        modelId: string;
+        variantId: string | null;
+        sessionId: string;
+      };
+      
+      const interestsToCreate: InterestToCreate[] = modelIds
+        .map((item: string | { modelId: string; variantId?: string }): InterestToCreate | null => {
           const modelId = typeof item === "string" ? item : item.modelId;
           const variantId =
             typeof item === "object" ? item.variantId : undefined;
@@ -87,7 +94,7 @@ export async function POST(request: NextRequest) {
           }
           return null;
         })
-        .filter((item) => item !== null);
+        .filter((item: InterestToCreate | null): item is InterestToCreate => item !== null);
 
       if (interestsToCreate.length > 0) {
         await prisma.visitorInterest.createMany({

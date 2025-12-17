@@ -43,11 +43,13 @@ export async function POST(request: NextRequest) {
       data: {
         sessionId,
         modelId,
+        variantId: variantId || null,
         outcome: outcome || null,
         feedback: feedback || null,
       },
       include: {
         model: true,
+        variant: true,
       },
     });
 

@@ -5,7 +5,7 @@ import { whatsappClient } from "@/lib/whatsapp";
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const user = await getCurrentUser();
@@ -14,7 +14,7 @@ export async function POST(
       return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
     }
 
-    const ticketId = params.id;
+    const { id: ticketId } = await params;
 
     // Get ticket
     const ticket = await prisma.deliveryTicket.findFirst({

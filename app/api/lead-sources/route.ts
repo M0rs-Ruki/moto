@@ -32,6 +32,7 @@ export async function GET(request: NextRequest) {
 
     // If no lead sources exist, seed defaults
     if (leadSources.length === 0) {
+      const dealershipId = user.dealershipId; // Type narrowing
       leadSources = await Promise.all(
         DEFAULT_LEAD_SOURCES.map((name, index) =>
           prisma.leadSource.create({
@@ -39,7 +40,7 @@ export async function GET(request: NextRequest) {
               name,
               order: index,
               isDefault: true,
-              dealershipId: user.dealershipId,
+              dealershipId,
             },
           })
         )
