@@ -4,7 +4,7 @@ This application uses scheduled messages for delivery reminders. The cron job pr
 
 ## Vercel Deployment
 
-If deploying to Vercel, the cron job is automatically configured via `vercel.json`. The job runs every hour (at the top of each hour).
+If deploying to Vercel, the cron job is automatically configured via `vercel.json`. The job runs once per day at 9 AM UTC (`0 9 * * *`). Note: Vercel Hobby plan only supports daily cron jobs.
 
 ### Environment Variables
 
