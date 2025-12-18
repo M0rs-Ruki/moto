@@ -30,9 +30,10 @@ model User {
 
 // Dealership/Company information
 model Dealership {
-  id       String @id @default(cuid())
-  name     String
-  location String
+  id             String  @id @default(cuid())
+  name           String
+  location       String
+  showroomNumber String? // Phone number for showroom (used in templates)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -43,7 +44,7 @@ model Dealership {
   visitors          Visitor[]
   whatsappTemplates WhatsAppTemplate[]
   leadSources       LeadSource[]
-  digitalEnquiries   DigitalEnquiry[]
+  digitalEnquiries  DigitalEnquiry[]
   deliveryTickets   DeliveryTicket[]
 }
 
@@ -78,11 +79,11 @@ model VehicleModel {
   updatedAt DateTime @updatedAt
 
   // Relations
-  variants          VehicleVariant[]
-  visitorInterests  VisitorInterest[]
-  testDrives        TestDrive[]
-  digitalEnquiries  DigitalEnquiry[]
-  deliveryTickets   DeliveryTicket[]
+  variants         VehicleVariant[]
+  visitorInterests VisitorInterest[]
+  testDrives       TestDrive[]
+  digitalEnquiries DigitalEnquiry[]
+  deliveryTickets  DeliveryTicket[]
 
   @@index([categoryId])
 }
@@ -238,9 +239,9 @@ model WhatsAppTemplate {
 
 // Lead source options (configurable in Global Settings)
 model LeadSource {
-  id   String @id @default(cuid())
-  name String
-  order Int @default(0)
+  id        String  @id @default(cuid())
+  name      String
+  order     Int     @default(0)
   isDefault Boolean @default(false) // For default sources that can't be deleted
 
   dealership   Dealership @relation(fields: [dealershipId], references: [id], onDelete: Cascade)
@@ -265,7 +266,7 @@ model DigitalEnquiry {
   email          String?
   address        String?
   reason         String // Reason for enquiry
-  leadScope      String @default("medium") // Priority: high, medium, low
+  leadScope      String  @default("medium") // Priority: high, medium, low
 
   // WhatsApp contact ID from the API
   whatsappContactId String?
@@ -276,7 +277,7 @@ model DigitalEnquiry {
   leadSource   LeadSource? @relation(fields: [leadSourceId], references: [id], onDelete: SetNull)
   leadSourceId String?
 
-  model   VehicleModel? @relation(fields: [interestedModelId], references: [id], onDelete: SetNull)
+  model             VehicleModel? @relation(fields: [interestedModelId], references: [id], onDelete: SetNull)
   interestedModelId String?
 
   // Relations
@@ -292,9 +293,9 @@ model DigitalEnquiry {
 
 // Digital Enquiry Session tracking
 model DigitalEnquirySession {
-  id     String @id @default(cuid())
+  id     String  @id @default(cuid())
   notes  String? // Session notes or follow-up information
-  status String @default("active") // active, completed, closed
+  status String  @default("active") // active, completed, closed
 
   digitalEnquiry   DigitalEnquiry @relation(fields: [digitalEnquiryId], references: [id], onDelete: Cascade)
   digitalEnquiryId String
@@ -308,7 +309,7 @@ model DigitalEnquirySession {
 
 // Delivery ticket/client information
 model DeliveryTicket {
-  id             String  @id @default(cuid())
+  id             String   @id @default(cuid())
   firstName      String
   lastName       String
   whatsappNumber String
@@ -316,7 +317,7 @@ model DeliveryTicket {
   address        String?
   description    String? // Description/notes
   deliveryDate   DateTime
-  messageSent    Boolean @default(false) // Whether message has been sent
+  messageSent    Boolean  @default(false) // Whether message has been sent
 
   // WhatsApp contact ID from the API
   whatsappContactId String?
@@ -341,11 +342,11 @@ model DeliveryTicket {
 
 // Scheduled WhatsApp messages for delivery reminders
 model ScheduledMessage {
-  id        String   @id @default(cuid())
+  id           String    @id @default(cuid())
   scheduledFor DateTime // When to send the message
-  sentAt    DateTime? // When it was actually sent
-  status    String   @default("pending") // pending, sent, failed
-  retryCount Int     @default(0)
+  sentAt       DateTime? // When it was actually sent
+  status       String    @default("pending") // pending, sent, failed
+  retryCount   Int       @default(0)
 
   deliveryTicket   DeliveryTicket @relation(fields: [deliveryTicketId], references: [id], onDelete: Cascade)
   deliveryTicketId String

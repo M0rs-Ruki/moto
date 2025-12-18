@@ -219,7 +219,12 @@ export async function POST(request: NextRequest) {
     let messageStatus = "not_sent";
     let messageError = null;
     const name = `${firstName} ${lastName}`;
-    const CRM = 9999999999;
+    // Get dealership showroom number
+    const dealership = await prisma.dealership.findUnique({
+      where: { id: user.dealershipId },
+      select: { showroomNumber: true },
+    });
+    const showroomNumber = dealership?.showroomNumber || "9999999999";
 
     // Only send message if we have a contact ID
     if (whatsappContactId) {
@@ -240,7 +245,7 @@ export async function POST(request: NextRequest) {
               templateName: welcomeTemplate.templateName,
               templateId: welcomeTemplate.templateId,
               templateLanguage: welcomeTemplate.language,
-              parameters: [name, CRM.toString()],
+              parameters: [name, showroomNumber],
             });
             messageStatus = "sent";
           } catch (error: unknown) {
@@ -304,7 +309,7 @@ export async function POST(request: NextRequest) {
                 templateName: welcomeTemplate.templateName,
                 templateId: welcomeTemplate.templateId,
                 templateLanguage: welcomeTemplate.language,
-                parameters: [visitor.firstName, CRM.toString()],
+                parameters: [visitor.firstName, showroomNumber],
               });
               messageStatus = "sent";
             } catch (error: unknown) {

@@ -83,6 +83,24 @@ export default function SettingsPage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
+  // User and dealership info
+  const [user, setUser] = useState<{
+    id: string;
+    email: string;
+    dealership: {
+      id: string;
+      name: string;
+      location: string;
+      showroomNumber: string | null;
+    } | null;
+  } | null>(null);
+  const [dealershipForm, setDealershipForm] = useState({
+    name: "",
+    location: "",
+    showroomNumber: "",
+  });
+  const [savingDealership, setSavingDealership] = useState(false);
+  
   // Lead source form
   const [newLeadSource, setNewLeadSource] = useState("");
   const [leadSourceDialogOpen, setLeadSourceDialogOpen] = useState(false);
@@ -152,10 +170,12 @@ export default function SettingsPage() {
   const fetchData = async () => {
     try {
       setError(null);
-      const [categoriesRes, templatesRes, leadSourcesRes] = await Promise.all([
+      const [categoriesRes, templatesRes, leadSourcesRes, userRes, dealershipRes] = await Promise.all([
         axios.get("/api/categories"),
         axios.get("/api/templates"),
         axios.get("/api/lead-sources"),
+        axios.get("/api/auth/me"),
+        axios.get("/api/dealership"),
       ]);
       
       // Ensure we have valid data
@@ -170,6 +190,18 @@ export default function SettingsPage() {
       setCategories(categoriesData);
       setTemplates(templatesData);
       setLeadSources(leadSourcesData);
+      
+      // Set user and dealership info
+      if (userRes.data?.user) {
+        setUser(userRes.data.user);
+      }
+      if (dealershipRes.data?.dealership) {
+        setDealershipForm({
+          name: dealershipRes.data.dealership.name,
+          location: dealershipRes.data.dealership.location,
+          showroomNumber: dealershipRes.data.dealership.showroomNumber || "",
+        });
+      }
     } catch (error: any) {
       console.error("Failed to fetch data:", error);
       const errorMessage = error.response?.data?.error || error.message || "Failed to load data";
@@ -294,6 +326,19 @@ export default function SettingsPage() {
     }
   };
 
+  const handleUpdateDealership = async () => {
+    setSavingDealership(true);
+    try {
+      await axios.put("/api/dealership", dealershipForm);
+      await fetchData(); // Refresh data
+    } catch (error) {
+      console.error("Failed to update dealership:", error);
+      alert("Failed to update dealership information");
+    } finally {
+      setSavingDealership(false);
+    }
+  };
+
   if (loading) {
     return <SettingsLoading />;
   }
@@ -303,7 +348,7 @@ export default function SettingsPage() {
       {/* Header */}
       <div className="pb-2 border-b">
         <h1 className="text-3xl sm:text-4xl font-bold bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent">
-          Global Settings
+          Settings
         </h1>
         <p className="text-sm sm:text-base text-muted-foreground mt-2">
           Configure vehicle models, WhatsApp templates, lead sources, and appearance
@@ -326,13 +371,84 @@ export default function SettingsPage() {
         </div>
       )}
 
-      <Tabs defaultValue="vehicles" className="w-full">
-        <TabsList className="grid w-full grid-cols-4 text-xs sm:text-base">
+      <Tabs defaultValue="profile" className="w-full">
+        <TabsList className="grid w-full grid-cols-5 text-xs sm:text-base">
+          <TabsTrigger value="profile">Profile</TabsTrigger>
           <TabsTrigger value="vehicles">Vehicle Models</TabsTrigger>
           <TabsTrigger value="templates">WhatsApp</TabsTrigger>
           <TabsTrigger value="lead-sources">Lead Sources</TabsTrigger>
           <TabsTrigger value="appearance">Appearance</TabsTrigger>
         </TabsList>
+
+        <TabsContent value="profile" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg sm:text-xl">Account Information</CardTitle>
+              <CardDescription className="text-xs sm:text-sm">
+                View and update your account and dealership details
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {user && (
+                <>
+                  <div className="space-y-2">
+                    <Label className="text-sm">Email</Label>
+                    <Input
+                      value={user.email}
+                      disabled
+                      className="text-sm"
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Email cannot be changed
+                    </p>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label className="text-sm">Dealership Name *</Label>
+                    <Input
+                      value={dealershipForm.name}
+                      onChange={(e) =>
+                        setDealershipForm({ ...dealershipForm, name: e.target.value })
+                      }
+                      placeholder="Enter dealership name"
+                      className="text-sm"
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label className="text-sm">Location *</Label>
+                    <Input
+                      value={dealershipForm.location}
+                      onChange={(e) =>
+                        setDealershipForm({ ...dealershipForm, location: e.target.value })
+                      }
+                      placeholder="Enter location"
+                      className="text-sm"
+                    />
+                  </div>
+                  
+                  <Button
+                    onClick={handleUpdateDealership}
+                    disabled={savingDealership || !dealershipForm.name || !dealershipForm.location}
+                    className="w-full sm:w-auto"
+                  >
+                    {savingDealership ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Saving...
+                      </>
+                    ) : (
+                      <>
+                        <Save className="mr-2 h-4 w-4" />
+                        Save Changes
+                      </>
+                    )}
+                  </Button>
+                </>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
 
         <TabsContent value="vehicles" className="space-y-4">
           <Card>
@@ -906,6 +1022,43 @@ export default function SettingsPage() {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-3 sm:space-y-4">
+              {/* Showroom Number Field */}
+              <div className="border rounded-lg p-3 sm:p-4 space-y-3 bg-muted/30">
+                <div className="flex items-center justify-between gap-2">
+                  <h3 className="font-semibold text-sm sm:text-base">
+                    Showroom Number
+                  </h3>
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">Phone Number</Label>
+                  <Input
+                    value={dealershipForm.showroomNumber}
+                    onChange={(e) =>
+                      setDealershipForm({ ...dealershipForm, showroomNumber: e.target.value })
+                    }
+                    placeholder="e.g., +1234567890"
+                    className="text-xs sm:text-sm"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    This number will be used in template parameters when sending messages
+                  </p>
+                </div>
+                <Button
+                  size="sm"
+                  onClick={handleUpdateDealership}
+                  disabled={savingDealership}
+                  className="w-full sm:w-auto text-xs sm:text-sm"
+                >
+                  {savingDealership ? (
+                    <Loader2 className="mr-2 h-3 w-3 sm:h-4 sm:w-4 animate-spin" />
+                  ) : (
+                    <Save className="mr-2 h-3 w-3 sm:h-4 sm:w-4" />
+                  )}
+                  Save Number
+                </Button>
+              </div>
+              
+              <div className="border-t pt-4">
               {templates.length === 0 ? (
                 <p className="text-xs sm:text-sm text-muted-foreground text-center py-8">
                   Loading templates...
@@ -974,6 +1127,7 @@ export default function SettingsPage() {
                   </div>
                 ))
               )}
+              </div>
             </CardContent>
           </Card>
         </TabsContent>

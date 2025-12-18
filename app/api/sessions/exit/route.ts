@@ -61,14 +61,20 @@ export async function POST(request: NextRequest) {
 
     if (template && session.visitor.whatsappNumber) {
       try {
-        const CRM = 999999999;
+        // Get dealership showroom number
+        const dealership = await prisma.dealership.findUnique({
+          where: { id: user.dealershipId },
+          select: { showroomNumber: true },
+        });
+        const showroomNumber = dealership?.showroomNumber || "999999999";
+        
         await whatsappClient.sendTemplate({
           contactId: session.visitor.whatsappContactId || undefined,
           contactNumber: session.visitor.whatsappNumber,
           templateName: template.templateName,
           templateId: template.templateId,
           templateLanguage: template.language,
-          parameters: [CRM.toString()],
+          parameters: [showroomNumber],
         });
         messageStatus = "sent";
       } catch (error: unknown) {

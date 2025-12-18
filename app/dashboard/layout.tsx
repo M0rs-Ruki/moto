@@ -215,7 +215,7 @@ export default function DashboardLayout({
               </Button>
             </Link>
 
-            {/* Global Settings - Always visible */}
+            {/* Settings - Always visible */}
             <div className="pt-2 border-t mt-2">
               <Link
                 href="/dashboard/global-settings"
@@ -230,7 +230,7 @@ export default function DashboardLayout({
                   className="w-full justify-start text-left"
                 >
                   <Globe className="mr-2 h-4 w-4 flex-shrink-0" />
-                  <span className="truncate">Global Settings</span>
+                  <span className="truncate">Settings</span>
                 </Button>
               </Link>
             </div>
