@@ -10,10 +10,15 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
     }
 
+    // Check if filtering by visitor ID
+    const searchParams = request.nextUrl.searchParams;
+    const visitorId = searchParams.get("visitorId");
+
     const sessions = await prisma.visitorSession.findMany({
       where: {
         visitor: {
           dealershipId: user.dealershipId,
+          ...(visitorId ? { id: visitorId } : {}),
         },
       },
       include: {

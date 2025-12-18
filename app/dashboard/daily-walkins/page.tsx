@@ -37,6 +37,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Plus,
   Loader2,
@@ -170,16 +171,14 @@ export default function DailyWalkinsPage() {
     {}
   );
 
-  // Sessions popup state
-  const [sessionsDialogOpen, setSessionsDialogOpen] = useState(false);
-  const [selectedVisitorId, setSelectedVisitorId] = useState<string | null>(
-    null
-  );
-  const [visitorSessions, setVisitorSessions] = useState<Session[]>([]);
+  // Tab state
+  const [activeTab, setActiveTab] = useState<"visitors" | "sessions">("visitors");
+  const [selectedVisitorId, setSelectedVisitorId] = useState<string | null>(null);
+  
+  // Sessions state
+  const [allSessions, setAllSessions] = useState<Session[]>([]);
   const [loadingSessions, setLoadingSessions] = useState(false);
-  const [expandedSessions, setExpandedSessions] = useState<Set<string>>(
-    new Set()
-  );
+  const [expandedSessions, setExpandedSessions] = useState<Set<string>>(new Set());
   const [selectedSession, setSelectedSession] = useState<Session | null>(null);
   const [testDriveDialogOpen, setTestDriveDialogOpen] = useState(false);
   const [exitDialogOpen, setExitDialogOpen] = useState(false);
@@ -231,13 +230,15 @@ export default function DailyWalkinsPage() {
 
   const fetchData = async () => {
     try {
-      const [categoriesRes, visitorsRes] = await Promise.all([
+      const [categoriesRes, visitorsRes, sessionsRes] = await Promise.all([
         axios.get("/api/categories"),
         axios.get("/api/visitors"),
+        axios.get("/api/sessions"),
       ]);
 
       setCategories(categoriesRes.data.categories);
       setVisitors(visitorsRes.data.visitors);
+      setAllSessions(sessionsRes.data.sessions || []);
 
       // Fetch phone lookups for visitors
       const lookups: Record<string, PhoneLookup> = {};
@@ -266,20 +267,14 @@ export default function DailyWalkinsPage() {
     }
   };
 
-  const fetchVisitorSessions = async (visitorId: string) => {
+  const fetchAllSessions = async () => {
     setLoadingSessions(true);
     try {
       const response = await axios.get("/api/sessions");
-      const allSessions = response.data.sessions;
-      const visitorSessions = allSessions.filter(
-        (s: Session) => s.visitor.id === visitorId
-      );
-      setVisitorSessions(visitorSessions);
-      // Reset expanded sessions when fetching new visitor sessions
-      setExpandedSessions(new Set());
+      setAllSessions(response.data.sessions || []);
     } catch (error) {
       console.error("Failed to fetch sessions:", error);
-      setVisitorSessions([]);
+      setAllSessions([]);
     } finally {
       setLoadingSessions(false);
     }
@@ -335,8 +330,24 @@ export default function DailyWalkinsPage() {
 
   const handleViewSessions = async (visitor: Visitor) => {
     setSelectedVisitorId(visitor.id);
-    setSessionsDialogOpen(true);
-    await fetchVisitorSessions(visitor.id);
+    setActiveTab("sessions");
+    
+    // Fetch all sessions if not already loaded
+    if (allSessions.length === 0) {
+      await fetchAllSessions();
+    }
+    
+    // Find and expand the latest session for this visitor
+    const visitorSessions = allSessions
+      .filter((s: Session) => s.visitor.id === visitor.id)
+      .sort((a: Session, b: Session) => 
+        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+      );
+    
+    if (visitorSessions.length > 0) {
+      // Expand the latest session
+      setExpandedSessions(new Set([visitorSessions[0].id]));
+    }
   };
 
   const handleTestDriveSubmit = async (e: React.FormEvent) => {
@@ -371,9 +382,7 @@ export default function DailyWalkinsPage() {
           feedback: "",
         });
         // Refresh sessions
-        if (selectedVisitorId) {
-          await fetchVisitorSessions(selectedVisitorId);
-        }
+        await fetchAllSessions();
       } else {
         throw new Error(response.data.error || "Failed to create test drive");
       }
@@ -405,9 +414,7 @@ export default function DailyWalkinsPage() {
         setExitData({ exitFeedback: "", exitRating: "" });
 
         // Refresh sessions
-        if (selectedVisitorId) {
-          await fetchVisitorSessions(selectedVisitorId);
-        }
+        await fetchAllSessions();
       } else {
         throw new Error(response.data.error || "Failed to exit session");
       }
@@ -475,7 +482,8 @@ export default function DailyWalkinsPage() {
           modelIds: [],
         });
         setVisitorDialogOpen(false);
-        fetchData();
+        await fetchData();
+        await fetchAllSessions();
 
         // Show warning if WhatsApp message failed but visitor was created
         if (response.data.message?.status === "failed") {
@@ -554,7 +562,8 @@ export default function DailyWalkinsPage() {
       setFoundVisitor(null);
       setVisitReason("");
       setExistingVisitorModelIds([]);
-      fetchData();
+      await fetchData();
+      await fetchAllSessions();
     } catch (err: any) {
       setVisitorError(err.response?.data?.error || "Failed to create session");
     } finally {
@@ -647,8 +656,15 @@ export default function DailyWalkinsPage() {
         </div>
       </div>
 
-      {/* Visitors Section */}
-      <div className="space-y-6">
+      {/* Tabs Section */}
+      <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as "visitors" | "sessions")} className="space-y-6">
+        <TabsList className="grid w-full grid-cols-2">
+          <TabsTrigger value="visitors">Visitors</TabsTrigger>
+          <TabsTrigger value="sessions">Sessions</TabsTrigger>
+        </TabsList>
+
+        {/* Visitors Tab */}
+        <TabsContent value="visitors" className="space-y-6 mt-6">
         <div className="flex flex-col sm:flex-row gap-4 justify-between items-start sm:items-center">
           <Dialog open={visitorDialogOpen} onOpenChange={setVisitorDialogOpen}>
             <DialogTrigger asChild>
@@ -1223,39 +1239,58 @@ export default function DailyWalkinsPage() {
             })}
           </div>
         )}
-      </div>
+        </TabsContent>
 
-      {/* Sessions Popup Dialog */}
-      <Dialog open={sessionsDialogOpen} onOpenChange={setSessionsDialogOpen}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto p-4 sm:p-6">
-          <DialogHeader>
-            <DialogTitle>
-              {selectedVisitorId &&
-                (() => {
-                  const visitor = visitors.find(
-                    (v) => v.id === selectedVisitorId
-                  );
-                  return visitor
-                    ? `Sessions for ${visitor.firstName} ${visitor.lastName}`
-                    : "Sessions";
-                })()}
-            </DialogTitle>
-            <DialogDescription>
-              View all sessions and details for this visitor
-            </DialogDescription>
-          </DialogHeader>
+        {/* Sessions Tab */}
+        <TabsContent value="sessions" className="space-y-6 mt-6">
+          {/* Visitor Info Header (when opened from visitor) */}
+          {selectedVisitorId && (() => {
+            const visitor = visitors.find((v) => v.id === selectedVisitorId);
+            if (!visitor) return null;
+            const visitorSessions = allSessions.filter((s: Session) => s.visitor.id === selectedVisitorId);
+            return (
+              <Card className="bg-muted/30">
+                <CardContent className="pt-6">
+                  <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                    <div>
+                      <h3 className="text-lg font-semibold">{visitor.firstName} {visitor.lastName}</h3>
+                      <p className="text-sm text-muted-foreground mt-1">{visitor.whatsappNumber}</p>
+                      <p className="text-xs text-muted-foreground mt-1">
+                        {visitorSessions.length} session{visitorSessions.length !== 1 ? "s" : ""} • {visitorSessions.length} visit{visitorSessions.length !== 1 ? "s" : ""} to showroom
+                      </p>
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setSelectedVisitorId(null)}
+                    >
+                      Clear Filter
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })()}
 
           {loadingSessions ? (
             <div className="flex items-center justify-center py-12">
               <Loader2 className="h-8 w-8 animate-spin text-primary" />
             </div>
-          ) : visitorSessions.length === 0 ? (
-            <div className="text-center py-12 text-muted-foreground">
-              <p className="text-sm">No sessions found for this visitor.</p>
-            </div>
+          ) : allSessions.length === 0 ? (
+            <Card>
+              <CardContent className="pt-6">
+                <div className="text-center py-8 text-muted-foreground">
+                  <UserCheck className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                  <p className="text-sm sm:text-base">No sessions found.</p>
+                </div>
+              </CardContent>
+            </Card>
           ) : (
-            <div className="space-y-4 mt-4">
-              {visitorSessions.map((session) => {
+            <div className="space-y-4">
+              {(selectedVisitorId 
+                ? allSessions.filter((s: Session) => s.visitor.id === selectedVisitorId)
+                : allSessions
+              ).map((session: Session) => {
                 const isExited = session.status === "exited";
                 const hasTestDrives = session.testDrives.length > 0;
                 const isExpanded = expandedSessions.has(session.id);
@@ -1287,7 +1322,7 @@ export default function DailyWalkinsPage() {
                               />
                               <div className="flex-1 min-w-0">
                                 <CardTitle className="text-sm sm:text-base">
-                                  Session {formatDateTime(session.createdAt)}
+                                  {session.visitor.firstName} {session.visitor.lastName} - Session {formatDateTime(session.createdAt)}
                                 </CardTitle>
                                 <CardDescription className="text-xs mt-1">
                                   Status: {session.status}
@@ -1295,8 +1330,7 @@ export default function DailyWalkinsPage() {
                                     <span className="ml-2">
                                       •{" "}
                                       {session.reason.length > 40
-                                        ? session.reason.substring(0, 40) +
-                                          "..."
+                                        ? session.reason.substring(0, 40) + "..."
                                         : session.reason}
                                     </span>
                                   )}
@@ -1441,8 +1475,8 @@ export default function DailyWalkinsPage() {
               })}
             </div>
           )}
-        </DialogContent>
-      </Dialog>
+        </TabsContent>
+      </Tabs>
 
       {/* Test Drive Dialog */}
       <Dialog open={testDriveDialogOpen} onOpenChange={setTestDriveDialogOpen}>
