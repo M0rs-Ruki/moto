@@ -105,6 +105,15 @@ export async function POST(request: NextRequest) {
           section: "digital_enquiry",
           dealershipId: dealership.id,
         },
+        {
+          name: "Delivery Completion",
+          templateId: "",
+          templateName: "",
+          language: "en_US",
+          type: "delivery_completion",
+          section: "delivery_update",
+          dealershipId: dealership.id,
+        },
       ],
     });
 

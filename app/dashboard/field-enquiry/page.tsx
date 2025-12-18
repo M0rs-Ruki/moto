@@ -1,7 +1,7 @@
 "use client";
 
 import { Card, CardContent } from "@/components/ui/card";
-import { MapPin, Construction } from "lucide-react";
+import { Construction } from "lucide-react";
 
 export default function FieldEnquiryPage() {
   return (
@@ -34,4 +34,3 @@ export default function FieldEnquiryPage() {
     </div>
   );
 }
-

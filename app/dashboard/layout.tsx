@@ -7,11 +7,6 @@ import Link from "next/link";
 import { ThemeSwitcher } from "@/components/theme-switcher";
 import { Button } from "@/components/ui/button";
 import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@/components/ui/collapsible";
-import {
   Users,
   Settings,
   LogOut,
@@ -25,7 +20,6 @@ import {
   MessageSquare,
   Package,
   MapPin,
-  ChevronDown,
 } from "lucide-react";
 
 interface User {
@@ -50,11 +44,6 @@ export default function DashboardLayout({
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [sidebarOpen, setSidebarOpen] = useState(false);
-
-  // Track which sections are open
-  const [openSections, setOpenSections] = useState<Set<string>>(
-    new Set(["daily-walkins"]) // Default to open
-  );
 
   useEffect(() => {
     fetchUser();
@@ -189,115 +178,42 @@ export default function DashboardLayout({
             </Link>
 
             {/* Field Enquiry Section */}
-            <Collapsible
-              open={openSections.has("field-enquiry")}
-              onOpenChange={(open) => {
-                setOpenSections((prev) => {
-                  const newSet = new Set(prev);
-                  if (open) {
-                    newSet.add("field-enquiry");
-                  } else {
-                    newSet.delete("field-enquiry");
-                  }
-                  return newSet;
-                });
-              }}
+            <Link
+              href="/dashboard/field-enquiry"
+              onClick={() => setSidebarOpen(false)}
             >
-              <CollapsibleTrigger asChild>
-                <Button
-                  variant="ghost"
-                  className="w-full justify-between text-left"
-                >
-                  <div className="flex items-center">
-                    <MapPin className="mr-2 h-4 w-4 flex-shrink-0" />
-                    <span className="truncate">Field Enquiry</span>
-                  </div>
-                  <ChevronDown
-                    className={`h-4 w-4 transition-transform ${
-                      openSections.has("field-enquiry") ? "rotate-180" : ""
-                    }`}
-                  />
-                </Button>
-              </CollapsibleTrigger>
-              <CollapsibleContent>
-                <div className="ml-6 space-y-1 mt-1">
-                  <Link
-                    href="/dashboard/field-enquiry"
-                    onClick={() => setSidebarOpen(false)}
-                  >
-                    <Button
-                      variant={
-                        pathname === "/dashboard/field-enquiry"
-                          ? "secondary"
-                          : "ghost"
-                      }
-                      className="w-full justify-start text-left text-sm"
-                      size="sm"
-                    >
-                      <MapPin className="mr-2 h-3 w-3 flex-shrink-0" />
-                      <span className="truncate">Coming Soon</span>
-                    </Button>
-                  </Link>
-                </div>
-              </CollapsibleContent>
-            </Collapsible>
+              <Button
+                variant={
+                  pathname === "/dashboard/field-enquiry" ||
+                  pathname?.startsWith("/dashboard/field-enquiry/")
+                    ? "secondary"
+                    : "ghost"
+                }
+                className="w-full justify-start text-left"
+              >
+                <MapPin className="mr-2 h-4 w-4 flex-shrink-0" />
+                <span className="truncate">Field Enquiry</span>
+              </Button>
+            </Link>
 
             {/* Delivery Update Section */}
-            <Collapsible
-              open={openSections.has("delivery-update")}
-              onOpenChange={(open) => {
-                setOpenSections((prev) => {
-                  const newSet = new Set(prev);
-                  if (open) {
-                    newSet.add("delivery-update");
-                  } else {
-                    newSet.delete("delivery-update");
-                  }
-                  return newSet;
-                });
-              }}
+            <Link
+              href="/dashboard/delivery-update"
+              onClick={() => setSidebarOpen(false)}
             >
-              <CollapsibleTrigger asChild>
-                <Button
-                  variant="ghost"
-                  className="w-full justify-between text-left"
-                >
-                  <div className="flex items-center">
-                    <Package className="mr-2 h-4 w-4 flex-shrink-0" />
-                    <span className="truncate">Delivery Update</span>
-                  </div>
-                  <ChevronDown
-                    className={`h-4 w-4 transition-transform ${
-                      openSections.has("delivery-update") ? "rotate-180" : ""
-                    }`}
-                  />
-                </Button>
-              </CollapsibleTrigger>
-              <CollapsibleContent>
-                <div className="ml-6 space-y-1 mt-1">
-                  <Link
-                    href="/dashboard/delivery-update"
-                    onClick={() => setSidebarOpen(false)}
-                  >
-                    <Button
-                      variant={
-                        pathname === "/dashboard/delivery-update" ||
-                        pathname?.startsWith(
-                          "/dashboard/delivery-update/tickets"
-                        )
-                          ? "secondary"
-                          : "ghost"
-                      }
-                      className="w-full justify-start text-left text-sm"
-                      size="sm"
-                    >
-                      <Package className="mr-2 h-3 w-3 flex-shrink-0" />
-                      <span className="truncate">Tickets</span>
-                    </Button>
-                  </Link>
-                </div>
-              </CollapsibleContent>
-            </Collapsible>
+              <Button
+                variant={
+                  pathname === "/dashboard/delivery-update" ||
+                  pathname?.startsWith("/dashboard/delivery-update/")
+                    ? "secondary"
+                    : "ghost"
+                }
+                className="w-full justify-start text-left"
+              >
+                <Package className="mr-2 h-4 w-4 flex-shrink-0" />
+                <span className="truncate">Delivery Update</span>
+              </Button>
+            </Link>
 
             {/* Global Settings - Always visible */}
             <div className="pt-2 border-t mt-2">

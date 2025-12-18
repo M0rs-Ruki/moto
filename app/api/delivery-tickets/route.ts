@@ -260,7 +260,7 @@ export async function GET(request: NextRequest) {
         },
       },
       orderBy: {
-        deliveryDate: "asc",
+        createdAt: "desc",
       },
     });
 
