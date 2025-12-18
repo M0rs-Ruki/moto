@@ -94,6 +94,9 @@ export default function DigitalEnquiryPage() {
   const [openModelCategories, setOpenModelCategories] = useState<Set<string>>(
     new Set()
   );
+  const [expandedVariants, setExpandedVariants] = useState<Set<string>>(
+    new Set()
+  );
 
   const [formData, setFormData] = useState({
     firstName: "",
@@ -166,6 +169,7 @@ export default function DigitalEnquiryPage() {
         ...formData,
         leadSourceId: formData.leadSourceId || null,
         interestedModelId: formData.interestedModelId || null,
+        interestedVariantId: formData.interestedVariantId || null,
       });
 
       if (response.data.success) {
@@ -180,6 +184,7 @@ export default function DigitalEnquiryPage() {
           leadSourceId: "",
           leadScope: "medium",
           interestedModelId: "",
+          interestedVariantId: "",
         });
         fetchData();
       }
@@ -546,46 +551,133 @@ export default function DigitalEnquiryPage() {
                           <CollapsibleContent className="mt-1.5 space-y-1">
                             {category.models.map((model) => {
                               const isModelSelected =
-                                formData.interestedModelId === model.id;
+                                formData.interestedModelId === model.id &&
+                                !formData.interestedVariantId;
+                              const hasVariants =
+                                model.variants && model.variants.length > 0;
                               return (
-                                <label
-                                  key={model.id}
-                                  className="flex items-center gap-2.5 px-2 py-1.5 rounded hover:bg-muted/30 cursor-pointer transition-colors group"
-                                >
-                                  <div className="relative flex items-center justify-center shrink-0">
-                                    <div
-                                      className={`flex items-center justify-center w-5 h-5 rounded-full border-2 transition-all ${
-                                        isModelSelected
-                                          ? "bg-primary border-primary"
-                                          : "bg-background border-border hover:border-primary/50"
-                                      }`}
-                                    >
-                                      {isModelSelected && (
-                                        <div className="w-2 h-2 rounded-full bg-primary-foreground" />
-                                      )}
+                                <div key={model.id} className="space-y-0.5">
+                                  <label className="flex items-center gap-2.5 px-2 py-1.5 rounded hover:bg-muted/30 cursor-pointer transition-colors group">
+                                    <div className="relative flex items-center justify-center shrink-0">
+                                      <div
+                                        className={`flex items-center justify-center w-5 h-5 rounded-full border-2 transition-all ${
+                                          isModelSelected
+                                            ? "bg-primary border-primary"
+                                            : "bg-background border-border hover:border-primary/50"
+                                        }`}
+                                      >
+                                        {isModelSelected && (
+                                          <div className="w-2 h-2 rounded-full bg-primary-foreground" />
+                                        )}
+                                      </div>
+                                      <input
+                                        type="radio"
+                                        name="interestedModel"
+                                        checked={isModelSelected}
+                                        onChange={() =>
+                                          setFormData({
+                                            ...formData,
+                                            interestedModelId: model.id,
+                                            interestedVariantId: "",
+                                          })
+                                        }
+                                        className="absolute opacity-0 cursor-pointer w-5 h-5"
+                                      />
                                     </div>
-                                    <input
-                                      type="radio"
-                                      name="interestedModel"
-                                      checked={isModelSelected}
-                                      onChange={() =>
-                                        setFormData({
-                                          ...formData,
-                                          interestedModelId: model.id,
-                                        })
-                                      }
-                                      className="absolute opacity-0 cursor-pointer w-5 h-5"
-                                    />
-                                  </div>
-                                  <span className="text-sm text-foreground flex-1">
-                                    {model.name}
-                                    {model.year && (
-                                      <span className="text-muted-foreground ml-1">
-                                        ({model.year})
-                                      </span>
-                                    )}
-                                  </span>
-                                </label>
+                                    <span className="text-sm text-foreground flex-1">
+                                      {model.name}
+                                      {model.year && (
+                                        <span className="text-muted-foreground ml-1">
+                                          ({model.year})
+                                        </span>
+                                      )}
+                                    </span>
+                                  </label>
+                                  {hasVariants && (
+                                    <Collapsible
+                                      open={expandedVariants.has(model.id)}
+                                      onOpenChange={(open) => {
+                                        setExpandedVariants((prev) => {
+                                          const newSet = new Set(prev);
+                                          if (open) {
+                                            newSet.add(model.id);
+                                          } else {
+                                            newSet.delete(model.id);
+                                          }
+                                          return newSet;
+                                        });
+                                      }}
+                                    >
+                                      <CollapsibleTrigger className="w-full flex items-center gap-2.5 px-2.5 py-2 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted/30 rounded transition-all">
+                                        <ChevronDown
+                                          className={`h-4 w-4 transition-transform ${
+                                            expandedVariants.has(model.id)
+                                              ? "rotate-180"
+                                              : ""
+                                          }`}
+                                        />
+                                        <span>
+                                          {model.variants.length} variant
+                                          {model.variants.length !== 1
+                                            ? "s"
+                                            : ""}
+                                        </span>
+                                      </CollapsibleTrigger>
+                                      <CollapsibleContent className="ml-6 space-y-1 mt-1">
+                                        {model.variants.map((variant) => {
+                                          const isVariantSelected =
+                                            formData.interestedModelId ===
+                                              model.id &&
+                                            formData.interestedVariantId ===
+                                              variant.id;
+                                          return (
+                                            <label
+                                              key={variant.id}
+                                              className="flex items-center gap-3 px-2.5 py-2 rounded hover:bg-muted/30 cursor-pointer transition-colors"
+                                            >
+                                              <div className="relative flex items-center justify-center shrink-0">
+                                                <div
+                                                  className={`flex items-center justify-center w-5 h-5 rounded-full border-2 transition-all ${
+                                                    isVariantSelected
+                                                      ? "bg-primary border-primary"
+                                                      : "bg-background border-border hover:border-primary/50"
+                                                  }`}
+                                                >
+                                                  {isVariantSelected && (
+                                                    <div className="w-2 h-2 rounded-full bg-primary-foreground" />
+                                                  )}
+                                                </div>
+                                                <input
+                                                  type="radio"
+                                                  name="interestedModel"
+                                                  checked={isVariantSelected}
+                                                  onChange={() =>
+                                                    setFormData({
+                                                      ...formData,
+                                                      interestedModelId:
+                                                        model.id,
+                                                      interestedVariantId:
+                                                        variant.id,
+                                                    })
+                                                  }
+                                                  className="absolute opacity-0 cursor-pointer w-5 h-5"
+                                                />
+                                              </div>
+                                              <span className="text-sm text-foreground flex-1">
+                                                {model.name}.{variant.name}
+                                                {model.year && (
+                                                  <span className="text-muted-foreground ml-1">
+                                                    ({model.year})
+                                                  </span>
+                                                )}
+                                              </span>
+                                            </label>
+                                          );
+                                        })}
+                                      </CollapsibleContent>
+                                    </Collapsible>
+                                  )}
+                                </div>
                               );
                             })}
                           </CollapsibleContent>

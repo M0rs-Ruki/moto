@@ -21,6 +21,7 @@ export async function POST(request: NextRequest) {
       description,
       deliveryDate,
       modelId,
+      variantId,
       sendNow,
     } = body;
 
@@ -126,6 +127,7 @@ export async function POST(request: NextRequest) {
         whatsappContactId,
         dealershipId: user.dealershipId,
         modelId,
+        variantId: variantId || null,
         messageSent: sendNow || false,
       },
       include: {

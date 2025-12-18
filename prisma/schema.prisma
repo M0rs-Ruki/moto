@@ -102,6 +102,8 @@ model VehicleVariant {
   // Relations
   visitorInterests VisitorInterest[]
   testDrives       TestDrive[]
+  digitalEnquiries DigitalEnquiry[]
+  deliveryTickets  DeliveryTicket[]
 
   @@unique([modelId, name])
   @@index([modelId])
@@ -280,6 +282,10 @@ model DigitalEnquiry {
   model             VehicleModel? @relation(fields: [interestedModelId], references: [id], onDelete: SetNull)
   interestedModelId String?
 
+  // Optional variant selection
+  variant             VehicleVariant? @relation(fields: [interestedVariantId], references: [id], onDelete: SetNull)
+  interestedVariantId String?
+
   // Relations
   sessions DigitalEnquirySession[]
 
@@ -327,6 +333,10 @@ model DeliveryTicket {
 
   model   VehicleModel @relation(fields: [modelId], references: [id], onDelete: Cascade)
   modelId String
+
+  // Optional variant selection
+  variant   VehicleVariant? @relation(fields: [variantId], references: [id], onDelete: SetNull)
+  variantId String?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

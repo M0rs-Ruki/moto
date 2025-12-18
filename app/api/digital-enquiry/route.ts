@@ -22,6 +22,7 @@ export async function POST(request: NextRequest) {
       leadSourceId,
       leadScope,
       interestedModelId,
+      interestedVariantId,
     } = body;
 
     // Validation
@@ -87,6 +88,7 @@ export async function POST(request: NextRequest) {
         dealershipId: user.dealershipId,
         leadSourceId: leadSourceId || null,
         interestedModelId: interestedModelId || null,
+        interestedVariantId: interestedVariantId || null,
       },
     });
 

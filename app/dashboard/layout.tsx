@@ -7,6 +7,11 @@ import Link from "next/link";
 import { ThemeSwitcher } from "@/components/theme-switcher";
 import { Button } from "@/components/ui/button";
 import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
+import {
   Users,
   Settings,
   LogOut,
@@ -111,155 +116,230 @@ export default function DashboardLayout({
 
       {/* Sidebar */}
       <aside
-        className={`fixed left-0 top-0 z-40 h-screen w-64 border-r bg-card shadow-lg transition-transform duration-200 ease-in-out md:translate-x-0 md:sticky md:top-0 md:w-64 md:shadow-none ${
+        className={`fixed left-0 top-0 z-40 h-screen w-16 border-r bg-gradient-to-b from-card to-card/95 shadow-lg transition-transform duration-200 ease-in-out md:translate-x-0 md:sticky md:top-0 md:w-16 md:shadow-none ${
           sidebarOpen ? "translate-x-0 pt-16 md:pt-0" : "-translate-x-full"
         }`}
       >
-        <div className="flex flex-col h-full p-4">
-          {/* Logo/Brand - Hidden on mobile with header */}
-          <div className="mb-8 hidden md:block">
-            <h1 className="text-xl font-bold">Showroom Manager</h1>
-            {user?.dealership && (
-              <p className="text-sm text-muted-foreground mt-1 truncate">
-                {user.dealership.name}
-              </p>
-            )}
-          </div>
-
-          {/* Navigation */}
-          <nav className="flex-1 space-y-1 overflow-y-auto">
-            {/* Dashboard - Always visible */}
-            <Link href="/dashboard" onClick={() => setSidebarOpen(false)}>
-              <Button
-                variant={pathname === "/dashboard" ? "secondary" : "ghost"}
-                className="w-full justify-start text-left"
-              >
-                <LayoutDashboard className="mr-2 h-4 w-4 flex-shrink-0" />
-                <span className="truncate">Dashboard</span>
-              </Button>
-            </Link>
-
-            {/* Daily Walkins */}
-            <Link
-              href="/dashboard/daily-walkins"
-              onClick={() => setSidebarOpen(false)}
-            >
-              <Button
-                variant={
-                  pathname === "/dashboard/daily-walkins" ||
-                  pathname?.startsWith("/dashboard/daily-walkins/")
-                    ? "secondary"
-                    : "ghost"
-                }
-                className="w-full justify-start text-left"
-              >
-                <DoorOpen className="mr-2 h-4 w-4 flex-shrink-0" />
-                <span className="truncate">Daily Walkins</span>
-              </Button>
-            </Link>
-
-            {/* Digital Enquiry Section */}
-            <Link
-              href="/dashboard/digital-enquiry"
-              onClick={() => setSidebarOpen(false)}
-            >
-              <Button
-                variant={
-                  pathname === "/dashboard/digital-enquiry" ||
-                  pathname?.startsWith("/dashboard/digital-enquiry/")
-                    ? "secondary"
-                    : "ghost"
-                }
-                className="w-full justify-start text-left"
-              >
-                <MessageSquare className="mr-2 h-4 w-4 flex-shrink-0" />
-                <span className="truncate">Digital Enquiry</span>
-              </Button>
-            </Link>
-
-            {/* Field Enquiry Section */}
-            <Link
-              href="/dashboard/field-enquiry"
-              onClick={() => setSidebarOpen(false)}
-            >
-              <Button
-                variant={
-                  pathname === "/dashboard/field-enquiry" ||
-                  pathname?.startsWith("/dashboard/field-enquiry/")
-                    ? "secondary"
-                    : "ghost"
-                }
-                className="w-full justify-start text-left"
-              >
-                <MapPin className="mr-2 h-4 w-4 flex-shrink-0" />
-                <span className="truncate">Field Enquiry</span>
-              </Button>
-            </Link>
-
-            {/* Delivery Update Section */}
-            <Link
-              href="/dashboard/delivery-update"
-              onClick={() => setSidebarOpen(false)}
-            >
-              <Button
-                variant={
-                  pathname === "/dashboard/delivery-update" ||
-                  pathname?.startsWith("/dashboard/delivery-update/")
-                    ? "secondary"
-                    : "ghost"
-                }
-                className="w-full justify-start text-left"
-              >
-                <Package className="mr-2 h-4 w-4 flex-shrink-0" />
-                <span className="truncate">Delivery Update</span>
-              </Button>
-            </Link>
-
-            {/* Settings - Always visible */}
-            <div className="pt-2 border-t mt-2">
-              <Link
-                href="/dashboard/global-settings"
-                onClick={() => setSidebarOpen(false)}
-              >
-                <Button
-                  variant={
-                    pathname === "/dashboard/global-settings"
-                      ? "secondary"
-                      : "ghost"
-                  }
-                  className="w-full justify-start text-left"
-                >
-                  <Globe className="mr-2 h-4 w-4 flex-shrink-0" />
-                  <span className="truncate">Settings</span>
-                </Button>
-              </Link>
-            </div>
-          </nav>
-
-          {/* User info and actions */}
-          <div className="border-t pt-4 space-y-2">
-            <div className="px-2 py-1 text-xs sm:text-sm text-muted-foreground truncate">
-              {user?.email}
-            </div>
-            <div className="flex items-center gap-2">
-              <div className="flex-1">
-                <ThemeSwitcher />
+        <div className="flex flex-col h-full items-center py-4">
+            {/* Logo - Hidden on mobile with header */}
+            <div className="mb-6 hidden md:flex items-center justify-center">
+              <div className="w-10 h-10 rounded-lg bg-primary flex items-center justify-center">
+                <span className="text-primary-foreground font-bold text-lg">SM</span>
               </div>
-              <Button
-                variant="outline"
-                size="icon"
-                onClick={handleLogout}
-                className="h-9 w-9"
-              >
-                <LogOut className="h-4 w-4" />
-              </Button>
+            </div>
+
+            {/* Navigation */}
+            <nav className="flex-1 flex flex-col items-center space-y-2 w-full px-2 overflow-y-auto">
+              {/* Dashboard */}
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Link href="/dashboard" onClick={() => setSidebarOpen(false)} className="w-full">
+                    <Button
+                      variant={pathname === "/dashboard" ? "secondary" : "ghost"}
+                      size="icon"
+                      className="w-full h-12 relative"
+                    >
+                      <LayoutDashboard className="h-5 w-5" />
+                      {pathname === "/dashboard" && (
+                        <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-8 bg-primary rounded-r-full" />
+                      )}
+                    </Button>
+                  </Link>
+                </TooltipTrigger>
+                <TooltipContent side="right">
+                  <p>Dashboard</p>
+                </TooltipContent>
+              </Tooltip>
+
+              {/* Daily Walkins */}
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Link
+                    href="/dashboard/daily-walkins"
+                    onClick={() => setSidebarOpen(false)}
+                    className="w-full"
+                  >
+                    <Button
+                      variant={
+                        pathname === "/dashboard/daily-walkins" ||
+                        pathname?.startsWith("/dashboard/daily-walkins/")
+                          ? "secondary"
+                          : "ghost"
+                      }
+                      size="icon"
+                      className="w-full h-12 relative"
+                    >
+                      <DoorOpen className="h-5 w-5" />
+                      {(pathname === "/dashboard/daily-walkins" ||
+                        pathname?.startsWith("/dashboard/daily-walkins/")) && (
+                        <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-8 bg-primary rounded-r-full" />
+                      )}
+                    </Button>
+                  </Link>
+                </TooltipTrigger>
+                <TooltipContent side="right">
+                  <p>Daily Walkins</p>
+                </TooltipContent>
+              </Tooltip>
+
+              {/* Digital Enquiry */}
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Link
+                    href="/dashboard/digital-enquiry"
+                    onClick={() => setSidebarOpen(false)}
+                    className="w-full"
+                  >
+                    <Button
+                      variant={
+                        pathname === "/dashboard/digital-enquiry" ||
+                        pathname?.startsWith("/dashboard/digital-enquiry/")
+                          ? "secondary"
+                          : "ghost"
+                      }
+                      size="icon"
+                      className="w-full h-12 relative"
+                    >
+                      <MessageSquare className="h-5 w-5" />
+                      {(pathname === "/dashboard/digital-enquiry" ||
+                        pathname?.startsWith("/dashboard/digital-enquiry/")) && (
+                        <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-8 bg-primary rounded-r-full" />
+                      )}
+                    </Button>
+                  </Link>
+                </TooltipTrigger>
+                <TooltipContent side="right">
+                  <p>Digital Enquiry</p>
+                </TooltipContent>
+              </Tooltip>
+
+              {/* Field Enquiry */}
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Link
+                    href="/dashboard/field-enquiry"
+                    onClick={() => setSidebarOpen(false)}
+                    className="w-full"
+                  >
+                    <Button
+                      variant={
+                        pathname === "/dashboard/field-enquiry" ||
+                        pathname?.startsWith("/dashboard/field-enquiry/")
+                          ? "secondary"
+                          : "ghost"
+                      }
+                      size="icon"
+                      className="w-full h-12 relative"
+                    >
+                      <MapPin className="h-5 w-5" />
+                      {(pathname === "/dashboard/field-enquiry" ||
+                        pathname?.startsWith("/dashboard/field-enquiry/")) && (
+                        <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-8 bg-primary rounded-r-full" />
+                      )}
+                    </Button>
+                  </Link>
+                </TooltipTrigger>
+                <TooltipContent side="right">
+                  <p>Field Enquiry</p>
+                </TooltipContent>
+              </Tooltip>
+
+              {/* Delivery Update */}
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Link
+                    href="/dashboard/delivery-update"
+                    onClick={() => setSidebarOpen(false)}
+                    className="w-full"
+                  >
+                    <Button
+                      variant={
+                        pathname === "/dashboard/delivery-update" ||
+                        pathname?.startsWith("/dashboard/delivery-update/")
+                          ? "secondary"
+                          : "ghost"
+                      }
+                      size="icon"
+                      className="w-full h-12 relative"
+                    >
+                      <Package className="h-5 w-5" />
+                      {(pathname === "/dashboard/delivery-update" ||
+                        pathname?.startsWith("/dashboard/delivery-update/")) && (
+                        <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-8 bg-primary rounded-r-full" />
+                      )}
+                    </Button>
+                  </Link>
+                </TooltipTrigger>
+                <TooltipContent side="right">
+                  <p>Delivery Update</p>
+                </TooltipContent>
+              </Tooltip>
+
+              {/* Settings */}
+              <div className="pt-2 border-t w-full mt-auto">
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Link
+                      href="/dashboard/global-settings"
+                      onClick={() => setSidebarOpen(false)}
+                      className="w-full"
+                    >
+                      <Button
+                        variant={
+                          pathname === "/dashboard/global-settings"
+                            ? "secondary"
+                            : "ghost"
+                        }
+                        size="icon"
+                        className="w-full h-12 relative"
+                      >
+                        <Globe className="h-5 w-5" />
+                        {pathname === "/dashboard/global-settings" && (
+                          <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-8 bg-primary rounded-r-full" />
+                        )}
+                      </Button>
+                    </Link>
+                  </TooltipTrigger>
+                  <TooltipContent side="right">
+                    <p>Settings</p>
+                  </TooltipContent>
+                </Tooltip>
+              </div>
+            </nav>
+
+            {/* User actions */}
+            <div className="border-t w-full pt-4 space-y-2 flex flex-col items-center">
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div>
+                    <ThemeSwitcher />
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent side="right">
+                  <p>Theme</p>
+                </TooltipContent>
+              </Tooltip>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    onClick={handleLogout}
+                    className="h-12 w-12"
+                  >
+                    <LogOut className="h-5 w-5" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent side="right">
+                  <p>Logout</p>
+                </TooltipContent>
+              </Tooltip>
             </div>
           </div>
-        </div>
       </aside>
 
       {/* Main content */}
-      <main className="flex-1 w-full bg-gradient-to-br from-background to-muted/30 p-4 sm:p-6 md:p-8 mt-16 md:mt-0">
+      <main className="flex-1 w-full bg-gradient-to-br from-background to-muted/30 p-4 sm:p-6 md:p-8 mt-16 md:mt-0 md:ml-16">
         {children}
       </main>
     </div>
