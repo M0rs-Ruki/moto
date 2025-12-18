@@ -105,13 +105,17 @@ export async function GET(request: NextRequest) {
               retryCount: scheduledMessage.retryCount + 1,
             },
           });
-          return { success: false, reason: "Template not fully configured (missing Template ID or Template Name)" };
+          return {
+            success: false,
+            reason:
+              "Template not fully configured (missing Template ID or Template Name)",
+          };
         }
 
         try {
-          const deliveryDateStr = new Date(
-            ticket.deliveryDate
-          ).toLocaleDateString();
+          const modelName = ticket.model
+            ? `${ticket.model.category.name} - ${ticket.model.name}`
+            : "N/A";
 
           await whatsappClient.sendTemplate({
             contactId: ticket.whatsappContactId,
@@ -119,7 +123,7 @@ export async function GET(request: NextRequest) {
             templateName: template.templateName,
             templateId: template.templateId,
             templateLanguage: template.language,
-            parameters: [deliveryDateStr],
+            parameters: [modelName],
           });
 
           // Mark as sent
@@ -203,4 +207,3 @@ export async function GET(request: NextRequest) {
     );
   }
 }
-

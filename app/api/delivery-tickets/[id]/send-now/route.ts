@@ -37,10 +37,7 @@ export async function POST(
     });
 
     if (!ticket) {
-      return NextResponse.json(
-        { error: "Ticket not found" },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: "Ticket not found" }, { status: 404 });
     }
 
     if (!ticket.whatsappContactId) {
@@ -69,14 +66,20 @@ export async function POST(
 
     if (!template) {
       return NextResponse.json(
-        { error: "Delivery template not configured. Please add a Delivery Reminder template in Global Settings." },
+        {
+          error:
+            "Delivery template not configured. Please add a Delivery Reminder template in Global Settings.",
+        },
         { status: 400 }
       );
     }
 
     if (!template.templateId || !template.templateName) {
       return NextResponse.json(
-        { error: "Delivery template is not fully configured. Please fill in Template ID and Template Name in Global Settings." },
+        {
+          error:
+            "Delivery template is not fully configured. Please fill in Template ID and Template Name in Global Settings.",
+        },
         { status: 400 }
       );
     }
@@ -99,7 +102,9 @@ export async function POST(
     let messageError = null;
 
     try {
-      const deliveryDateStr = new Date(ticket.deliveryDate).toLocaleDateString();
+      const modelName = ticket.model
+        ? `${ticket.model.category.name} - ${ticket.model.name}`
+        : "N/A";
 
       await whatsappClient.sendTemplate({
         contactId: ticket.whatsappContactId,
@@ -107,7 +112,7 @@ export async function POST(
         templateName: template.templateName,
         templateId: template.templateId,
         templateLanguage: template.language,
-        parameters: [deliveryDateStr],
+        parameters: [modelName],
       });
 
       // Update ticket
@@ -136,4 +141,3 @@ export async function POST(
     );
   }
 }
-

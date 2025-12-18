@@ -128,6 +128,13 @@ export async function POST(request: NextRequest) {
         modelId,
         messageSent: sendNow || false,
       },
+      include: {
+        model: {
+          include: {
+            category: true,
+          },
+        },
+      },
     });
 
     let scheduledMessageId = null;
@@ -157,9 +164,11 @@ export async function POST(request: NextRequest) {
       template.templateId &&
       template.templateName
     ) {
-      // Send message immediately with delivery data
+      // Send message immediately with car model
       try {
-        const deliveryDateStr = deliveryDateObj.toLocaleDateString();
+        const modelName = ticket.model
+          ? `${ticket.model.category.name} - ${ticket.model.name}`
+          : "N/A";
 
         await whatsappClient.sendTemplate({
           contactId: whatsappContactId,
@@ -167,7 +176,7 @@ export async function POST(request: NextRequest) {
           templateName: template.templateName,
           templateId: template.templateId,
           templateLanguage: template.language,
-          parameters: [deliveryDateStr],
+          parameters: [modelName],
         });
         messageStatus = "sent";
 
