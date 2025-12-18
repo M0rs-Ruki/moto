@@ -110,6 +110,7 @@ export default function DeliveryUpdatePage() {
     description: "",
     deliveryDate: "",
     modelId: "",
+    variantId: "",
     sendNow: false,
   });
 
@@ -627,7 +628,7 @@ export default function DeliveryUpdatePage() {
                                       )}
                                     </span>
                                   </label>
-                                  {hasVariants && (
+                                  {hasVariants && model.variants && (
                                     <Collapsible
                                       open={expandedVariants.has(model.id)}
                                       onOpenChange={(open) => {
@@ -651,14 +652,14 @@ export default function DeliveryUpdatePage() {
                                           }`}
                                         />
                                         <span>
-                                          {model.variants.length} variant
-                                          {model.variants.length !== 1
+                                          {model.variants?.length || 0} variant
+                                          {(model.variants?.length || 0) !== 1
                                             ? "s"
                                             : ""}
                                         </span>
                                       </CollapsibleTrigger>
                                       <CollapsibleContent className="ml-6 space-y-1 mt-1">
-                                        {model.variants.map((variant) => {
+                                        {model.variants?.map((variant) => {
                                           const isVariantSelected =
                                             formData.modelId === model.id &&
                                             formData.variantId === variant.id;

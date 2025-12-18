@@ -108,6 +108,7 @@ export default function DigitalEnquiryPage() {
     leadSourceId: "",
     leadScope: "medium",
     interestedModelId: "",
+    interestedVariantId: "",
   });
 
   useEffect(() => {
@@ -617,14 +618,14 @@ export default function DigitalEnquiryPage() {
                                           }`}
                                         />
                                         <span>
-                                          {model.variants.length} variant
-                                          {model.variants.length !== 1
+                                          {model.variants?.length || 0} variant
+                                          {(model.variants?.length || 0) !== 1
                                             ? "s"
                                             : ""}
                                         </span>
                                       </CollapsibleTrigger>
                                       <CollapsibleContent className="ml-6 space-y-1 mt-1">
-                                        {model.variants.map((variant) => {
+                                        {model.variants?.map((variant) => {
                                           const isVariantSelected =
                                             formData.interestedModelId ===
                                               model.id &&

@@ -206,11 +206,6 @@ export async function DELETE(request: NextRequest) {
         id,
         dealershipId: user.dealershipId,
       },
-      include: {
-        digitalEnquiries: {
-          take: 1,
-        },
-      },
     });
 
     if (!existing) {
@@ -220,17 +215,7 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    // Check if it's being used by any digital enquiries
-    if (existing.digitalEnquiries.length > 0) {
-      return NextResponse.json(
-        {
-          error:
-            "Cannot delete lead source that is being used by digital enquiries",
-        },
-        { status: 400 }
-      );
-    }
-
+    // Delete the lead source (even if it's being used by digital enquiries)
     await prisma.leadSource.delete({
       where: { id },
     });
