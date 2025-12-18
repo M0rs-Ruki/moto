@@ -170,76 +170,23 @@ export default function DashboardLayout({
             </Link>
 
             {/* Digital Enquiry Section */}
-            <Collapsible
-              open={openSections.has("digital-enquiry")}
-              onOpenChange={(open) => {
-                setOpenSections((prev) => {
-                  const newSet = new Set(prev);
-                  if (open) {
-                    newSet.add("digital-enquiry");
-                  } else {
-                    newSet.delete("digital-enquiry");
-                  }
-                  return newSet;
-                });
-              }}
+            <Link
+              href="/dashboard/digital-enquiry"
+              onClick={() => setSidebarOpen(false)}
             >
-              <CollapsibleTrigger asChild>
-                <Button
-                  variant="ghost"
-                  className="w-full justify-between text-left"
-                >
-                  <div className="flex items-center">
-                    <MessageSquare className="mr-2 h-4 w-4 flex-shrink-0" />
-                    <span className="truncate">Digital Enquiry</span>
-                  </div>
-                  <ChevronDown
-                    className={`h-4 w-4 transition-transform ${
-                      openSections.has("digital-enquiry") ? "rotate-180" : ""
-                    }`}
-                  />
-                </Button>
-              </CollapsibleTrigger>
-              <CollapsibleContent>
-                <div className="ml-6 space-y-1 mt-1">
-                  <Link
-                    href="/dashboard/digital-enquiry"
-                    onClick={() => setSidebarOpen(false)}
-                  >
-                    <Button
-                      variant={
-                        pathname === "/dashboard/digital-enquiry" ||
-                        pathname === "/dashboard/digital-enquiry/create"
-                          ? "secondary"
-                          : "ghost"
-                      }
-                      className="w-full justify-start text-left text-sm"
-                      size="sm"
-                    >
-                      <MessageSquare className="mr-2 h-3 w-3 flex-shrink-0" />
-                      <span className="truncate">Inquiries</span>
-                    </Button>
-                  </Link>
-                  <Link
-                    href="/dashboard/digital-enquiry/sessions"
-                    onClick={() => setSidebarOpen(false)}
-                  >
-                    <Button
-                      variant={
-                        pathname === "/dashboard/digital-enquiry/sessions"
-                          ? "secondary"
-                          : "ghost"
-                      }
-                      className="w-full justify-start text-left text-sm"
-                      size="sm"
-                    >
-                      <FileText className="mr-2 h-3 w-3 flex-shrink-0" />
-                      <span className="truncate">Sessions</span>
-                    </Button>
-                  </Link>
-                </div>
-              </CollapsibleContent>
-            </Collapsible>
+              <Button
+                variant={
+                  pathname === "/dashboard/digital-enquiry" ||
+                  pathname?.startsWith("/dashboard/digital-enquiry/")
+                    ? "secondary"
+                    : "ghost"
+                }
+                className="w-full justify-start text-left"
+              >
+                <MessageSquare className="mr-2 h-4 w-4 flex-shrink-0" />
+                <span className="truncate">Digital Enquiry</span>
+              </Button>
+            </Link>
 
             {/* Field Enquiry Section */}
             <Collapsible
