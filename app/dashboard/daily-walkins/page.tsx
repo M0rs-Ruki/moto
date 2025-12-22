@@ -1,7 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect, useCallback } from "react";
 import axios from "axios";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -49,7 +48,6 @@ import {
   X,
   Car,
   LogOut,
-  Star,
   Check,
 } from "lucide-react";
 import Link from "next/link";
@@ -137,26 +135,16 @@ interface PhoneLookup {
 }
 
 export default function DailyWalkinsPage() {
-  const router = useRouter();
   const [categories, setCategories] = useState<VehicleCategory[]>([]);
   const [loading, setLoading] = useState(true);
 
   // Visitors state
   const [visitors, setVisitors] = useState<Visitor[]>([]);
   const [filteredVisitors, setFilteredVisitors] = useState<Visitor[]>([]);
+  const [searchQuery, setSearchQuery] = useState("");
   const [visitorDialogOpen, setVisitorDialogOpen] = useState(false);
-  const [existingVisitorDialogOpen, setExistingVisitorDialogOpen] =
-    useState(false);
   const [visitorSubmitting, setVisitorSubmitting] = useState(false);
   const [visitorError, setVisitorError] = useState("");
-  const [searching, setSearching] = useState(false);
-  const [searchPhone, setSearchPhone] = useState("");
-  const [foundVisitor, setFoundVisitor] = useState<any>(null);
-  const [visitReason, setVisitReason] = useState("");
-  const [creatingSession, setCreatingSession] = useState(false);
-  const [existingVisitorModelIds, setExistingVisitorModelIds] = useState<
-    Array<string | { modelId: string; variantId?: string }>
-  >([]);
   const [openModelCategories, setOpenModelCategories] = useState<Set<string>>(
     new Set()
   );
@@ -168,13 +156,19 @@ export default function DailyWalkinsPage() {
   );
 
   // Tab state
-  const [activeTab, setActiveTab] = useState<"visitors" | "sessions">("visitors");
-  const [selectedVisitorId, setSelectedVisitorId] = useState<string | null>(null);
-  
+  const [activeTab, setActiveTab] = useState<"visitors" | "sessions">(
+    "visitors"
+  );
+  const [selectedVisitorId, setSelectedVisitorId] = useState<string | null>(
+    null
+  );
+
   // Sessions state
   const [allSessions, setAllSessions] = useState<Session[]>([]);
   const [loadingSessions, setLoadingSessions] = useState(false);
-  const [expandedSessions, setExpandedSessions] = useState<Set<string>>(new Set());
+  const [expandedSessions, setExpandedSessions] = useState<Set<string>>(
+    new Set()
+  );
   const [selectedSession, setSelectedSession] = useState<Session | null>(null);
   const [testDriveDialogOpen, setTestDriveDialogOpen] = useState(false);
   const [sessionSubmitting, setSessionSubmitting] = useState(false);
@@ -210,10 +204,51 @@ export default function DailyWalkinsPage() {
     fetchData();
   }, []);
 
-  // Apply date filter
+  const applyFilters = useCallback(() => {
+    let filteredV = [...visitors];
+
+    // Apply date filter
+    if (dateFilter.startDate || dateFilter.endDate) {
+      const startDate = dateFilter.startDate
+        ? new Date(dateFilter.startDate)
+        : null;
+      const endDate = dateFilter.endDate ? new Date(dateFilter.endDate) : null;
+
+      if (startDate) startDate.setHours(0, 0, 0, 0);
+      if (endDate) endDate.setHours(23, 59, 59, 999);
+
+      filteredV = filteredV.filter((visitor) => {
+        const visitorDate = new Date(visitor.createdAt);
+        if (startDate && visitorDate < startDate) return false;
+        if (endDate && visitorDate > endDate) return false;
+        return true;
+      });
+    }
+
+    // Apply search filter
+    if (searchQuery.trim()) {
+      const query = searchQuery.trim().toLowerCase();
+      filteredV = filteredV.filter((visitor) => {
+        const fullName =
+          `${visitor.firstName} ${visitor.lastName}`.toLowerCase();
+        const phone = visitor.whatsappNumber.toLowerCase();
+        const email = visitor.email?.toLowerCase() || "";
+
+        return (
+          fullName.includes(query) ||
+          phone.includes(query) ||
+          email.includes(query)
+        );
+      });
+    }
+
+    setFilteredVisitors(filteredV);
+  }, [dateFilter, visitors, searchQuery]);
+
+  // Apply date filter and search
   useEffect(() => {
-    applyDateFilter();
-  }, [dateFilter, visitors]);
+    applyFilters();
+  }, [applyFilters]);
 
   const fetchData = async () => {
     try {
@@ -267,32 +302,12 @@ export default function DailyWalkinsPage() {
     }
   };
 
-  const applyDateFilter = () => {
-    if (!dateFilter.startDate && !dateFilter.endDate) {
-      setFilteredVisitors(visitors);
-      return;
-    }
-
-    const startDate = dateFilter.startDate
-      ? new Date(dateFilter.startDate)
-      : null;
-    const endDate = dateFilter.endDate ? new Date(dateFilter.endDate) : null;
-
-    if (startDate) startDate.setHours(0, 0, 0, 0);
-    if (endDate) endDate.setHours(23, 59, 59, 999);
-
-    const filteredV = visitors.filter((visitor) => {
-      const visitorDate = new Date(visitor.createdAt);
-      if (startDate && visitorDate < startDate) return false;
-      if (endDate && visitorDate > endDate) return false;
-      return true;
-    });
-
-    setFilteredVisitors(filteredV);
-  };
-
   const clearDateFilter = () => {
     setDateFilter({ startDate: "", endDate: "" });
+  };
+
+  const clearSearch = () => {
+    setSearchQuery("");
   };
 
   const formatDate = (dateString: string) => {
@@ -318,19 +333,20 @@ export default function DailyWalkinsPage() {
   const handleViewSessions = async (visitor: Visitor) => {
     setSelectedVisitorId(visitor.id);
     setActiveTab("sessions");
-    
+
     // Fetch all sessions if not already loaded
     if (allSessions.length === 0) {
       await fetchAllSessions();
     }
-    
+
     // Find and expand the latest session for this visitor
     const visitorSessions = allSessions
       .filter((s: Session) => s.visitor.id === visitor.id)
-      .sort((a: Session, b: Session) => 
-        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+      .sort(
+        (a: Session, b: Session) =>
+          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
       );
-    
+
     if (visitorSessions.length > 0) {
       // Expand the latest session
       setExpandedSessions(new Set([visitorSessions[0].id]));
@@ -487,72 +503,6 @@ export default function DailyWalkinsPage() {
     }
   };
 
-  const handleSearchVisitor = async () => {
-    if (!searchPhone.trim()) {
-      setVisitorError("Please enter a phone number");
-      return;
-    }
-
-    setSearching(true);
-    setVisitorError("");
-    setFoundVisitor(null);
-    setExistingVisitorModelIds([]);
-
-    try {
-      const response = await axios.get(
-        `/api/visitors?phone=${encodeURIComponent(searchPhone.trim())}`
-      );
-
-      if (response.data.found && response.data.visitor) {
-        setFoundVisitor(response.data.visitor);
-        if (response.data.visitor.interests) {
-          setExistingVisitorModelIds(
-            response.data.visitor.interests.map((i: any) => i.modelId)
-          );
-        }
-      } else {
-        setVisitorError(
-          "Visitor not found. You can create a new visitor instead."
-        );
-      }
-    } catch (err: any) {
-      setVisitorError(err.response?.data?.error || "Failed to search visitor");
-    } finally {
-      setSearching(false);
-    }
-  };
-
-  const handleCreateSessionForExistingVisitor = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!foundVisitor || !visitReason.trim()) {
-      setVisitorError("Please enter a reason for visit");
-      return;
-    }
-
-    setCreatingSession(true);
-    setVisitorError("");
-
-    try {
-      await axios.post("/api/visitors/session", {
-        visitorId: foundVisitor.id,
-        reason: visitReason,
-        modelIds: existingVisitorModelIds,
-      });
-
-      setExistingVisitorDialogOpen(false);
-      setSearchPhone("");
-      setFoundVisitor(null);
-      setVisitReason("");
-      setExistingVisitorModelIds([]);
-      await fetchData();
-      await fetchAllSessions();
-    } catch (err: any) {
-      setVisitorError(err.response?.data?.error || "Failed to create session");
-    } finally {
-      setCreatingSession(false);
-    }
-  };
-
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
@@ -639,7 +589,13 @@ export default function DailyWalkinsPage() {
       </div>
 
       {/* Tabs Section */}
-      <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as "visitors" | "sessions")} className="space-y-6">
+      <Tabs
+        value={activeTab}
+        onValueChange={(value) =>
+          setActiveTab(value as "visitors" | "sessions")
+        }
+        className="space-y-6"
+      >
         <TabsList className="grid w-full grid-cols-2">
           <TabsTrigger value="visitors">Visitors</TabsTrigger>
           <TabsTrigger value="sessions">Sessions</TabsTrigger>
@@ -647,612 +603,550 @@ export default function DailyWalkinsPage() {
 
         {/* Visitors Tab */}
         <TabsContent value="visitors" className="space-y-6 mt-6">
-        <div className="flex flex-col sm:flex-row gap-4 justify-between items-start sm:items-center">
-          <Dialog open={visitorDialogOpen} onOpenChange={setVisitorDialogOpen}>
-            <DialogTrigger asChild>
-              <Button className="w-full sm:w-auto">
-                <Plus className="mr-2 h-4 w-4" />
-                New Visitor
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto p-4 sm:p-6">
-              <DialogHeader className="space-y-2">
-                <DialogTitle>Add New Visitor</DialogTitle>
-                <DialogDescription className="text-xs sm:text-sm">
-                  Fill in visitor details and select interested models. A
-                  WhatsApp welcome message will be sent automatically.
-                </DialogDescription>
-              </DialogHeader>
-
-              <form onSubmit={handleVisitorSubmit} className="space-y-4 mt-4">
-                {visitorError && (
-                  <div className="bg-destructive/10 text-destructive text-xs sm:text-sm p-3 rounded">
-                    {visitorError}
-                  </div>
-                )}
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="firstName" className="text-sm">
-                      First Name *
-                    </Label>
-                    <Input
-                      id="firstName"
-                      placeholder="John"
-                      value={visitorFormData.firstName}
-                      onChange={(e) =>
-                        setVisitorFormData({
-                          ...visitorFormData,
-                          firstName: e.target.value,
-                        })
-                      }
-                      required
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="lastName" className="text-sm">
-                      Last Name *
-                    </Label>
-                    <Input
-                      id="lastName"
-                      placeholder="Doe"
-                      value={visitorFormData.lastName}
-                      onChange={(e) =>
-                        setVisitorFormData({
-                          ...visitorFormData,
-                          lastName: e.target.value,
-                        })
-                      }
-                      required
-                    />
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="whatsappNumber" className="text-sm">
-                    WhatsApp Number *
-                  </Label>
-                  <Input
-                    id="whatsappNumber"
-                    placeholder="+1234567890"
-                    value={visitorFormData.whatsappNumber}
-                    onChange={(e) =>
-                      setVisitorFormData({
-                        ...visitorFormData,
-                        whatsappNumber: e.target.value,
-                      })
-                    }
-                    required
-                  />
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="email" className="text-sm">
-                      Email
-                    </Label>
-                    <Input
-                      id="email"
-                      type="email"
-                      placeholder="john@example.com"
-                      value={visitorFormData.email}
-                      onChange={(e) =>
-                        setVisitorFormData({
-                          ...visitorFormData,
-                          email: e.target.value,
-                        })
-                      }
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="address" className="text-sm">
-                      Address
-                    </Label>
-                    <Input
-                      id="address"
-                      placeholder="123 Main St"
-                      value={visitorFormData.address}
-                      onChange={(e) =>
-                        setVisitorFormData({
-                          ...visitorFormData,
-                          address: e.target.value,
-                        })
-                      }
-                    />
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="reason" className="text-sm">
-                    Reason for Visit *
-                  </Label>
-                  <Textarea
-                    id="reason"
-                    placeholder="Why are they visiting?"
-                    value={visitorFormData.reason}
-                    onChange={(e) =>
-                      setVisitorFormData({
-                        ...visitorFormData,
-                        reason: e.target.value,
-                      })
-                    }
-                    required
-                  />
-                </div>
-
-                <div className="space-y-3">
-                  <Label className="text-sm font-semibold">
-                    Interested Models
-                  </Label>
-                  <div className="border border-border/40 rounded-lg bg-background p-3 max-h-64 overflow-y-auto">
-                    {categories.length === 0 ? (
-                      <p className="text-sm text-muted-foreground text-center py-6">
-                        No models available. Add models in Global Settings.
-                      </p>
-                    ) : (
-                      <div className="space-y-1">
-                        {categories.map((category) => {
-                          const isOpen = openModelCategories.has(category.id);
-                          return (
-                            <Collapsible
-                              key={category.id}
-                              open={isOpen}
-                              onOpenChange={(open) => {
-                                setOpenModelCategories((prev) => {
-                                  const newSet = new Set(prev);
-                                  if (open) {
-                                    newSet.add(category.id);
-                                  } else {
-                                    newSet.delete(category.id);
-                                  }
-                                  return newSet;
-                                });
-                              }}
-                            >
-                              <CollapsibleTrigger className="w-full flex items-center justify-between px-3 py-2 bg-muted/40 hover:bg-muted/60 rounded-md text-sm font-medium transition-colors">
-                                <span className="text-foreground">
-                                  {category.name}
-                                </span>
-                                <ChevronDown
-                                  className={`h-4 w-4 text-muted-foreground transition-transform ${
-                                    isOpen ? "rotate-180" : ""
-                                  }`}
-                                />
-                              </CollapsibleTrigger>
-                              <CollapsibleContent className="mt-1.5 space-y-1">
-                                {category.models.map((model) => {
-                                  const isModelSelected =
-                                    visitorFormData.modelIds.some(
-                                      (id) =>
-                                        (typeof id === "string" &&
-                                          id === model.id) ||
-                                        (typeof id === "object" &&
-                                          id.modelId === model.id &&
-                                          !id.variantId)
-                                    );
-                                  return (
-                                    <div key={model.id} className="space-y-0.5">
-                                      <label className="flex items-center gap-2.5 px-2 py-1.5 rounded hover:bg-muted/30 cursor-pointer transition-colors group">
-                                        <div className="relative flex items-center justify-center shrink-0">
-                                          <div
-                                            className={`flex items-center justify-center w-5 h-5 rounded border-2 transition-all ${
-                                              isModelSelected
-                                                ? "bg-primary border-primary"
-                                                : "bg-background border-border hover:border-primary/50"
-                                            }`}
-                                          >
-                                            {isModelSelected && (
-                                              <Check className="h-3.5 w-3.5 text-primary-foreground" />
-                                            )}
-                                          </div>
-                                          <input
-                                            type="checkbox"
-                                            checked={isModelSelected}
-                                            onChange={() =>
-                                              handleModelToggle(model.id)
-                                            }
-                                            className="absolute opacity-0 cursor-pointer w-5 h-5"
-                                          />
-                                        </div>
-                                        <span className="text-sm text-foreground flex-1">
-                                          {model.name}
-                                          {model.year && (
-                                            <span className="text-muted-foreground ml-1">
-                                              ({model.year})
-                                            </span>
-                                          )}
-                                        </span>
-                                      </label>
-                                      {model.variants &&
-                                        model.variants.length > 0 && (
-                                          <Collapsible
-                                            open={expandedVariants.has(
-                                              model.id
-                                            )}
-                                            onOpenChange={(open) => {
-                                              setExpandedVariants((prev) => {
-                                                const newSet = new Set(prev);
-                                                if (open) {
-                                                  newSet.add(model.id);
-                                                } else {
-                                                  newSet.delete(model.id);
-                                                }
-                                                return newSet;
-                                              });
-                                            }}
-                                          >
-                                            <CollapsibleTrigger className="w-full flex items-center gap-2.5 px-2.5 py-2 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted/30 rounded transition-all">
-                                              <ChevronDown
-                                                className={`h-4 w-4 transition-transform ${
-                                                  expandedVariants.has(model.id)
-                                                    ? "rotate-180"
-                                                    : ""
-                                                }`}
-                                              />
-                                              <span>
-                                                {model.variants.length} variant
-                                                {model.variants.length !== 1
-                                                  ? "s"
-                                                  : ""}
-                                              </span>
-                                            </CollapsibleTrigger>
-                                            <CollapsibleContent className="ml-6 space-y-1 mt-1">
-                                              {model.variants.map((variant) => {
-                                                const isVariantSelected =
-                                                  visitorFormData.modelIds.some(
-                                                    (id) =>
-                                                      typeof id === "object" &&
-                                                      id.modelId === model.id &&
-                                                      id.variantId ===
-                                                        variant.id
-                                                  );
-                                                return (
-                                                  <label
-                                                    key={variant.id}
-                                                    className="flex items-center gap-3 px-2.5 py-2 rounded hover:bg-muted/30 cursor-pointer transition-colors"
-                                                  >
-                                                    <div className="relative flex items-center justify-center shrink-0">
-                                                      <div
-                                                        className={`flex items-center justify-center w-5 h-5 rounded border-2 transition-all ${
-                                                          isVariantSelected
-                                                            ? "bg-primary border-primary"
-                                                            : "bg-background border-border hover:border-primary/50"
-                                                        }`}
-                                                      >
-                                                        {isVariantSelected && (
-                                                          <Check className="h-3.5 w-3.5 text-primary-foreground" />
-                                                        )}
-                                                      </div>
-                                                      <input
-                                                        type="checkbox"
-                                                        checked={
-                                                          isVariantSelected
-                                                        }
-                                                        onChange={() =>
-                                                          handleModelToggle(
-                                                            model.id,
-                                                            variant.id
-                                                          )
-                                                        }
-                                                        className="absolute opacity-0 cursor-pointer w-5 h-5"
-                                                      />
-                                                    </div>
-                                                    <span className="text-sm text-foreground flex-1">
-                                                      {model.name}.
-                                                      {variant.name}
-                                                    </span>
-                                                  </label>
-                                                );
-                                              })}
-                                            </CollapsibleContent>
-                                          </Collapsible>
-                                        )}
-                                    </div>
-                                  );
-                                })}
-                              </CollapsibleContent>
-                            </Collapsible>
-                          );
-                        })}
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                <div className="flex flex-col sm:flex-row justify-end gap-2">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    onClick={() => setVisitorDialogOpen(false)}
-                    className="w-full sm:w-auto"
-                  >
-                    Cancel
-                  </Button>
-                  <Button
-                    type="submit"
-                    disabled={visitorSubmitting}
-                    className="w-full sm:w-auto"
-                  >
-                    {visitorSubmitting ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Creating...
-                      </>
-                    ) : (
-                      <>
-                        <UserPlus className="mr-2 h-4 w-4" />
-                        Create & Send Welcome
-                      </>
-                    )}
-                  </Button>
-                </div>
-              </form>
-            </DialogContent>
-          </Dialog>
-
-          <Dialog
-            open={existingVisitorDialogOpen}
-            onOpenChange={setExistingVisitorDialogOpen}
-          >
-            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto p-4 sm:p-6">
-              <DialogHeader>
-                <DialogTitle>Create Session for Existing Visitor</DialogTitle>
-                <DialogDescription className="text-xs sm:text-sm">
-                  {foundVisitor
-                    ? `${foundVisitor.firstName} ${foundVisitor.lastName} - ${foundVisitor.whatsappNumber}`
-                    : "Search for a visitor by phone number"}
-                </DialogDescription>
-              </DialogHeader>
-
-              {!foundVisitor ? (
-                <div className="space-y-4 mt-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="searchPhone" className="text-sm">
-                      Phone Number
-                    </Label>
-                    <div className="flex gap-2">
-                      <Input
-                        id="searchPhone"
-                        placeholder="+1234567890"
-                        value={searchPhone}
-                        onChange={(e) => setSearchPhone(e.target.value)}
-                      />
-                      <Button
-                        type="button"
-                        onClick={handleSearchVisitor}
-                        disabled={searching}
-                      >
-                        {searching ? (
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                        ) : (
-                          <Search className="h-4 w-4" />
-                        )}
-                      </Button>
-                    </div>
-                  </div>
-                  {visitorError && (
-                    <div className="bg-destructive/10 text-destructive text-xs sm:text-sm p-3 rounded">
-                      {visitorError}
-                    </div>
-                  )}
-                </div>
-              ) : (
-                <form
-                  onSubmit={handleCreateSessionForExistingVisitor}
-                  className="space-y-4 mt-4"
+          {/* Search Bar */}
+          <div className="relative">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                type="text"
+                placeholder="Search by name, phone number, or email..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-10 pr-10"
+              />
+              {searchQuery && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={clearSearch}
+                  className="absolute right-1 top-1/2 transform -translate-y-1/2 h-7 w-7 p-0"
                 >
+                  <X className="h-4 w-4" />
+                </Button>
+              )}
+            </div>
+            {searchQuery && (
+              <p className="text-xs text-muted-foreground mt-2">
+                {filteredVisitors.length} result
+                {filteredVisitors.length !== 1 ? "s" : ""} found
+              </p>
+            )}
+          </div>
+
+          <div className="flex flex-col sm:flex-row gap-4 justify-between items-start sm:items-center">
+            <Dialog
+              open={visitorDialogOpen}
+              onOpenChange={setVisitorDialogOpen}
+            >
+              <DialogTrigger asChild>
+                <Button className="w-full sm:w-auto">
+                  <Plus className="mr-2 h-4 w-4" />
+                  New Visitor
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto p-4 sm:p-6">
+                <DialogHeader className="space-y-2">
+                  <DialogTitle>Add New Visitor</DialogTitle>
+                  <DialogDescription className="text-xs sm:text-sm">
+                    Fill in visitor details and select interested models. A
+                    WhatsApp welcome message will be sent automatically.
+                  </DialogDescription>
+                </DialogHeader>
+
+                <form onSubmit={handleVisitorSubmit} className="space-y-4 mt-4">
                   {visitorError && (
                     <div className="bg-destructive/10 text-destructive text-xs sm:text-sm p-3 rounded">
                       {visitorError}
                     </div>
                   )}
 
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="firstName" className="text-sm">
+                        First Name *
+                      </Label>
+                      <Input
+                        id="firstName"
+                        placeholder="John"
+                        value={visitorFormData.firstName}
+                        onChange={(e) =>
+                          setVisitorFormData({
+                            ...visitorFormData,
+                            firstName: e.target.value,
+                          })
+                        }
+                        required
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="lastName" className="text-sm">
+                        Last Name *
+                      </Label>
+                      <Input
+                        id="lastName"
+                        placeholder="Doe"
+                        value={visitorFormData.lastName}
+                        onChange={(e) =>
+                          setVisitorFormData({
+                            ...visitorFormData,
+                            lastName: e.target.value,
+                          })
+                        }
+                        required
+                      />
+                    </div>
+                  </div>
+
                   <div className="space-y-2">
-                    <Label htmlFor="visitReason" className="text-sm">
+                    <Label htmlFor="whatsappNumber" className="text-sm">
+                      WhatsApp Number *
+                    </Label>
+                    <Input
+                      id="whatsappNumber"
+                      placeholder="+1234567890"
+                      value={visitorFormData.whatsappNumber}
+                      onChange={(e) =>
+                        setVisitorFormData({
+                          ...visitorFormData,
+                          whatsappNumber: e.target.value,
+                        })
+                      }
+                      required
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="email" className="text-sm">
+                        Email
+                      </Label>
+                      <Input
+                        id="email"
+                        type="email"
+                        placeholder="john@example.com"
+                        value={visitorFormData.email}
+                        onChange={(e) =>
+                          setVisitorFormData({
+                            ...visitorFormData,
+                            email: e.target.value,
+                          })
+                        }
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="address" className="text-sm">
+                        Address
+                      </Label>
+                      <Input
+                        id="address"
+                        placeholder="123 Main St"
+                        value={visitorFormData.address}
+                        onChange={(e) =>
+                          setVisitorFormData({
+                            ...visitorFormData,
+                            address: e.target.value,
+                          })
+                        }
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label htmlFor="reason" className="text-sm">
                       Reason for Visit *
                     </Label>
                     <Textarea
-                      id="visitReason"
+                      id="reason"
                       placeholder="Why are they visiting?"
-                      value={visitReason}
-                      onChange={(e) => setVisitReason(e.target.value)}
+                      value={visitorFormData.reason}
+                      onChange={(e) =>
+                        setVisitorFormData({
+                          ...visitorFormData,
+                          reason: e.target.value,
+                        })
+                      }
                       required
                     />
+                  </div>
+
+                  <div className="space-y-3">
+                    <Label className="text-sm font-semibold">
+                      Interested Models
+                    </Label>
+                    <div className="border border-border/40 rounded-lg bg-background p-3 max-h-64 overflow-y-auto">
+                      {categories.length === 0 ? (
+                        <p className="text-sm text-muted-foreground text-center py-6">
+                          No models available. Add models in Global Settings.
+                        </p>
+                      ) : (
+                        <div className="space-y-1">
+                          {categories.map((category) => {
+                            const isOpen = openModelCategories.has(category.id);
+                            return (
+                              <Collapsible
+                                key={category.id}
+                                open={isOpen}
+                                onOpenChange={(open) => {
+                                  setOpenModelCategories((prev) => {
+                                    const newSet = new Set(prev);
+                                    if (open) {
+                                      newSet.add(category.id);
+                                    } else {
+                                      newSet.delete(category.id);
+                                    }
+                                    return newSet;
+                                  });
+                                }}
+                              >
+                                <CollapsibleTrigger className="w-full flex items-center justify-between px-3 py-2 bg-muted/40 hover:bg-muted/60 rounded-md text-sm font-medium transition-colors">
+                                  <span className="text-foreground">
+                                    {category.name}
+                                  </span>
+                                  <ChevronDown
+                                    className={`h-4 w-4 text-muted-foreground transition-transform ${
+                                      isOpen ? "rotate-180" : ""
+                                    }`}
+                                  />
+                                </CollapsibleTrigger>
+                                <CollapsibleContent className="mt-1.5 space-y-1">
+                                  {category.models.map((model) => {
+                                    const isModelSelected =
+                                      visitorFormData.modelIds.some(
+                                        (id) =>
+                                          (typeof id === "string" &&
+                                            id === model.id) ||
+                                          (typeof id === "object" &&
+                                            id.modelId === model.id &&
+                                            !id.variantId)
+                                      );
+                                    return (
+                                      <div
+                                        key={model.id}
+                                        className="space-y-0.5"
+                                      >
+                                        <label className="flex items-center gap-2.5 px-2 py-1.5 rounded hover:bg-muted/30 cursor-pointer transition-colors group">
+                                          <div className="relative flex items-center justify-center shrink-0">
+                                            <div
+                                              className={`flex items-center justify-center w-5 h-5 rounded border-2 transition-all ${
+                                                isModelSelected
+                                                  ? "bg-primary border-primary"
+                                                  : "bg-background border-border hover:border-primary/50"
+                                              }`}
+                                            >
+                                              {isModelSelected && (
+                                                <Check className="h-3.5 w-3.5 text-primary-foreground" />
+                                              )}
+                                            </div>
+                                            <input
+                                              type="checkbox"
+                                              checked={isModelSelected}
+                                              onChange={() =>
+                                                handleModelToggle(model.id)
+                                              }
+                                              className="absolute opacity-0 cursor-pointer w-5 h-5"
+                                            />
+                                          </div>
+                                          <span className="text-sm text-foreground flex-1">
+                                            {model.name}
+                                            {model.year && (
+                                              <span className="text-muted-foreground ml-1">
+                                                ({model.year})
+                                              </span>
+                                            )}
+                                          </span>
+                                        </label>
+                                        {model.variants &&
+                                          model.variants.length > 0 && (
+                                            <Collapsible
+                                              open={expandedVariants.has(
+                                                model.id
+                                              )}
+                                              onOpenChange={(open) => {
+                                                setExpandedVariants((prev) => {
+                                                  const newSet = new Set(prev);
+                                                  if (open) {
+                                                    newSet.add(model.id);
+                                                  } else {
+                                                    newSet.delete(model.id);
+                                                  }
+                                                  return newSet;
+                                                });
+                                              }}
+                                            >
+                                              <CollapsibleTrigger className="w-full flex items-center gap-2.5 px-2.5 py-2 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted/30 rounded transition-all">
+                                                <ChevronDown
+                                                  className={`h-4 w-4 transition-transform ${
+                                                    expandedVariants.has(
+                                                      model.id
+                                                    )
+                                                      ? "rotate-180"
+                                                      : ""
+                                                  }`}
+                                                />
+                                                <span>
+                                                  {model.variants.length}{" "}
+                                                  variant
+                                                  {model.variants.length !== 1
+                                                    ? "s"
+                                                    : ""}
+                                                </span>
+                                              </CollapsibleTrigger>
+                                              <CollapsibleContent className="ml-6 space-y-1 mt-1">
+                                                {model.variants.map(
+                                                  (variant) => {
+                                                    const isVariantSelected =
+                                                      visitorFormData.modelIds.some(
+                                                        (id) =>
+                                                          typeof id ===
+                                                            "object" &&
+                                                          id.modelId ===
+                                                            model.id &&
+                                                          id.variantId ===
+                                                            variant.id
+                                                      );
+                                                    return (
+                                                      <label
+                                                        key={variant.id}
+                                                        className="flex items-center gap-3 px-2.5 py-2 rounded hover:bg-muted/30 cursor-pointer transition-colors"
+                                                      >
+                                                        <div className="relative flex items-center justify-center shrink-0">
+                                                          <div
+                                                            className={`flex items-center justify-center w-5 h-5 rounded border-2 transition-all ${
+                                                              isVariantSelected
+                                                                ? "bg-primary border-primary"
+                                                                : "bg-background border-border hover:border-primary/50"
+                                                            }`}
+                                                          >
+                                                            {isVariantSelected && (
+                                                              <Check className="h-3.5 w-3.5 text-primary-foreground" />
+                                                            )}
+                                                          </div>
+                                                          <input
+                                                            type="checkbox"
+                                                            checked={
+                                                              isVariantSelected
+                                                            }
+                                                            onChange={() =>
+                                                              handleModelToggle(
+                                                                model.id,
+                                                                variant.id
+                                                              )
+                                                            }
+                                                            className="absolute opacity-0 cursor-pointer w-5 h-5"
+                                                          />
+                                                        </div>
+                                                        <span className="text-sm text-foreground flex-1">
+                                                          {model.name}.
+                                                          {variant.name}
+                                                        </span>
+                                                      </label>
+                                                    );
+                                                  }
+                                                )}
+                                              </CollapsibleContent>
+                                            </Collapsible>
+                                          )}
+                                      </div>
+                                    );
+                                  })}
+                                </CollapsibleContent>
+                              </Collapsible>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
                   </div>
 
                   <div className="flex flex-col sm:flex-row justify-end gap-2">
                     <Button
                       type="button"
                       variant="outline"
-                      onClick={() => {
-                        setExistingVisitorDialogOpen(false);
-                        setFoundVisitor(null);
-                        setVisitReason("");
-                      }}
+                      onClick={() => setVisitorDialogOpen(false)}
                       className="w-full sm:w-auto"
                     >
                       Cancel
                     </Button>
                     <Button
                       type="submit"
-                      disabled={creatingSession}
+                      disabled={visitorSubmitting}
                       className="w-full sm:w-auto"
                     >
-                      {creatingSession ? (
+                      {visitorSubmitting ? (
                         <>
                           <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                           Creating...
                         </>
                       ) : (
                         <>
-                          <UserCheck className="mr-2 h-4 w-4" />
-                          Create Session
+                          <UserPlus className="mr-2 h-4 w-4" />
+                          Create & Send Welcome
                         </>
                       )}
                     </Button>
                   </div>
                 </form>
-              )}
-            </DialogContent>
-          </Dialog>
+              </DialogContent>
+            </Dialog>
+          </div>
 
-          <Button
-            variant="outline"
-            onClick={() => setExistingVisitorDialogOpen(true)}
-            className="w-full sm:w-auto"
-          >
-            <Search className="mr-2 h-4 w-4" />
-            Existing Visitor
-          </Button>
-        </div>
-
-        {filteredVisitors.length === 0 ? (
-          <Card>
-            <CardContent className="pt-6">
-              <div className="text-center py-8 text-muted-foreground">
-                <UserPlus className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                <p className="text-sm sm:text-base">
-                  No visitors found. Create your first visitor to get started.
-                </p>
-              </div>
-            </CardContent>
-          </Card>
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {filteredVisitors.map((visitor) => {
-              return (
-                <Card
-                  key={visitor.id}
-                  className="overflow-hidden hover:shadow-md transition-all duration-200 cursor-pointer"
-                  onClick={() => handleViewSessions(visitor)}
-                >
-                  <CardHeader className="pb-3 bg-gradient-to-r from-muted/50 to-transparent border-b">
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-2 flex-wrap">
-                          <CardTitle className="text-base sm:text-lg font-semibold truncate">
-                            {visitor.firstName} {visitor.lastName}
-                          </CardTitle>
-                          <Badge
-                            variant="secondary"
-                            className="text-xs font-medium whitespace-nowrap"
-                          >
-                            {visitor.sessions.length} session
-                            {visitor.sessions.length !== 1 ? "s" : ""}
-                          </Badge>
+          {filteredVisitors.length === 0 ? (
+            <Card>
+              <CardContent className="pt-6">
+                <div className="text-center py-8 text-muted-foreground">
+                  <UserPlus className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                  <p className="text-sm sm:text-base">
+                    No visitors found. Create your first visitor to get started.
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              {filteredVisitors.map((visitor) => {
+                return (
+                  <Card
+                    key={visitor.id}
+                    className="overflow-hidden hover:shadow-md transition-all duration-200 cursor-pointer"
+                    onClick={() => handleViewSessions(visitor)}
+                  >
+                    <CardHeader className="pb-3 bg-gradient-to-r from-muted/50 to-transparent border-b">
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-2 flex-wrap">
+                            <CardTitle className="text-base sm:text-lg font-semibold truncate">
+                              {visitor.firstName} {visitor.lastName}
+                            </CardTitle>
+                            <Badge
+                              variant="secondary"
+                              className="text-xs font-medium whitespace-nowrap"
+                            >
+                              {visitor.sessions.length} session
+                              {visitor.sessions.length !== 1 ? "s" : ""}
+                            </Badge>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  </CardHeader>
-                  <CardContent className="pt-4 pb-4 sm:pb-6 space-y-3">
-                    <div className="space-y-2">
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs font-semibold text-muted-foreground min-w-[60px]">
-                          Phone:
-                        </span>
-                        <span className="text-xs sm:text-sm">
-                          {visitor.whatsappNumber}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <span className="text-xs font-semibold text-muted-foreground min-w-[60px]">
-                          Last Visit:
-                        </span>
-                        <span className="text-xs sm:text-sm">
-                          {visitor.sessions && visitor.sessions.length > 0
-                            ? formatDate(
-                                visitor.sessions.sort(
-                                  (a, b) =>
-                                    new Date(b.createdAt).getTime() -
-                                    new Date(a.createdAt).getTime()
-                                )[0].createdAt
-                              )
-                            : formatDate(visitor.createdAt)}
-                        </span>
-                      </div>
-                      {visitor.email && (
+                    </CardHeader>
+                    <CardContent className="pt-4 pb-4 sm:pb-6 space-y-3">
+                      <div className="space-y-2">
                         <div className="flex items-center gap-2">
                           <span className="text-xs font-semibold text-muted-foreground min-w-[60px]">
-                            Email:
+                            Phone:
                           </span>
-                          <span className="text-xs sm:text-sm break-words">
-                            {visitor.email}
+                          <span className="text-xs sm:text-sm">
+                            {visitor.whatsappNumber}
                           </span>
                         </div>
-                      )}
-                    </div>
-                    {phoneLookups[visitor.whatsappNumber] && (
-                      <div className="flex flex-wrap items-center gap-1.5 pt-2 border-t">
-                        {phoneLookups[visitor.whatsappNumber]
-                          .digitalEnquiry && (
-                          <Link
-                            href="/dashboard/digital-enquiry"
-                            onClick={(e) => e.stopPropagation()}
-                          >
-                            <Badge
-                              variant="outline"
-                              className="text-xs cursor-pointer hover:bg-primary/10 transition-colors"
-                            >
-                              Digital Enquiry
-                            </Badge>
-                          </Link>
-                        )}
-                        {phoneLookups[visitor.whatsappNumber]
-                          .deliveryUpdate && (
-                          <Link
-                            href="/dashboard/delivery-update"
-                            onClick={(e) => e.stopPropagation()}
-                          >
-                            <Badge
-                              variant="outline"
-                              className="text-xs cursor-pointer hover:bg-primary/10 transition-colors"
-                            >
-                              Delivery Update
-                            </Badge>
-                          </Link>
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-semibold text-muted-foreground min-w-[60px]">
+                            Last Visit:
+                          </span>
+                          <span className="text-xs sm:text-sm">
+                            {visitor.sessions && visitor.sessions.length > 0
+                              ? formatDate(
+                                  visitor.sessions.sort(
+                                    (a, b) =>
+                                      new Date(b.createdAt).getTime() -
+                                      new Date(a.createdAt).getTime()
+                                  )[0].createdAt
+                                )
+                              : formatDate(visitor.createdAt)}
+                          </span>
+                        </div>
+                        {visitor.email && (
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-semibold text-muted-foreground min-w-[60px]">
+                              Email:
+                            </span>
+                            <span className="text-xs sm:text-sm break-words">
+                              {visitor.email}
+                            </span>
+                          </div>
                         )}
                       </div>
-                    )}
-                  </CardContent>
-                </Card>
-              );
-            })}
-          </div>
-        )}
+                      {phoneLookups[visitor.whatsappNumber] && (
+                        <div className="flex flex-wrap items-center gap-1.5 pt-2 border-t">
+                          {phoneLookups[visitor.whatsappNumber]
+                            .digitalEnquiry && (
+                            <Link
+                              href="/dashboard/digital-enquiry"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <Badge
+                                variant="outline"
+                                className="text-xs cursor-pointer hover:bg-primary/10 transition-colors"
+                              >
+                                Digital Enquiry
+                              </Badge>
+                            </Link>
+                          )}
+                          {phoneLookups[visitor.whatsappNumber]
+                            .deliveryUpdate && (
+                            <Link
+                              href="/dashboard/delivery-update"
+                              onClick={(e) => e.stopPropagation()}
+                            >
+                              <Badge
+                                variant="outline"
+                                className="text-xs cursor-pointer hover:bg-primary/10 transition-colors"
+                              >
+                                Delivery Update
+                              </Badge>
+                            </Link>
+                          )}
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
+          )}
         </TabsContent>
 
         {/* Sessions Tab */}
         <TabsContent value="sessions" className="space-y-6 mt-6">
           {/* Visitor Info Header (when opened from visitor) */}
-          {selectedVisitorId && (() => {
-            const visitor = visitors.find((v) => v.id === selectedVisitorId);
-            if (!visitor) return null;
-            const visitorSessions = allSessions.filter((s: Session) => s.visitor.id === selectedVisitorId);
-            return (
-              <Card className="bg-muted/30">
-                <CardContent className="pt-6">
-                  <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                    <div>
-                      <h3 className="text-lg font-semibold">{visitor.firstName} {visitor.lastName}</h3>
-                      <p className="text-sm text-muted-foreground mt-1">{visitor.whatsappNumber}</p>
-                      <p className="text-xs text-muted-foreground mt-1">
-                        {visitorSessions.length} session{visitorSessions.length !== 1 ? "s" : ""} • {visitorSessions.length} visit{visitorSessions.length !== 1 ? "s" : ""} to showroom
-                      </p>
+          {selectedVisitorId &&
+            (() => {
+              const visitor = visitors.find((v) => v.id === selectedVisitorId);
+              if (!visitor) return null;
+              const visitorSessions = allSessions.filter(
+                (s: Session) => s.visitor.id === selectedVisitorId
+              );
+              return (
+                <Card className="bg-muted/30">
+                  <CardContent className="pt-6">
+                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                      <div>
+                        <h3 className="text-lg font-semibold">
+                          {visitor.firstName} {visitor.lastName}
+                        </h3>
+                        <p className="text-sm text-muted-foreground mt-1">
+                          {visitor.whatsappNumber}
+                        </p>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          {visitorSessions.length} session
+                          {visitorSessions.length !== 1 ? "s" : ""} •{" "}
+                          {visitorSessions.length} visit
+                          {visitorSessions.length !== 1 ? "s" : ""} to showroom
+                        </p>
+                      </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setSelectedVisitorId(null)}
+                      >
+                        Clear Filter
+                      </Button>
                     </div>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setSelectedVisitorId(null)}
-                    >
-                      Clear Filter
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            );
-          })()}
+                  </CardContent>
+                </Card>
+              );
+            })()}
 
           {loadingSessions ? (
             <div className="flex items-center justify-center py-12">
@@ -1269,8 +1163,10 @@ export default function DailyWalkinsPage() {
             </Card>
           ) : (
             <div className="space-y-4">
-              {(selectedVisitorId 
-                ? allSessions.filter((s: Session) => s.visitor.id === selectedVisitorId)
+              {(selectedVisitorId
+                ? allSessions.filter(
+                    (s: Session) => s.visitor.id === selectedVisitorId
+                  )
                 : allSessions
               ).map((session: Session) => {
                 const isExited = session.status === "exited";
@@ -1304,7 +1200,9 @@ export default function DailyWalkinsPage() {
                               />
                               <div className="flex-1 min-w-0">
                                 <CardTitle className="text-sm sm:text-base">
-                                  {session.visitor.firstName} {session.visitor.lastName} - Session {formatDateTime(session.createdAt)}
+                                  {session.visitor.firstName}{" "}
+                                  {session.visitor.lastName} - Session{" "}
+                                  {formatDateTime(session.createdAt)}
                                 </CardTitle>
                                 <CardDescription className="text-xs mt-1">
                                   Status: {session.status}
@@ -1312,7 +1210,8 @@ export default function DailyWalkinsPage() {
                                     <span className="ml-2">
                                       •{" "}
                                       {session.reason.length > 40
-                                        ? session.reason.substring(0, 40) + "..."
+                                        ? session.reason.substring(0, 40) +
+                                          "..."
                                         : session.reason}
                                     </span>
                                   )}
@@ -1385,7 +1284,6 @@ export default function DailyWalkinsPage() {
                               </div>
                             </div>
                           )}
-
 
                           {!isExited && (
                             <div className="flex flex-col sm:flex-row gap-2 pt-2 border-t">
@@ -1523,7 +1421,6 @@ export default function DailyWalkinsPage() {
           </form>
         </DialogContent>
       </Dialog>
-
     </div>
   );
 }
