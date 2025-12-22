@@ -14,8 +14,11 @@ import {
   MessageSquare,
   Package,
   MapPin,
-  Loader2,
   TrendingUp,
+  Users,
+  Calendar,
+  BarChart3,
+  Activity,
 } from "lucide-react";
 import DashboardLoading from "./loading";
 
@@ -60,52 +63,80 @@ interface StatCardProps {
     year: number;
     total: number;
   };
-  color: string;
+  iconBg: string;
+  iconColor: string;
+  borderColor: string;
 }
 
-function StatCard({ title, icon, stats, color }: StatCardProps) {
+function StatCard({
+  title,
+  icon,
+  stats,
+  iconBg,
+  iconColor,
+  borderColor,
+}: StatCardProps) {
   return (
-    <Card className="hover:shadow-lg transition-shadow">
-      <CardHeader className="pb-3">
+    <Card
+      className={`hover:shadow-xl transition-all duration-300 border-l-4 ${borderColor} group`}
+    >
+      <CardHeader className="pb-4">
         <div className="flex items-center justify-between">
-          <CardTitle className="text-lg sm:text-xl font-semibold">
+          <CardTitle className="text-base sm:text-lg font-semibold text-foreground">
             {title}
           </CardTitle>
-          <div className={`p-2 rounded-lg ${color}`}>{icon}</div>
+          <div
+            className={`p-2.5 rounded-xl ${iconBg} ${iconColor} transition-transform duration-300 group-hover:scale-110 group-hover:rotate-3`}
+          >
+            {icon}
+          </div>
         </div>
       </CardHeader>
       <CardContent>
-        <div className="space-y-3">
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 sm:gap-3">
-            <div className="text-center">
-              <div className="text-xs sm:text-sm text-muted-foreground mb-1">
-                Today
-              </div>
-              <div className="text-lg sm:text-xl font-bold">{stats.today}</div>
+        <div className="space-y-4">
+          {/* Highlight Today's stat */}
+          <div className="bg-muted/50 rounded-lg p-3 border border-border/50">
+            <div className="text-xs font-medium text-muted-foreground mb-1.5 uppercase tracking-wide">
+              Today
             </div>
-            <div className="text-center">
-              <div className="text-xs sm:text-sm text-muted-foreground mb-1">
+            <div className="text-2xl sm:text-3xl font-bold text-foreground">
+              {stats.today}
+            </div>
+          </div>
+
+          {/* Other stats in grid */}
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <div className="text-xs text-muted-foreground font-medium">
                 This Week
               </div>
-              <div className="text-lg sm:text-xl font-bold">{stats.week}</div>
+              <div className="text-lg sm:text-xl font-semibold">
+                {stats.week}
+              </div>
             </div>
-            <div className="text-center">
-              <div className="text-xs sm:text-sm text-muted-foreground mb-1">
+            <div className="space-y-1">
+              <div className="text-xs text-muted-foreground font-medium">
                 This Month
               </div>
-              <div className="text-lg sm:text-xl font-bold">{stats.month}</div>
+              <div className="text-lg sm:text-xl font-semibold">
+                {stats.month}
+              </div>
             </div>
-            <div className="text-center">
-              <div className="text-xs sm:text-sm text-muted-foreground mb-1">
+            <div className="space-y-1">
+              <div className="text-xs text-muted-foreground font-medium">
                 This Year
               </div>
-              <div className="text-lg sm:text-xl font-bold">{stats.year}</div>
+              <div className="text-lg sm:text-xl font-semibold">
+                {stats.year}
+              </div>
             </div>
-            <div className="text-center">
-              <div className="text-xs sm:text-sm text-muted-foreground mb-1">
+            <div className="space-y-1">
+              <div className="text-xs text-muted-foreground font-medium">
                 Total
               </div>
-              <div className="text-lg sm:text-xl font-bold">{stats.total}</div>
+              <div className="text-lg sm:text-xl font-semibold">
+                {stats.total}
+              </div>
             </div>
           </div>
         </div>
@@ -131,9 +162,10 @@ export default function DashboardPage() {
       const response = await axios.get("/api/statistics");
       setStatistics(response.data);
       setError("");
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Failed to fetch statistics:", err);
-      setError(err.response?.data?.error || "Failed to load statistics");
+      const error = err as { response?: { data?: { error?: string } } };
+      setError(error.response?.data?.error || "Failed to load statistics");
     } finally {
       setLoading(false);
     }
@@ -145,18 +177,20 @@ export default function DashboardPage() {
 
   if (error) {
     return (
-      <div className="space-y-8">
-        <div className="pb-2 border-b">
-          <h1 className="text-3xl sm:text-4xl font-bold bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent">
+      <div className="space-y-6 sm:space-y-8">
+        <div className="pb-4 border-b">
+          <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent">
             Dashboard
           </h1>
           <p className="text-sm sm:text-base text-muted-foreground mt-2">
-            Overview of all sections
+            Overview of all sections and activities
           </p>
         </div>
-        <Card>
+        <Card className="border-destructive/50">
           <CardContent className="pt-6">
-            <div className="text-center text-destructive">{error}</div>
+            <div className="text-center text-destructive font-medium">
+              {error}
+            </div>
           </CardContent>
         </Card>
       </div>
@@ -170,13 +204,21 @@ export default function DashboardPage() {
   return (
     <div className="space-y-6 sm:space-y-8">
       {/* Header */}
-      <div className="pb-2 border-b">
-        <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent">
-          Dashboard
-        </h1>
-        <p className="text-xs sm:text-sm lg:text-base text-muted-foreground mt-2">
-          Overview of all sections and activities
-        </p>
+      <div className="pb-4 border-b">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold bg-gradient-to-r from-primary via-primary/90 to-primary/70 bg-clip-text text-transparent">
+              Dashboard
+            </h1>
+            <p className="text-sm sm:text-base text-muted-foreground mt-2">
+              Overview of all sections and activities
+            </p>
+          </div>
+          <div className="hidden sm:flex items-center gap-2 text-xs text-muted-foreground">
+            <Activity className="h-4 w-4 animate-pulse" />
+            <span>Live</span>
+          </div>
+        </div>
       </div>
 
       {/* Statistics Grid */}
@@ -185,78 +227,160 @@ export default function DashboardPage() {
           title="Daily Walkins"
           icon={<DoorOpen className="h-5 w-5 sm:h-6 sm:w-6" />}
           stats={statistics.dailyWalkins}
-          color="bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400"
+          iconBg="bg-blue-500/10 dark:bg-blue-400/20"
+          iconColor="text-blue-600 dark:text-blue-400"
+          borderColor="border-blue-500"
         />
         <StatCard
           title="Digital Enquiry"
           icon={<MessageSquare className="h-5 w-5 sm:h-6 sm:w-6" />}
           stats={statistics.digitalEnquiry}
-          color="bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400"
+          iconBg="bg-green-500/10 dark:bg-green-400/20"
+          iconColor="text-green-600 dark:text-green-400"
+          borderColor="border-green-500"
         />
         <StatCard
           title="Field Enquiry"
           icon={<MapPin className="h-5 w-5 sm:h-6 sm:w-6" />}
           stats={statistics.fieldEnquiry}
-          color="bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400"
+          iconBg="bg-purple-500/10 dark:bg-purple-400/20"
+          iconColor="text-purple-600 dark:text-purple-400"
+          borderColor="border-purple-500"
         />
         <StatCard
           title="Delivery Update"
           icon={<Package className="h-5 w-5 sm:h-6 sm:w-6" />}
           stats={statistics.deliveryUpdate}
-          color="bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400"
+          iconBg="bg-orange-500/10 dark:bg-orange-400/20"
+          iconColor="text-orange-600 dark:text-orange-400"
+          borderColor="border-orange-500"
         />
       </div>
 
-      {/* Summary Card */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-lg sm:text-xl flex items-center gap-2">
-            <TrendingUp className="h-5 w-5" />
-            Quick Summary
-          </CardTitle>
-          <CardDescription className="text-xs sm:text-sm">
-            Key metrics at a glance
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
-            <div className="text-center sm:text-left">
-              <div className="text-xs sm:text-sm text-muted-foreground mb-1">
-                Total Visitors Today
+      {/* Summary Cards */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+        <Card className="border-l-4 border-l-primary">
+          <CardHeader>
+            <CardTitle className="text-lg sm:text-xl flex items-center gap-2">
+              <TrendingUp className="h-5 w-5 text-primary" />
+              Key Metrics
+            </CardTitle>
+            <CardDescription className="text-xs sm:text-sm">
+              Important statistics at a glance
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
+              <div className="space-y-2 p-3 rounded-lg bg-muted/30 border border-border/50">
+                <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                  <Users className="h-3.5 w-3.5" />
+                  Visitors Today
+                </div>
+                <div className="text-2xl sm:text-3xl font-bold text-foreground">
+                  {statistics.dailyWalkins.today}
+                </div>
               </div>
-              <div className="text-2xl sm:text-3xl font-bold">
-                {statistics.dailyWalkins.today}
+              <div className="space-y-2 p-3 rounded-lg bg-muted/30 border border-border/50">
+                <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                  <MessageSquare className="h-3.5 w-3.5" />
+                  Digital Leads (Week)
+                </div>
+                <div className="text-2xl sm:text-3xl font-bold text-foreground">
+                  {statistics.digitalEnquiry.week}
+                </div>
+              </div>
+              <div className="space-y-2 p-3 rounded-lg bg-muted/30 border border-border/50">
+                <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                  <Package className="h-3.5 w-3.5" />
+                  Deliveries (Month)
+                </div>
+                <div className="text-2xl sm:text-3xl font-bold text-foreground">
+                  {statistics.deliveryUpdate.month}
+                </div>
+              </div>
+              <div className="space-y-2 p-3 rounded-lg bg-muted/30 border border-border/50">
+                <div className="flex items-center gap-2 text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                  <BarChart3 className="h-3.5 w-3.5" />
+                  Total Records
+                </div>
+                <div className="text-2xl sm:text-3xl font-bold text-foreground">
+                  {statistics.dailyWalkins.total +
+                    statistics.digitalEnquiry.total +
+                    statistics.deliveryUpdate.total}
+                </div>
               </div>
             </div>
-            <div className="text-center sm:text-left">
-              <div className="text-xs sm:text-sm text-muted-foreground mb-1">
-                Digital Leads This Week
+          </CardContent>
+        </Card>
+
+        <Card className="border-l-4 border-l-primary/50">
+          <CardHeader>
+            <CardTitle className="text-lg sm:text-xl flex items-center gap-2">
+              <Calendar className="h-5 w-5 text-primary" />
+              Activity Overview
+            </CardTitle>
+            <CardDescription className="text-xs sm:text-sm">
+              Recent activity summary
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <div className="flex items-center justify-between p-3 rounded-lg bg-muted/30 border border-border/50">
+                <div>
+                  <div className="text-sm font-medium text-foreground">
+                    Daily Walkins
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    Total entries
+                  </div>
+                </div>
+                <div className="text-2xl font-bold text-primary">
+                  {statistics.dailyWalkins.total}
+                </div>
               </div>
-              <div className="text-2xl sm:text-3xl font-bold">
-                {statistics.digitalEnquiry.week}
+              <div className="flex items-center justify-between p-3 rounded-lg bg-muted/30 border border-border/50">
+                <div>
+                  <div className="text-sm font-medium text-foreground">
+                    Digital Enquiries
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    Total entries
+                  </div>
+                </div>
+                <div className="text-2xl font-bold text-primary">
+                  {statistics.digitalEnquiry.total}
+                </div>
+              </div>
+              <div className="flex items-center justify-between p-3 rounded-lg bg-muted/30 border border-border/50">
+                <div>
+                  <div className="text-sm font-medium text-foreground">
+                    Field Enquiries
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    Total entries
+                  </div>
+                </div>
+                <div className="text-2xl font-bold text-primary">
+                  {statistics.fieldEnquiry.total}
+                </div>
+              </div>
+              <div className="flex items-center justify-between p-3 rounded-lg bg-muted/30 border border-border/50">
+                <div>
+                  <div className="text-sm font-medium text-foreground">
+                    Delivery Updates
+                  </div>
+                  <div className="text-xs text-muted-foreground">
+                    Total entries
+                  </div>
+                </div>
+                <div className="text-2xl font-bold text-primary">
+                  {statistics.deliveryUpdate.total}
+                </div>
               </div>
             </div>
-            <div className="text-center sm:text-left">
-              <div className="text-xs sm:text-sm text-muted-foreground mb-1">
-                Deliveries This Month
-              </div>
-              <div className="text-2xl sm:text-3xl font-bold">
-                {statistics.deliveryUpdate.month}
-              </div>
-            </div>
-            <div className="text-center sm:text-left">
-              <div className="text-xs sm:text-sm text-muted-foreground mb-1">
-                Total Records
-              </div>
-              <div className="text-2xl sm:text-3xl font-bold">
-                {statistics.dailyWalkins.total +
-                  statistics.digitalEnquiry.total +
-                  statistics.deliveryUpdate.total}
-              </div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }
