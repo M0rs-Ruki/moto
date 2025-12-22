@@ -22,7 +22,7 @@ export async function POST(request: NextRequest) {
       deliveryDate,
       modelId,
       variantId,
-      sendNow,
+      scheduleOption, // "d3", "d2", "d1", or "now"
     } = body;
 
     // Validation
@@ -128,7 +128,7 @@ export async function POST(request: NextRequest) {
         dealershipId: user.dealershipId,
         modelId,
         variantId: variantId || null,
-        messageSent: sendNow || false,
+        messageSent: scheduleOption === "now" || false,
       },
       include: {
         model: {
@@ -159,65 +159,90 @@ export async function POST(request: NextRequest) {
       ],
     });
 
-    // Always send template message immediately when ticket is created (if template is configured and contact exists)
-    if (
-      template &&
-      whatsappContactId &&
-      template.templateId &&
-      template.templateName
-    ) {
-      // Send message immediately with car model
-      try {
-        const modelName = ticket.model
-          ? `${ticket.model.category.name} - ${ticket.model.name}`
-          : "N/A";
-
-        await whatsappClient.sendTemplate({
-          contactId: whatsappContactId,
-          contactNumber: whatsappNumber,
-          templateName: template.templateName,
-          templateId: template.templateId,
-          templateLanguage: template.language,
-          parameters: [modelName],
-        });
-        messageStatus = "sent";
-
-        // Update ticket
-        await prisma.deliveryTicket.update({
-          where: { id: ticket.id },
-          data: { messageSent: true },
-        });
-      } catch (error: unknown) {
-        console.error("Failed to send delivery message:", error);
-        messageStatus = "failed";
-        messageError = (error as Error).message || "Failed to send message";
+    if (!template || !whatsappContactId || !template.templateId || !template.templateName) {
+      if (template && !whatsappContactId) {
+        console.warn(
+          "Template configured but no contact ID available for delivery ticket"
+        );
+      } else if (template && (!template.templateId || !template.templateName)) {
+        console.warn(
+          "Delivery reminder template exists but Template ID or Template Name is missing. Please configure it in Global Settings."
+        );
       }
+    } else {
+      // Handle based on schedule option
+      if (scheduleOption === "now") {
+        // Send message immediately
+        try {
+          const modelName = ticket.model
+            ? `${ticket.model.category.name} - ${ticket.model.name}`
+            : "N/A";
 
-      // Also schedule reminder for 3 days before delivery (if date is in the future)
-      const scheduledFor = new Date(deliveryDateObj);
-      scheduledFor.setDate(scheduledFor.getDate() - 3);
+          await whatsappClient.sendTemplate({
+            contactId: whatsappContactId,
+            contactNumber: whatsappNumber,
+            templateName: template.templateName,
+            templateId: template.templateId,
+            templateLanguage: template.language,
+            parameters: [modelName],
+          });
+          messageStatus = "sent";
 
-      // Only schedule if the date is in the future
-      if (scheduledFor > new Date()) {
-        const scheduledMessage = await prisma.scheduledMessage.create({
-          data: {
-            deliveryTicketId: ticket.id,
-            scheduledFor,
-            status: "pending",
-          },
-        });
-        scheduledMessageId = scheduledMessage.id;
+          // Update ticket
+          await prisma.deliveryTicket.update({
+            where: { id: ticket.id },
+            data: { messageSent: true },
+          });
+        } catch (error: unknown) {
+          console.error("Failed to send delivery message:", error);
+          messageStatus = "failed";
+          messageError = (error as Error).message || "Failed to send message";
+        }
+      } else {
+        // Schedule message for D-3, D-2, or D-1 days before delivery
+        const daysBefore = scheduleOption === "d3" ? 3 : scheduleOption === "d2" ? 2 : 1;
+        const scheduledFor = new Date(deliveryDateObj);
+        scheduledFor.setDate(scheduledFor.getDate() - daysBefore);
+
+        // Only schedule if the date is in the future
+        if (scheduledFor > new Date()) {
+          const scheduledMessage = await prisma.scheduledMessage.create({
+            data: {
+              deliveryTicketId: ticket.id,
+              scheduledFor,
+              status: "pending",
+            },
+          });
+          scheduledMessageId = scheduledMessage.id;
+        } else {
+          // If scheduled date is in the past, send immediately instead
+          try {
+            const modelName = ticket.model
+              ? `${ticket.model.category.name} - ${ticket.model.name}`
+              : "N/A";
+
+            await whatsappClient.sendTemplate({
+              contactId: whatsappContactId,
+              contactNumber: whatsappNumber,
+              templateName: template.templateName,
+              templateId: template.templateId,
+              templateLanguage: template.language,
+              parameters: [modelName],
+            });
+            messageStatus = "sent";
+
+            // Update ticket
+            await prisma.deliveryTicket.update({
+              where: { id: ticket.id },
+              data: { messageSent: true },
+            });
+          } catch (error: unknown) {
+            console.error("Failed to send delivery message:", error);
+            messageStatus = "failed";
+            messageError = (error as Error).message || "Failed to send message";
+          }
+        }
       }
-    } else if (template && !whatsappContactId) {
-      // Template exists but contact creation failed - log warning
-      console.warn(
-        "Template configured but no contact ID available for delivery ticket"
-      );
-    } else if (template && (!template.templateId || !template.templateName)) {
-      // Template exists but not fully configured - log warning
-      console.warn(
-        "Delivery reminder template exists but Template ID or Template Name is missing. Please configure it in Global Settings."
-      );
     }
 
     return NextResponse.json({

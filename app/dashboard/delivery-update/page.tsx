@@ -111,7 +111,7 @@ export default function DeliveryUpdatePage() {
     deliveryDate: "",
     modelId: "",
     variantId: "",
-    sendNow: false,
+    scheduleOption: "d3", // d3, d2, d1, or "now"
   });
 
   useEffect(() => {
@@ -150,7 +150,7 @@ export default function DeliveryUpdatePage() {
         deliveryDate: "",
         modelId: "",
         variantId: "",
-        sendNow: false,
+        scheduleOption: "d3",
       });
       fetchTickets();
     } catch (err: unknown) {
@@ -504,44 +504,79 @@ export default function DeliveryUpdatePage() {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="deliveryDate" className="text-sm">
+                <Label htmlFor="deliveryDate" className="text-sm font-medium">
                   Delivery Date *
                 </Label>
-                <Input
-                  id="deliveryDate"
-                  type="date"
-                  value={formData.deliveryDate}
-                  onChange={(e) =>
-                    setFormData({ ...formData, deliveryDate: e.target.value })
-                  }
-                  required
-                  min={new Date().toISOString().split("T")[0]}
-                />
+                <div className="relative">
+                  <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+                  <Input
+                    id="deliveryDate"
+                    type="date"
+                    value={formData.deliveryDate}
+                    onChange={(e) =>
+                      setFormData({ ...formData, deliveryDate: e.target.value })
+                    }
+                    required
+                    min={new Date().toISOString().split("T")[0]}
+                    className="pl-10 w-full cursor-pointer"
+                    style={{
+                      colorScheme: "light dark",
+                    }}
+                  />
+                </div>
+                {formData.deliveryDate && (
+                  <p className="text-xs text-muted-foreground">
+                    Selected: {new Date(formData.deliveryDate).toLocaleDateString("en-US", {
+                      weekday: "long",
+                      year: "numeric",
+                      month: "long",
+                      day: "numeric",
+                    })}
+                  </p>
+                )}
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="sendNow" className="text-sm">
+                <Label htmlFor="scheduleOption" className="text-sm font-medium">
                   Send Message
                 </Label>
                 <Select
-                  value={formData.sendNow ? "now" : "scheduled"}
+                  value={formData.scheduleOption}
                   onValueChange={(value) =>
                     setFormData({
                       ...formData,
-                      sendNow: value === "now",
+                      scheduleOption: value,
                     })
                   }
                 >
-                  <SelectTrigger>
-                    <SelectValue />
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Select schedule option" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="scheduled">
-                      Schedule (3 days before)
-                    </SelectItem>
+                    <SelectItem value="d3">D-3</SelectItem>
+                    <SelectItem value="d2">D-2</SelectItem>
+                    <SelectItem value="d1">D-1</SelectItem>
                     <SelectItem value="now">Send Now</SelectItem>
                   </SelectContent>
                 </Select>
+                {formData.deliveryDate && formData.scheduleOption !== "now" && (
+                  <p className="text-xs text-muted-foreground">
+                    {formData.scheduleOption === "d3" && "Message will be sent 3 days before delivery"}
+                    {formData.scheduleOption === "d2" && "Message will be sent 2 days before delivery"}
+                    {formData.scheduleOption === "d1" && "Message will be sent 1 day before delivery"}
+                    {(() => {
+                      const deliveryDate = new Date(formData.deliveryDate);
+                      const days = formData.scheduleOption === "d3" ? 3 : formData.scheduleOption === "d2" ? 2 : 1;
+                      const scheduledDate = new Date(deliveryDate);
+                      scheduledDate.setDate(scheduledDate.getDate() - days);
+                      return ` (${scheduledDate.toLocaleDateString("en-US", {
+                        month: "short",
+                        day: "numeric",
+                        year: "numeric",
+                      })})`;
+                    })()}
+                  </p>
+                )}
               </div>
             </div>
 
