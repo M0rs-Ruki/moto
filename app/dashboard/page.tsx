@@ -13,7 +13,6 @@ import {
   DoorOpen,
   MessageSquare,
   Package,
-  MapPin,
   TrendingUp,
   Users,
   Calendar,
@@ -31,13 +30,6 @@ interface Statistics {
     total: number;
   };
   digitalEnquiry: {
-    today: number;
-    week: number;
-    month: number;
-    year: number;
-    total: number;
-  };
-  fieldEnquiry: {
     today: number;
     week: number;
     month: number;
@@ -240,14 +232,6 @@ export default function DashboardPage() {
           borderColor="border-green-500"
         />
         <StatCard
-          title="Field Enquiry"
-          icon={<MapPin className="h-5 w-5 sm:h-6 sm:w-6" />}
-          stats={statistics.fieldEnquiry}
-          iconBg="bg-purple-500/10 dark:bg-purple-400/20"
-          iconColor="text-purple-600 dark:text-purple-400"
-          borderColor="border-purple-500"
-        />
-        <StatCard
           title="Delivery Update"
           icon={<Package className="h-5 w-5 sm:h-6 sm:w-6" />}
           stats={statistics.deliveryUpdate}
@@ -349,19 +333,6 @@ export default function DashboardPage() {
                 </div>
                 <div className="text-2xl font-bold text-primary">
                   {statistics.digitalEnquiry.total}
-                </div>
-              </div>
-              <div className="flex items-center justify-between p-3 rounded-lg bg-muted/30 border border-border/50">
-                <div>
-                  <div className="text-sm font-medium text-foreground">
-                    Field Enquiries
-                  </div>
-                  <div className="text-xs text-muted-foreground">
-                    Total entries
-                  </div>
-                </div>
-                <div className="text-2xl font-bold text-primary">
-                  {statistics.fieldEnquiry.total}
                 </div>
               </div>
               <div className="flex items-center justify-between p-3 rounded-lg bg-muted/30 border border-border/50">

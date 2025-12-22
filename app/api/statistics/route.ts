@@ -87,19 +87,9 @@ export async function GET(request: NextRequest) {
       baseWhere
     );
 
-    // Field Enquiry (placeholder - return zeros for now)
-    const fieldEnquiry = {
-      today: 0,
-      week: 0,
-      month: 0,
-      year: 0,
-      total: 0,
-    };
-
     return NextResponse.json({
       dailyWalkins,
       digitalEnquiry,
-      fieldEnquiry,
       deliveryUpdate,
     });
   } catch (error: unknown) {
