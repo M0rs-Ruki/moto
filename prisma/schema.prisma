@@ -202,11 +202,6 @@ model TestDrive {
   variant   VehicleVariant? @relation(fields: [variantId], references: [id], onDelete: Cascade)
   variantId String?
 
-  // Test drive outcome: excellent, good, fair, poor
-  outcome String?
-
-  feedback String?
-
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

@@ -111,8 +111,6 @@ interface Session {
   };
   testDrives: Array<{
     id: string;
-    outcome: string | null;
-    feedback: string | null;
     model: {
       name: string;
       category: {
@@ -188,8 +186,6 @@ export default function DailyWalkinsPage() {
   const [testDriveData, setTestDriveData] = useState({
     modelId: "",
     variantId: "",
-    outcome: "",
-    feedback: "",
   });
 
   // Exit form
@@ -369,8 +365,6 @@ export default function DailyWalkinsPage() {
         sessionId: selectedSession.id,
         modelId,
         variantId: variantId || testDriveData.variantId || undefined,
-        outcome: testDriveData.outcome,
-        feedback: testDriveData.feedback,
       });
 
       if (response.data.success) {
@@ -378,8 +372,6 @@ export default function DailyWalkinsPage() {
         setTestDriveData({
           modelId: "",
           variantId: "",
-          outcome: "",
-          feedback: "",
         });
         // Refresh sessions
         await fetchAllSessions();
@@ -1398,16 +1390,6 @@ export default function DailyWalkinsPage() {
                                     <p className="font-medium">
                                       {td.model.category.name} - {td.model.name}
                                     </p>
-                                    {td.outcome && (
-                                      <p className="text-muted-foreground text-xs">
-                                        Outcome: {td.outcome}
-                                      </p>
-                                    )}
-                                    {td.feedback && (
-                                      <p className="text-muted-foreground break-words text-xs mt-1">
-                                        {td.feedback}
-                                      </p>
-                                    )}
                                   </div>
                                 ))}
                               </div>
@@ -1543,49 +1525,6 @@ export default function DailyWalkinsPage() {
                   ))}
                 </SelectContent>
               </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="outcome" className="text-sm">
-                Outcome
-              </Label>
-              <Select
-                value={testDriveData.outcome}
-                onValueChange={(value) =>
-                  setTestDriveData({
-                    ...testDriveData,
-                    outcome: value,
-                  })
-                }
-              >
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Select outcome" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="excellent">Excellent</SelectItem>
-                  <SelectItem value="good">Good</SelectItem>
-                  <SelectItem value="fair">Fair</SelectItem>
-                  <SelectItem value="poor">Poor</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="feedback" className="text-sm">
-                Feedback
-              </Label>
-              <Textarea
-                id="feedback"
-                value={testDriveData.feedback}
-                onChange={(e) =>
-                  setTestDriveData({
-                    ...testDriveData,
-                    feedback: e.target.value,
-                  })
-                }
-                className="min-h-24"
-                placeholder="Add feedback about the test drive..."
-              />
             </div>
 
             <div className="flex flex-col sm:flex-row justify-end gap-2">

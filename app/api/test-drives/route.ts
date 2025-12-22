@@ -12,7 +12,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { sessionId, modelId, variantId, outcome, feedback } = body;
+    const { sessionId, modelId, variantId } = body;
 
     if (!sessionId || !modelId) {
       return NextResponse.json(
@@ -44,8 +44,6 @@ export async function POST(request: NextRequest) {
         sessionId,
         modelId,
         variantId: variantId || null,
-        outcome: outcome || null,
-        feedback: feedback || null,
       },
       include: {
         model: true,
