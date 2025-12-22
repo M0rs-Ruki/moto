@@ -143,10 +143,6 @@ model VisitorSession {
   // Session status: intake, test_drive, completed, exited
   status String @default("intake")
 
-  // Exit feedback
-  exitFeedback String?
-  exitRating   Int? // 1-5 scale
-
   visitor   Visitor @relation(fields: [visitorId], references: [id], onDelete: Cascade)
   visitorId String
 

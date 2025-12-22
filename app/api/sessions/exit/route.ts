@@ -12,7 +12,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { sessionId, exitFeedback, exitRating } = body;
+    const { sessionId } = body;
 
     if (!sessionId) {
       return NextResponse.json(
@@ -38,13 +38,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Session not found" }, { status: 404 });
     }
 
-    // Update session with exit feedback
+    // Update session status to exited
     await prisma.visitorSession.update({
       where: { id: sessionId },
       data: {
         status: "exited",
-        exitFeedback: exitFeedback || null,
-        exitRating: exitRating ? parseInt(exitRating) : null,
       },
     });
 

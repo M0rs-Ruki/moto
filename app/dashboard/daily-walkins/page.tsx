@@ -100,8 +100,6 @@ interface Session {
   id: string;
   reason: string;
   status: string;
-  exitFeedback: string | null;
-  exitRating: number | null;
   createdAt: string;
   visitor: {
     id: string;
@@ -179,19 +177,12 @@ export default function DailyWalkinsPage() {
   const [expandedSessions, setExpandedSessions] = useState<Set<string>>(new Set());
   const [selectedSession, setSelectedSession] = useState<Session | null>(null);
   const [testDriveDialogOpen, setTestDriveDialogOpen] = useState(false);
-  const [exitDialogOpen, setExitDialogOpen] = useState(false);
   const [sessionSubmitting, setSessionSubmitting] = useState(false);
 
   // Test drive form
   const [testDriveData, setTestDriveData] = useState({
     modelId: "",
     variantId: "",
-  });
-
-  // Exit form
-  const [exitData, setExitData] = useState({
-    exitFeedback: "",
-    exitRating: "",
   });
 
   // Date filter state
@@ -390,21 +381,20 @@ export default function DailyWalkinsPage() {
     }
   };
 
-  const handleExitSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!selectedSession) return;
+  const handleExitSession = async (session: Session) => {
+    if (!session) return;
+
+    if (!confirm("Are you sure you want to exit this session?")) {
+      return;
+    }
 
     setSessionSubmitting(true);
     try {
       const response = await axios.post("/api/sessions/exit", {
-        sessionId: selectedSession.id,
-        ...exitData,
+        sessionId: session.id,
       });
 
       if (response.data.success) {
-        setExitDialogOpen(false);
-        setExitData({ exitFeedback: "", exitRating: "" });
-
         // Refresh sessions
         await fetchAllSessions();
       } else {
@@ -1396,28 +1386,6 @@ export default function DailyWalkinsPage() {
                             </div>
                           )}
 
-                          {session.exitFeedback && (
-                            <div>
-                              <p className="text-xs sm:text-sm font-semibold mb-1">
-                                Exit Feedback:
-                              </p>
-                              <p className="text-xs sm:text-sm text-muted-foreground break-words">
-                                {session.exitFeedback}
-                              </p>
-                              {session.exitRating && (
-                                <div className="flex items-center gap-1 mt-2">
-                                  {Array.from({
-                                    length: session.exitRating,
-                                  }).map((_, i) => (
-                                    <Star
-                                      key={i}
-                                      className="h-3 w-3 sm:h-4 sm:w-4 fill-yellow-400 text-yellow-400"
-                                    />
-                                  ))}
-                                </div>
-                              )}
-                            </div>
-                          )}
 
                           {!isExited && (
                             <div className="flex flex-col sm:flex-row gap-2 pt-2 border-t">
@@ -1439,12 +1407,16 @@ export default function DailyWalkinsPage() {
                                 size="sm"
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  setSelectedSession(session);
-                                  setExitDialogOpen(true);
+                                  handleExitSession(session);
                                 }}
+                                disabled={sessionSubmitting}
                                 className="w-full sm:w-auto text-xs sm:text-sm"
                               >
-                                <LogOut className="mr-2 h-3 w-3 sm:h-4 sm:w-4" />
+                                {sessionSubmitting ? (
+                                  <Loader2 className="mr-2 h-3 w-3 sm:h-4 sm:w-4 animate-spin" />
+                                ) : (
+                                  <LogOut className="mr-2 h-3 w-3 sm:h-4 sm:w-4" />
+                                )}
                                 Exit Session
                               </Button>
                             </div>
@@ -1552,86 +1524,6 @@ export default function DailyWalkinsPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Exit Session Dialog */}
-      <Dialog open={exitDialogOpen} onOpenChange={setExitDialogOpen}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto p-4 sm:p-6">
-          <DialogHeader>
-            <DialogTitle className="text-base sm:text-lg md:text-xl">
-              Exit Session
-            </DialogTitle>
-            <DialogDescription className="text-xs sm:text-sm">
-              Mark session as completed and send a thank you WhatsApp message.
-            </DialogDescription>
-          </DialogHeader>
-          <form onSubmit={handleExitSubmit} className="space-y-4 mt-4">
-            <div className="space-y-2">
-              <Label htmlFor="exitFeedback" className="text-sm">
-                Feedback
-              </Label>
-              <Textarea
-                id="exitFeedback"
-                placeholder="Any feedback from the visitor?"
-                value={exitData.exitFeedback}
-                onChange={(e) =>
-                  setExitData({
-                    ...exitData,
-                    exitFeedback: e.target.value,
-                  })
-                }
-                className="min-h-24"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="exitRating" className="text-sm">
-                Rating (1-5)
-              </Label>
-              <Select
-                value={exitData.exitRating}
-                onValueChange={(value) =>
-                  setExitData({
-                    ...exitData,
-                    exitRating: value,
-                  })
-                }
-              >
-                <SelectTrigger className="w-full">
-                  <SelectValue placeholder="Select rating" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="1">1 - Poor</SelectItem>
-                  <SelectItem value="2">2 - Fair</SelectItem>
-                  <SelectItem value="3">3 - Good</SelectItem>
-                  <SelectItem value="4">4 - Very Good</SelectItem>
-                  <SelectItem value="5">5 - Excellent</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="flex flex-col sm:flex-row justify-end gap-2">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setExitDialogOpen(false)}
-                className="w-full sm:w-auto"
-              >
-                Cancel
-              </Button>
-              <Button
-                type="submit"
-                disabled={sessionSubmitting}
-                className="w-full sm:w-auto"
-              >
-                {sessionSubmitting ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  "Exit & Send Message"
-                )}
-              </Button>
-            </div>
-          </form>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }
