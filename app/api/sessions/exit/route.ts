@@ -72,7 +72,7 @@ export async function POST(request: NextRequest) {
           templateName: template.templateName,
           templateId: template.templateId,
           templateLanguage: template.language,
-          parameters: [showroomNumber],
+          parameters: [],
         });
         messageStatus = "sent";
       } catch (error: unknown) {

@@ -172,6 +172,8 @@ export default function DailyWalkinsPage() {
   const [selectedSession, setSelectedSession] = useState<Session | null>(null);
   const [testDriveDialogOpen, setTestDriveDialogOpen] = useState(false);
   const [sessionSubmitting, setSessionSubmitting] = useState(false);
+  const [exitConfirmDialogOpen, setExitConfirmDialogOpen] = useState(false);
+  const [sessionToExit, setSessionToExit] = useState<Session | null>(null);
 
   // Test drive form
   const [testDriveData, setTestDriveData] = useState({
@@ -397,17 +399,20 @@ export default function DailyWalkinsPage() {
     }
   };
 
-  const handleExitSession = async (session: Session) => {
+  const handleExitSession = (session: Session) => {
     if (!session) return;
+    setSessionToExit(session);
+    setExitConfirmDialogOpen(true);
+  };
 
-    if (!confirm("Are you sure you want to exit this session?")) {
-      return;
-    }
+  const confirmExitSession = async () => {
+    if (!sessionToExit) return;
 
+    setExitConfirmDialogOpen(false);
     setSessionSubmitting(true);
     try {
       const response = await axios.post("/api/sessions/exit", {
-        sessionId: session.id,
+        sessionId: sessionToExit.id,
       });
 
       if (response.data.success) {
@@ -425,6 +430,7 @@ export default function DailyWalkinsPage() {
       alert(errorMessage);
     } finally {
       setSessionSubmitting(false);
+      setSessionToExit(null);
     }
   };
 
@@ -1419,6 +1425,46 @@ export default function DailyWalkinsPage() {
               </Button>
             </div>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Exit Session Confirmation Dialog */}
+      <Dialog open={exitConfirmDialogOpen} onOpenChange={setExitConfirmDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Exit Session</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to exit this session? This will close the session and send a thank you message to the visitor.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex flex-col sm:flex-row justify-end gap-2 mt-4">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                setExitConfirmDialogOpen(false);
+                setSessionToExit(null);
+              }}
+              className="w-full sm:w-auto"
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              onClick={confirmExitSession}
+              disabled={sessionSubmitting}
+              className="w-full sm:w-auto"
+            >
+              {sessionSubmitting ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Exiting...
+                </>
+              ) : (
+                "Exit Session"
+              )}
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
     </div>

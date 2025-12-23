@@ -159,7 +159,12 @@ export async function POST(request: NextRequest) {
       ],
     });
 
-    if (!template || !whatsappContactId || !template.templateId || !template.templateName) {
+    if (
+      !template ||
+      !whatsappContactId ||
+      !template.templateId ||
+      !template.templateName
+    ) {
       if (template && !whatsappContactId) {
         console.warn(
           "Template configured but no contact ID available for delivery ticket"
@@ -200,12 +205,19 @@ export async function POST(request: NextRequest) {
         }
       } else {
         // Schedule message for D-3, D-2, or D-1 days before delivery
-        const daysBefore = scheduleOption === "d3" ? 3 : scheduleOption === "d2" ? 2 : 1;
+        const daysBefore =
+          scheduleOption === "d3" ? 3 : scheduleOption === "d2" ? 2 : 1;
         const scheduledFor = new Date(deliveryDateObj);
         scheduledFor.setDate(scheduledFor.getDate() - daysBefore);
 
-        // Only schedule if the date is in the future
-        if (scheduledFor > new Date()) {
+        // Normalize dates to compare only the date portion (set time to midnight)
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
+        const scheduledDateNormalized = new Date(scheduledFor);
+        scheduledDateNormalized.setHours(0, 0, 0, 0);
+
+        // Only schedule if the date is in the future (after today)
+        if (scheduledDateNormalized > today) {
           const scheduledMessage = await prisma.scheduledMessage.create({
             data: {
               deliveryTicketId: ticket.id,
@@ -215,7 +227,7 @@ export async function POST(request: NextRequest) {
           });
           scheduledMessageId = scheduledMessage.id;
         } else {
-          // If scheduled date is in the past, send immediately instead
+          // If scheduled date is today or in the past, send immediately instead
           try {
             const modelName = ticket.model
               ? `${ticket.model.category.name} - ${ticket.model.name}`
