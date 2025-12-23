@@ -45,6 +45,8 @@ interface DeliveryTicket {
   description: string | null;
   deliveryDate: string;
   messageSent: boolean;
+  completionSent: boolean;
+  status: string;
   model: {
     name: string;
     category: {
@@ -87,7 +89,6 @@ export default function DeliveryUpdatePage() {
     {}
   );
   const [sendingCompletion, setSendingCompletion] = useState<Record<string, boolean>>({});
-  const [completionSent, setCompletionSent] = useState<Set<string>>(new Set());
 
   // Create ticket dialog state
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
@@ -210,8 +211,16 @@ export default function DeliveryUpdatePage() {
   };
 
   const handleSendCompletion = async (ticketId: string) => {
-    // Prevent sending if already sent or currently sending
-    if (completionSent.has(ticketId) || sendingCompletion[ticketId]) {
+    // Find the ticket to check if already sent or closed
+    const ticket = tickets.find((t) => t.id === ticketId);
+    if (!ticket) {
+      alert("Ticket not found");
+      return;
+    }
+
+    // Prevent sending if already sent, closed, or currently sending
+    if (ticket.completionSent || ticket.status === "closed" || sendingCompletion[ticketId]) {
+      alert("Completion message has already been sent for this ticket. Ticket is closed.");
       return;
     }
 
@@ -219,14 +228,19 @@ export default function DeliveryUpdatePage() {
     try {
       const response = await axios.post(`/api/delivery-tickets/${ticketId}/send-completion`);
       if (response.data.success) {
-        // Mark as sent - prevent future sends
-        setCompletionSent((prev) => new Set(prev).add(ticketId));
+        // Refresh tickets to get updated completionSent status from database
+        await fetchTickets();
       } else {
         alert(response.data.message?.error || "Failed to send completion message");
       }
     } catch (error: unknown) {
       const err = error as { response?: { data?: { error?: string } } };
-      alert(err.response?.data?.error || "Failed to send completion message");
+      const errorMessage = err.response?.data?.error || "Failed to send completion message";
+      alert(errorMessage);
+      // If error is about already sent, refresh to update UI
+      if (errorMessage.includes("already been sent")) {
+        await fetchTickets();
+      }
     } finally {
       setSendingCompletion((prev) => ({ ...prev, [ticketId]: false }));
     }
@@ -348,16 +362,16 @@ export default function DeliveryUpdatePage() {
                       )}
                     </div>
                     <div className="pt-3 border-t">
-                      {completionSent.has(ticket.id) ? (
+                      {ticket.completionSent || ticket.status === "closed" ? (
                         <Button
                           size="sm"
                           variant="outline"
                           disabled
-                          className="w-full text-xs"
+                          className="w-full text-xs bg-green-100 dark:bg-green-900/30 text-green-900 dark:text-green-400 border-green-300 dark:border-green-900"
                         >
                           <CheckCircle className="mr-2 h-3 w-3" />
-                          Completion Sent
-                        </Button>
+                          Ticket Closed
+                        </Button> 
                       ) : (
                         <Button
                           size="sm"
@@ -366,7 +380,7 @@ export default function DeliveryUpdatePage() {
                             e.stopPropagation();
                             handleSendCompletion(ticket.id);
                           }}
-                          disabled={sendingCompletion[ticket.id]}
+                          disabled={sendingCompletion[ticket.id] || ticket.completionSent}
                           className="w-full text-xs"
                         >
                           {sendingCompletion[ticket.id] ? (

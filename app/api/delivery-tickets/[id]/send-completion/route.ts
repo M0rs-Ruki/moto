@@ -61,7 +61,15 @@ export async function POST(
       );
     }
 
-    // Send completion message (no parameters)
+    // Check if completion message was already sent or ticket is closed
+    if (ticket.completionSent || ticket.status === "closed") {
+      return NextResponse.json(
+        { error: "Completion message has already been sent for this ticket. Ticket is closed." },
+        { status: 400 }
+      );
+    }
+
+    // Send completion message
     let messageStatus = "sent";
     let messageError = null;
 
@@ -74,6 +82,16 @@ export async function POST(
         templateLanguage: template.language,
         parameters: [], // No parameters - just send the template
       });
+
+      // Mark ticket as completion sent, message sent, and closed in database
+      await prisma.deliveryTicket.update({
+        where: { id: ticket.id },
+        data: { 
+          completionSent: true,
+          messageSent: true,
+          status: "closed",
+        },
+      });
     } catch (error: unknown) {
       console.error("Failed to send delivery completion message:", error);
       messageStatus = "failed";
@@ -81,7 +99,7 @@ export async function POST(
     }
 
     return NextResponse.json({
-      success: true,
+      success: messageStatus === "sent",
       message: {
         status: messageStatus,
         error: messageError,

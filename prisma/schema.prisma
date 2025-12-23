@@ -315,6 +315,8 @@ model DeliveryTicket {
   description    String? // Description/notes
   deliveryDate   DateTime
   messageSent    Boolean  @default(false) // Whether message has been sent
+  completionSent Boolean  @default(false) // Whether completion message has been sent
+  status         String   @default("active") // active, closed
 
   // WhatsApp contact ID from the API
   whatsappContactId String?
