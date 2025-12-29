@@ -259,7 +259,7 @@ model DigitalEnquiry {
   email          String?
   address        String?
   reason         String // Reason for enquiry
-  leadScope      String  @default("medium") // Priority: high, medium, low
+  leadScope      String  @default("warm") // Lead status: hot, warm, cold
 
   // WhatsApp contact ID from the API
   whatsappContactId String?

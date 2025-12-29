@@ -106,7 +106,7 @@ export default function DigitalEnquiryPage() {
     address: "",
     reason: "",
     leadSourceId: "",
-    leadScope: "medium",
+    leadScope: "warm",
     interestedModelId: "",
     interestedVariantId: "",
   });
@@ -183,7 +183,7 @@ export default function DigitalEnquiryPage() {
           address: "",
           reason: "",
           leadSourceId: "",
-          leadScope: "medium",
+          leadScope: "warm",
           interestedModelId: "",
           interestedVariantId: "",
         });
@@ -199,11 +199,11 @@ export default function DigitalEnquiryPage() {
 
   const getLeadScopeColor = (scope: string) => {
     switch (scope) {
-      case "high":
+      case "hot":
         return "bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400";
-      case "medium":
+      case "warm":
         return "bg-yellow-100 dark:bg-yellow-900/30 text-yellow-600 dark:text-yellow-400";
-      case "low":
+      case "cold":
         return "bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400";
       default:
         return "bg-gray-100 dark:bg-gray-900/30 text-gray-600 dark:text-gray-400";
@@ -504,9 +504,9 @@ export default function DigitalEnquiryPage() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="high">High</SelectItem>
-                    <SelectItem value="medium">Medium</SelectItem>
-                    <SelectItem value="low">Low</SelectItem>
+                    <SelectItem value="hot">Hot</SelectItem>
+                    <SelectItem value="warm">Warm</SelectItem>
+                    <SelectItem value="cold">Cold</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

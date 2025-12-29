@@ -83,7 +83,7 @@ export async function POST(request: NextRequest) {
         email: email || null,
         address: address || null,
         reason,
-        leadScope: leadScope || "medium",
+        leadScope: leadScope || "warm",
         whatsappContactId,
         dealershipId: user.dealershipId,
         leadSourceId: leadSourceId || null,
