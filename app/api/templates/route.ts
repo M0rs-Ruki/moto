@@ -82,6 +82,27 @@ export async function GET(request: NextRequest) {
       templates.push(deliveryCompletionTemplate);
     }
 
+    // Ensure field_inquiry template exists (for existing users)
+    const hasFieldInquiry = templates.some(
+      (t) => t.type === "field_inquiry" && t.section === "field_inquiry"
+    );
+
+    if (!hasFieldInquiry) {
+      // Create placeholder field inquiry template
+      const fieldInquiryTemplate = await prisma.whatsAppTemplate.create({
+        data: {
+          name: "Field Inquiry",
+          templateId: "",
+          templateName: "",
+          language: "en_US",
+          type: "field_inquiry",
+          section: "field_inquiry",
+          dealershipId: user.dealershipId,
+        },
+      });
+      templates.push(fieldInquiryTemplate);
+    }
+
     return NextResponse.json({ templates });
   } catch (error: unknown) {
     console.error("Get templates error:", error);

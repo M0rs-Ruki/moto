@@ -21,7 +21,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Check if phone number exists in different sections
-    const [visitors, digitalEnquiries, deliveryTickets] = await Promise.all([
+    const [visitors, digitalEnquiries, fieldInquiries, deliveryTickets] = await Promise.all([
       prisma.visitor.findMany({
         where: {
           dealershipId: user.dealershipId,
@@ -35,6 +35,18 @@ export async function GET(request: NextRequest) {
         take: 1,
       }),
       prisma.digitalEnquiry.findMany({
+        where: {
+          dealershipId: user.dealershipId,
+          whatsappNumber: phoneNumber,
+        },
+        select: {
+          id: true,
+          firstName: true,
+          lastName: true,
+        },
+        take: 1,
+      }),
+      prisma.fieldInquiry.findMany({
         where: {
           dealershipId: user.dealershipId,
           whatsappNumber: phoneNumber,
@@ -63,10 +75,12 @@ export async function GET(request: NextRequest) {
     const results = {
       dailyWalkins: visitors.length > 0,
       digitalEnquiry: digitalEnquiries.length > 0,
+      fieldInquiry: fieldInquiries.length > 0,
       deliveryUpdate: deliveryTickets.length > 0,
       // Include IDs for navigation if needed
       visitorId: visitors[0]?.id || null,
       enquiryId: digitalEnquiries[0]?.id || null,
+      fieldInquiryId: fieldInquiries[0]?.id || null,
       ticketId: deliveryTickets[0]?.id || null,
     };
 

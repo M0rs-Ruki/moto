@@ -81,6 +81,12 @@ export async function GET(request: NextRequest) {
       baseWhere
     );
 
+    // Field Inquiry
+    const fieldInquiry = await countByDateRange(
+      prisma.fieldInquiry,
+      baseWhere
+    );
+
     // Delivery Update (Tickets)
     const deliveryUpdate = await countByDateRange(
       prisma.deliveryTicket,
@@ -90,6 +96,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       dailyWalkins,
       digitalEnquiry,
+      fieldInquiry,
       deliveryUpdate,
     });
   } catch (error: unknown) {

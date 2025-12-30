@@ -18,6 +18,7 @@ import {
   Calendar,
   BarChart3,
   Activity,
+  MapPin,
 } from "lucide-react";
 import DashboardLoading from "./loading";
 
@@ -30,6 +31,13 @@ interface Statistics {
     total: number;
   };
   digitalEnquiry: {
+    today: number;
+    week: number;
+    month: number;
+    year: number;
+    total: number;
+  };
+  fieldInquiry: {
     today: number;
     week: number;
     month: number;
@@ -232,6 +240,14 @@ export default function DashboardPage() {
           borderColor="border-green-500"
         />
         <StatCard
+          title="Field Inquiry"
+          icon={<MapPin className="h-5 w-5 sm:h-6 sm:w-6" />}
+          stats={statistics.fieldInquiry}
+          iconBg="bg-purple-500/10 dark:bg-purple-400/20"
+          iconColor="text-purple-600 dark:text-purple-400"
+          borderColor="border-purple-500"
+        />
+        <StatCard
           title="Delivery Update"
           icon={<Package className="h-5 w-5 sm:h-6 sm:w-6" />}
           stats={statistics.deliveryUpdate}
@@ -290,6 +306,7 @@ export default function DashboardPage() {
                 <div className="text-2xl sm:text-3xl font-bold text-foreground">
                   {statistics.dailyWalkins.total +
                     statistics.digitalEnquiry.total +
+                    statistics.fieldInquiry.total +
                     statistics.deliveryUpdate.total}
                 </div>
               </div>

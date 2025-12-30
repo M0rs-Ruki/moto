@@ -45,6 +45,7 @@ model Dealership {
   whatsappTemplates WhatsAppTemplate[]
   leadSources       LeadSource[]
   digitalEnquiries  DigitalEnquiry[]
+  fieldInquiries    FieldInquiry[]
   deliveryTickets   DeliveryTicket[]
 }
 
@@ -83,6 +84,7 @@ model VehicleModel {
   visitorInterests VisitorInterest[]
   testDrives       TestDrive[]
   digitalEnquiries DigitalEnquiry[]
+  fieldInquiries   FieldInquiry[]
   deliveryTickets  DeliveryTicket[]
 
   @@index([categoryId])
@@ -103,6 +105,7 @@ model VehicleVariant {
   visitorInterests VisitorInterest[]
   testDrives       TestDrive[]
   digitalEnquiries DigitalEnquiry[]
+  fieldInquiries   FieldInquiry[]
   deliveryTickets  DeliveryTicket[]
 
   @@unique([modelId, name])
@@ -214,10 +217,10 @@ model WhatsAppTemplate {
   templateName String // API template name
   language     String @default("en_US")
 
-  // Template type: welcome, test_drive, exit, digital_enquiry, delivery_reminder
+  // Template type: welcome, test_drive, exit, digital_enquiry, field_inquiry, delivery_reminder
   type String
 
-  // Section: daily_walkins, digital_enquiry, delivery_update, or global
+  // Section: daily_walkins, digital_enquiry, field_inquiry, delivery_update, or global
   section String? @default("global")
 
   dealership   Dealership @relation(fields: [dealershipId], references: [id], onDelete: Cascade)
@@ -245,6 +248,7 @@ model LeadSource {
 
   // Relations
   digitalEnquiries DigitalEnquiry[]
+  fieldInquiries   FieldInquiry[]
 
   @@unique([dealershipId, name])
   @@index([dealershipId])
@@ -359,5 +363,59 @@ model ScheduledMessage {
 
   @@index([deliveryTicketId])
   @@index([scheduledFor])
+  @@index([status])
+}
+
+// Field enquiry/lead tracking
+model FieldInquiry {
+  id             String  @id @default(cuid())
+  firstName      String
+  lastName       String
+  whatsappNumber String
+  email          String?
+  address        String?
+  reason         String // Reason for enquiry
+  leadScope      String  @default("warm") // Lead status: hot, warm, cold
+
+  // WhatsApp contact ID from the API
+  whatsappContactId String?
+
+  dealership   Dealership @relation(fields: [dealershipId], references: [id], onDelete: Cascade)
+  dealershipId String
+
+  leadSource   LeadSource? @relation(fields: [leadSourceId], references: [id], onDelete: SetNull)
+  leadSourceId String?
+
+  model             VehicleModel? @relation(fields: [interestedModelId], references: [id], onDelete: SetNull)
+  interestedModelId String?
+
+  // Optional variant selection
+  variant             VehicleVariant? @relation(fields: [interestedVariantId], references: [id], onDelete: SetNull)
+  interestedVariantId String?
+
+  // Relations
+  sessions FieldInquirySession[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([dealershipId])
+  @@index([whatsappNumber])
+  @@index([leadSourceId])
+}
+
+// Field Enquiry Session tracking
+model FieldInquirySession {
+  id     String  @id @default(cuid())
+  notes  String? // Session notes or follow-up information
+  status String  @default("active") // active, completed, closed
+
+  fieldInquiry   FieldInquiry @relation(fields: [fieldInquiryId], references: [id], onDelete: Cascade)
+  fieldInquiryId String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([fieldInquiryId])
   @@index([status])
 }

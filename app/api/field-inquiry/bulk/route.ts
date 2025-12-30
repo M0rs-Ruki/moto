@@ -126,8 +126,8 @@ export async function POST(request: NextRequest) {
     const template = await prisma.whatsAppTemplate.findFirst({
       where: {
         dealershipId: user.dealershipId,
-        type: "digital_enquiry",
-        section: "digital_enquiry",
+        type: "field_inquiry",
+        section: "field_inquiry",
       },
     });
 
@@ -227,7 +227,7 @@ export async function POST(request: NextRequest) {
         const address = row.Location ? String(row.Location).trim() : undefined;
 
         // Check if enquiry already exists
-        const existingEnquiry = await prisma.digitalEnquiry.findFirst({
+        const existingEnquiry = await prisma.fieldInquiry.findFirst({
           where: {
             dealershipId: user.dealershipId,
             whatsappNumber: whatsappNumber,
@@ -265,8 +265,8 @@ export async function POST(request: NextRequest) {
           }
         }
 
-        // Create digital enquiry with leadScope = "cold"
-        const enquiry = await prisma.digitalEnquiry.create({
+        // Create field enquiry with leadScope = "cold"
+        const enquiry = await prisma.fieldInquiry.create({
           data: {
             firstName,
             lastName,
@@ -346,3 +346,4 @@ export async function POST(request: NextRequest) {
     );
   }
 }
+

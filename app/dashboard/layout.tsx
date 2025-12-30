@@ -24,6 +24,7 @@ import {
   Globe,
   MessageSquare,
   Package,
+  MapPin,
 } from "lucide-react";
 
 interface User {
@@ -209,6 +210,37 @@ export default function DashboardLayout({
                 </TooltipTrigger>
                 <TooltipContent side="right">
                   <p>Digital Enquiry</p>
+                </TooltipContent>
+              </Tooltip>
+
+              {/* Field Inquiry */}
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Link
+                    href="/dashboard/field-inquiry"
+                    onClick={() => setSidebarOpen(false)}
+                    className="w-full"
+                  >
+                    <Button
+                      variant={
+                        pathname === "/dashboard/field-inquiry" ||
+                        pathname?.startsWith("/dashboard/field-inquiry/")
+                          ? "secondary"
+                          : "ghost"
+                      }
+                      size="icon"
+                      className="w-full h-12 relative"
+                    >
+                      <MapPin className="h-5 w-5" />
+                      {(pathname === "/dashboard/field-inquiry" ||
+                        pathname?.startsWith("/dashboard/field-inquiry/")) && (
+                        <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-8 bg-primary rounded-r-full" />
+                      )}
+                    </Button>
+                  </Link>
+                </TooltipTrigger>
+                <TooltipContent side="right">
+                  <p>Field Inquiry</p>
                 </TooltipContent>
               </Tooltip>
 
