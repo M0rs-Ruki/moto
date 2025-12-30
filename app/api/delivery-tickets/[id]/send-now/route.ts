@@ -105,6 +105,13 @@ export async function POST(
       const modelName = ticket.model
         ? `${ticket.model.category.name} - ${ticket.model.name}`
         : "N/A";
+      
+      // Format delivery date for "Send Now" option
+      const deliveryDateFormatted = new Date(ticket.deliveryDate).toLocaleDateString("en-US", {
+        month: "long",
+        day: "numeric",
+        year: "numeric",
+      });
 
       await whatsappClient.sendTemplate({
         contactId: ticket.whatsappContactId,
@@ -112,7 +119,7 @@ export async function POST(
         templateName: template.templateName,
         templateId: template.templateId,
         templateLanguage: template.language,
-        parameters: [modelName],
+        parameters: [modelName, deliveryDateFormatted],
       });
 
       // Update ticket

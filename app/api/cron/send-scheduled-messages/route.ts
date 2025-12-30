@@ -116,6 +116,18 @@ export async function GET(request: NextRequest) {
           const modelName = ticket.model
             ? `${ticket.model.category.name} - ${ticket.model.name}`
             : "N/A";
+          
+          // Calculate days before delivery
+          const deliveryDate = new Date(ticket.deliveryDate);
+          const scheduledDate = new Date(scheduledMessage.scheduledFor);
+          
+          // Normalize dates to compare only the date portion
+          deliveryDate.setHours(0, 0, 0, 0);
+          scheduledDate.setHours(0, 0, 0, 0);
+          
+          const diffTime = deliveryDate.getTime() - scheduledDate.getTime();
+          const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
+          const daysBeforeStr = String(diffDays);
 
           await whatsappClient.sendTemplate({
             contactId: ticket.whatsappContactId,
@@ -123,7 +135,7 @@ export async function GET(request: NextRequest) {
             templateName: template.templateName,
             templateId: template.templateId,
             templateLanguage: template.language,
-            parameters: [modelName],
+            parameters: [modelName, daysBeforeStr],
           });
 
           // Mark as sent

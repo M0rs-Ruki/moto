@@ -183,13 +183,23 @@ export async function POST(request: NextRequest) {
             ? `${ticket.model.category.name} - ${ticket.model.name}`
             : "N/A";
 
+          // Format delivery date for "Send Now" option
+          const deliveryDateFormatted = deliveryDateObj.toLocaleDateString(
+            "en-US",
+            {
+              month: "long",
+              day: "numeric",
+              year: "numeric",
+            }
+          );
+
           await whatsappClient.sendTemplate({
             contactId: whatsappContactId,
             contactNumber: whatsappNumber,
             templateName: template.templateName,
             templateId: template.templateId,
             templateLanguage: template.language,
-            parameters: [modelName],
+            parameters: [modelName, deliveryDateFormatted],
           });
           messageStatus = "sent";
 
@@ -233,13 +243,16 @@ export async function POST(request: NextRequest) {
               ? `${ticket.model.category.name} - ${ticket.model.name}`
               : "N/A";
 
+            // Send days before (3, 2, or 1) as second parameter
+            const daysBeforeStr = String(daysBefore);
+
             await whatsappClient.sendTemplate({
               contactId: whatsappContactId,
               contactNumber: whatsappNumber,
               templateName: template.templateName,
               templateId: template.templateId,
               templateLanguage: template.language,
-              parameters: [modelName],
+              parameters: [modelName, daysBeforeStr],
             });
             messageStatus = "sent";
 
