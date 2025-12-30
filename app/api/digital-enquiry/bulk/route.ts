@@ -5,7 +5,7 @@ import { whatsappClient } from "@/lib/whatsapp";
 import * as XLSX from "xlsx";
 
 interface ExcelRow {
-  Date?: string | number;
+  Date?: string | number | Date;
   Name?: string;
   "WhatsApp Number"?: string;
   Location?: string;
@@ -173,6 +173,7 @@ export async function POST(request: NextRequest) {
         let date: Date | undefined;
         if (row.Date) {
           const dateValue = row.Date;
+          // Check if it's already a Date object
           if (dateValue instanceof Date) {
             date = dateValue;
           } else if (typeof dateValue === "number") {
@@ -180,9 +181,9 @@ export async function POST(request: NextRequest) {
             // Excel epoch is January 1, 1900, JavaScript epoch is January 1, 1970
             const excelEpoch = new Date(1899, 11, 30); // Dec 30, 1899
             date = new Date(excelEpoch.getTime() + dateValue * 86400000);
-          } else {
+          } else if (typeof dateValue === "string") {
             // Try parsing as string
-            const parsedDate = new Date(String(dateValue));
+            const parsedDate = new Date(dateValue);
             if (!isNaN(parsedDate.getTime())) {
               date = parsedDate;
             }
