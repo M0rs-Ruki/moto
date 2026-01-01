@@ -141,6 +141,10 @@ export default function DailyWalkinsPage() {
   // Visitors state
   const [visitors, setVisitors] = useState<Visitor[]>([]);
   const [filteredVisitors, setFilteredVisitors] = useState<Visitor[]>([]);
+  const [displayedCount, setDisplayedCount] = useState(30); // Show 30 initially
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(false);
+  const [totalVisitors, setTotalVisitors] = useState(0);
   const [searchQuery, setSearchQuery] = useState("");
   const [visitorDialogOpen, setVisitorDialogOpen] = useState(false);
   const [visitorSubmitting, setVisitorSubmitting] = useState(false);
@@ -166,6 +170,10 @@ export default function DailyWalkinsPage() {
   // Sessions state
   const [allSessions, setAllSessions] = useState<Session[]>([]);
   const [loadingSessions, setLoadingSessions] = useState(false);
+  const [sessionsDisplayedCount, setSessionsDisplayedCount] = useState(30); // Show 30 initially
+  const [sessionsLoadingMore, setSessionsLoadingMore] = useState(false);
+  const [sessionsHasMore, setSessionsHasMore] = useState(false);
+  const [sessionsTotal, setSessionsTotal] = useState(0);
   const [expandedSessions, setExpandedSessions] = useState<Set<string>>(
     new Set()
   );
@@ -245,6 +253,8 @@ export default function DailyWalkinsPage() {
     }
 
     setFilteredVisitors(filteredV);
+    // Reset displayed count when filters change
+    setDisplayedCount(30);
   }, [dateFilter, visitors, searchQuery]);
 
   // Apply date filter and search
@@ -252,22 +262,47 @@ export default function DailyWalkinsPage() {
     applyFilters();
   }, [applyFilters]);
 
-  const fetchData = async () => {
+  const fetchData = async (skip: number = 0, append: boolean = false) => {
     try {
+      if (!append) {
+        setLoading(true);
+      } else {
+        setLoadingMore(true);
+      }
+
       const [categoriesRes, visitorsRes, sessionsRes] = await Promise.all([
         axios.get("/api/categories"),
-        axios.get("/api/visitors"),
-        axios.get("/api/sessions"),
+        axios.get(`/api/visitors?limit=30&skip=${skip}`),
+        axios.get(`/api/sessions?limit=30&skip=0`),
       ]);
 
       setCategories(categoriesRes.data.categories);
-      setVisitors(visitorsRes.data.visitors);
-      setAllSessions(sessionsRes.data.sessions || []);
+      
+      // Append or replace visitors
+      if (append) {
+        setVisitors([...visitors, ...visitorsRes.data.visitors]);
+      } else {
+        setVisitors(visitorsRes.data.visitors);
+      }
+      
+      setHasMore(visitorsRes.data.hasMore || false);
+      setTotalVisitors(visitorsRes.data.total || visitorsRes.data.visitors.length);
+      
+      // Handle sessions
+      if (append) {
+        // Don't reload sessions when loading more visitors
+      } else {
+        setAllSessions(sessionsRes.data.sessions || []);
+        setSessionsHasMore(sessionsRes.data.hasMore || false);
+        setSessionsTotal(sessionsRes.data.total || sessionsRes.data.sessions?.length || 0);
+        setSessionsDisplayedCount(30);
+      }
 
-      // Fetch phone lookups for visitors
-      const lookups: Record<string, PhoneLookup> = {};
+      // Fetch phone lookups for new visitors only
+      const newVisitors = append ? visitorsRes.data.visitors : visitorsRes.data.visitors;
+      const lookups: Record<string, PhoneLookup> = { ...phoneLookups };
       await Promise.all(
-        visitorsRes.data.visitors.map(async (visitor: Visitor) => {
+        newVisitors.map(async (visitor: Visitor) => {
           try {
             const lookupRes = await axios.get(
               `/api/phone-lookup?phone=${encodeURIComponent(
@@ -288,19 +323,68 @@ export default function DailyWalkinsPage() {
       console.error("Failed to fetch data:", error);
     } finally {
       setLoading(false);
+      setLoadingMore(false);
     }
   };
 
-  const fetchAllSessions = async () => {
-    setLoadingSessions(true);
+  const handleLoadMore = async () => {
+    // If we have more filtered visitors than displayed, just show more from what we already have
+    if (filteredVisitors.length > displayedCount) {
+      setDisplayedCount(Math.min(displayedCount + 30, filteredVisitors.length));
+    } 
+    // Otherwise, fetch more from backend if available
+    else if (hasMore) {
+      const currentSkip = visitors.length;
+      await fetchData(currentSkip, true);
+      // Increase displayed count after new data is loaded
+      setDisplayedCount(displayedCount + 30);
+    }
+  };
+
+  const fetchAllSessions = async (skip: number = 0, append: boolean = false) => {
+    if (!append) {
+      setLoadingSessions(true);
+    } else {
+      setSessionsLoadingMore(true);
+    }
+    
     try {
-      const response = await axios.get("/api/sessions");
-      setAllSessions(response.data.sessions || []);
+      const visitorIdParam = selectedVisitorId ? `&visitorId=${selectedVisitorId}` : "";
+      const response = await axios.get(`/api/sessions?limit=30&skip=${skip}${visitorIdParam}`);
+      
+      if (append) {
+        setAllSessions([...allSessions, ...(response.data.sessions || [])]);
+      } else {
+        setAllSessions(response.data.sessions || []);
+        setSessionsDisplayedCount(30);
+      }
+      
+      setSessionsHasMore(response.data.hasMore || false);
+      setSessionsTotal(response.data.total || response.data.sessions?.length || 0);
     } catch (error) {
       console.error("Failed to fetch sessions:", error);
-      setAllSessions([]);
+      if (!append) {
+        setAllSessions([]);
+      }
     } finally {
       setLoadingSessions(false);
+      setSessionsLoadingMore(false);
+    }
+  };
+
+  const handleLoadMoreSessions = async () => {
+    // If we have more sessions than displayed, just show more
+    const displayedSessions = selectedVisitorId
+      ? allSessions.filter((s: Session) => s.visitor.id === selectedVisitorId)
+      : allSessions;
+    
+    if (displayedSessions.length > sessionsDisplayedCount) {
+      setSessionsDisplayedCount(Math.min(sessionsDisplayedCount + 30, displayedSessions.length));
+    } 
+    // Otherwise, fetch more from backend if available
+    else if (sessionsHasMore) {
+      await fetchAllSessions(allSessions.length, true);
+      setSessionsDisplayedCount(sessionsDisplayedCount + 30);
     }
   };
 
@@ -336,10 +420,9 @@ export default function DailyWalkinsPage() {
     setSelectedVisitorId(visitor.id);
     setActiveTab("sessions");
 
-    // Fetch all sessions if not already loaded
-    if (allSessions.length === 0) {
-      await fetchAllSessions();
-    }
+    // Reset sessions pagination and fetch sessions for this visitor
+    setSessionsDisplayedCount(30);
+    await fetchAllSessions(0, false);
 
     // Find and expand the latest session for this visitor
     const visitorSessions = allSessions
@@ -1010,8 +1093,9 @@ export default function DailyWalkinsPage() {
               </CardContent>
             </Card>
           ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {filteredVisitors.map((visitor) => {
+            <>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {filteredVisitors.slice(0, displayedCount).map((visitor) => {
                 return (
                   <Card
                     key={visitor.id}
@@ -1108,8 +1192,28 @@ export default function DailyWalkinsPage() {
                     </CardContent>
                   </Card>
                 );
-              })}
-            </div>
+                })}
+              </div>
+              {((hasMore && visitors.length > displayedCount) || filteredVisitors.length > displayedCount) && (
+                <div className="flex justify-center pt-4">
+                  <Button
+                    variant="outline"
+                    onClick={handleLoadMore}
+                    disabled={loadingMore}
+                    className="w-full sm:w-auto"
+                  >
+                    {loadingMore ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Loading...
+                      </>
+                    ) : (
+                      `Load More (${filteredVisitors.length - displayedCount} remaining)`
+                    )}
+                  </Button>
+                </div>
+              )}
+            </>
           )}
         </TabsContent>
 
@@ -1144,7 +1248,11 @@ export default function DailyWalkinsPage() {
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => setSelectedVisitorId(null)}
+                        onClick={() => {
+                          setSelectedVisitorId(null);
+                          setSessionsDisplayedCount(30);
+                          fetchAllSessions(0, false);
+                        }}
                       >
                         Clear Filter
                       </Button>
@@ -1168,13 +1276,16 @@ export default function DailyWalkinsPage() {
               </CardContent>
             </Card>
           ) : (
-            <div className="space-y-4">
-              {(selectedVisitorId
-                ? allSessions.filter(
-                    (s: Session) => s.visitor.id === selectedVisitorId
-                  )
-                : allSessions
-              ).map((session: Session) => {
+            <>
+              <div className="space-y-4">
+                {(selectedVisitorId
+                  ? allSessions.filter(
+                      (s: Session) => s.visitor.id === selectedVisitorId
+                    )
+                  : allSessions
+                )
+                  .slice(0, sessionsDisplayedCount)
+                  .map((session: Session) => {
                 const isExited = session.status === "exited";
                 const hasTestDrives = session.testDrives.length > 0;
                 const isExpanded = expandedSessions.has(session.id);
@@ -1330,8 +1441,35 @@ export default function DailyWalkinsPage() {
                     </Collapsible>
                   </Card>
                 );
-              })}
-            </div>
+                })}
+              </div>
+              {(() => {
+                const displayedSessions = selectedVisitorId
+                  ? allSessions.filter((s: Session) => s.visitor.id === selectedVisitorId)
+                  : allSessions;
+                const hasMoreToShow = displayedSessions.length > sessionsDisplayedCount || sessionsHasMore;
+                
+                return hasMoreToShow && (
+                  <div className="flex justify-center pt-4">
+                    <Button
+                      variant="outline"
+                      onClick={handleLoadMoreSessions}
+                      disabled={sessionsLoadingMore}
+                      className="w-full sm:w-auto"
+                    >
+                      {sessionsLoadingMore ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Loading...
+                        </>
+                      ) : (
+                        `Load More (${displayedSessions.length - sessionsDisplayedCount} remaining)`
+                      )}
+                    </Button>
+                  </div>
+                );
+              })()}
+            </>
           )}
         </TabsContent>
       </Tabs>

@@ -416,8 +416,14 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    // Return all visitors, but group by phone number to avoid duplicates
-    // Get all visitors first
+    // Get pagination parameters
+    const limit = parseInt(searchParams.get("limit") || "30"); // Default 30 per page
+    const skip = parseInt(searchParams.get("skip") || "0");
+    const loadAll = searchParams.get("loadAll") === "true"; // Option to load all for initial grouping
+
+    // For proper grouping by phone number, we need to fetch all visitors
+    // But we can optimize by only fetching what we need if loadAll is false
+    // For now, we'll fetch all to ensure proper grouping, but this can be optimized later
     const allVisitors = await prisma.visitor.findMany({
       where: {
         dealershipId: user.dealershipId,
@@ -506,7 +512,18 @@ export async function GET(request: NextRequest) {
       return bLatest - aLatest;
     });
 
-    return NextResponse.json({ visitors: uniqueVisitors });
+    // Apply pagination after grouping
+    const paginatedVisitors = uniqueVisitors.slice(skip, skip + limit);
+    const hasMore = uniqueVisitors.length > skip + limit;
+    const total = uniqueVisitors.length;
+
+    return NextResponse.json({ 
+      visitors: paginatedVisitors,
+      hasMore,
+      total,
+      skip,
+      limit
+    });
   } catch (error: unknown) {
     console.error("Get visitors error:", error);
     return NextResponse.json(

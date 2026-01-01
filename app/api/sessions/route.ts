@@ -13,6 +13,18 @@ export async function GET(request: NextRequest) {
     // Check if filtering by visitor ID
     const searchParams = request.nextUrl.searchParams;
     const visitorId = searchParams.get("visitorId");
+    const limit = parseInt(searchParams.get("limit") || "30"); // Default 30 per page
+    const skip = parseInt(searchParams.get("skip") || "0");
+
+    // Get total count for pagination
+    const totalCount = await prisma.visitorSession.count({
+      where: {
+        visitor: {
+          dealershipId: user.dealershipId,
+          ...(visitorId ? { id: visitorId } : {}),
+        },
+      },
+    });
 
     const sessions = await prisma.visitorSession.findMany({
       where: {
@@ -50,9 +62,19 @@ export async function GET(request: NextRequest) {
       orderBy: {
         createdAt: "desc",
       },
+      take: limit,
+      skip: skip,
     });
 
-    return NextResponse.json({ sessions });
+    const hasMore = skip + limit < totalCount;
+
+    return NextResponse.json({ 
+      sessions,
+      hasMore,
+      total: totalCount,
+      skip,
+      limit
+    });
   } catch (error: unknown) {
     console.error("Get sessions error:", error);
     return NextResponse.json(

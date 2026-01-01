@@ -156,6 +156,18 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
     }
 
+    // Get pagination parameters
+    const searchParams = request.nextUrl.searchParams;
+    const limit = parseInt(searchParams.get("limit") || "50"); // Default 50 per page
+    const skip = parseInt(searchParams.get("skip") || "0");
+
+    // Get total count for pagination
+    const totalCount = await prisma.digitalEnquiry.count({
+      where: {
+        dealershipId: user.dealershipId,
+      },
+    });
+
     const enquiries = await prisma.digitalEnquiry.findMany({
       where: {
         dealershipId: user.dealershipId,
@@ -171,9 +183,19 @@ export async function GET(request: NextRequest) {
       orderBy: {
         createdAt: "desc",
       },
+      take: limit,
+      skip: skip,
     });
 
-    return NextResponse.json({ enquiries });
+    const hasMore = skip + limit < totalCount;
+
+    return NextResponse.json({ 
+      enquiries,
+      hasMore,
+      total: totalCount,
+      skip,
+      limit
+    });
   } catch (error: unknown) {
     console.error("Get digital enquiries error:", error);
     return NextResponse.json(

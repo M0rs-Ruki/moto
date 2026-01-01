@@ -27,7 +27,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Plus, Loader2, MessageSquare, ChevronDown, Upload, FileSpreadsheet } from "lucide-react";
+import { Plus, Loader2, MessageSquare, ChevronDown, Upload, FileSpreadsheet, Edit2 } from "lucide-react";
 import Link from "next/link";
 
 interface LeadSource {
@@ -81,6 +81,10 @@ interface PhoneLookup {
 export default function DigitalEnquiryPage() {
   const [enquiries, setEnquiries] = useState<DigitalEnquiry[]>([]);
   const [loading, setLoading] = useState(true);
+  const [displayedCount, setDisplayedCount] = useState(50); // Show 50 initially
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(false);
+  const [totalEnquiries, setTotalEnquiries] = useState(0);
   const [phoneLookups, setPhoneLookups] = useState<Record<string, PhoneLookup>>(
     {}
   );
@@ -98,6 +102,10 @@ export default function DigitalEnquiryPage() {
     summary: { total: number; success: number; errors: number };
     results: Array<{ success: boolean; rowNumber: number; enquiryId?: string; error?: string }>;
   } | null>(null);
+
+  // Edit lead scope state
+  const [editingLeadScope, setEditingLeadScope] = useState<string | null>(null);
+  const [updatingLeadScope, setUpdatingLeadScope] = useState(false);
   const [leadSources, setLeadSources] = useState<LeadSource[]>([]);
   const [categories, setCategories] = useState<VehicleCategory[]>([]);
   const [openModelCategories, setOpenModelCategories] = useState<Set<string>>(
@@ -121,18 +129,35 @@ export default function DigitalEnquiryPage() {
   });
 
   useEffect(() => {
-    fetchData();
+    fetchData(0, false);
   }, []);
 
-  const fetchData = async () => {
+  const fetchData = async (skip: number = 0, append: boolean = false) => {
     try {
-      const response = await axios.get("/api/digital-enquiry");
-      setEnquiries(response.data.enquiries);
+      if (!append) {
+        setLoading(true);
+      } else {
+        setLoadingMore(true);
+      }
 
-      // Fetch phone lookups for all enquiries
-      const lookups: Record<string, PhoneLookup> = {};
+      const response = await axios.get(`/api/digital-enquiry?limit=50&skip=${skip}`);
+      
+      // Append or replace enquiries
+      if (append) {
+        setEnquiries([...enquiries, ...response.data.enquiries]);
+      } else {
+        setEnquiries(response.data.enquiries);
+        setDisplayedCount(50);
+      }
+      
+      setHasMore(response.data.hasMore || false);
+      setTotalEnquiries(response.data.total || response.data.enquiries.length);
+
+      // Fetch phone lookups for new enquiries only
+      const newEnquiries = append ? response.data.enquiries : response.data.enquiries;
+      const lookups: Record<string, PhoneLookup> = { ...phoneLookups };
       await Promise.all(
-        response.data.enquiries.map(async (enquiry: DigitalEnquiry) => {
+        newEnquiries.map(async (enquiry: DigitalEnquiry) => {
           try {
             const lookupRes = await axios.get(
               `/api/phone-lookup?phone=${encodeURIComponent(
@@ -153,6 +178,21 @@ export default function DigitalEnquiryPage() {
       console.error("Failed to fetch enquiries:", error);
     } finally {
       setLoading(false);
+      setLoadingMore(false);
+    }
+  };
+
+  const handleLoadMore = async () => {
+    // If we have more enquiries than displayed, just show more from what we already have
+    if (enquiries.length > displayedCount) {
+      setDisplayedCount(Math.min(displayedCount + 50, enquiries.length));
+    } 
+    // Otherwise, fetch more from backend if available
+    else if (hasMore) {
+      const currentSkip = enquiries.length;
+      await fetchData(currentSkip, true);
+      // Increase displayed count after new data is loaded
+      setDisplayedCount(displayedCount + 50);
     }
   };
 
@@ -196,7 +236,7 @@ export default function DigitalEnquiryPage() {
           interestedModelId: "",
           interestedVariantId: "",
         });
-        fetchData();
+        fetchData(0, false); // Reset pagination when creating new enquiry
       }
     } catch (err: unknown) {
       const error = err as { response?: { data?: { error?: string } } };
@@ -235,7 +275,7 @@ export default function DigitalEnquiryPage() {
       if (response.data.success) {
         setUploadResults(response.data);
         // Refresh the enquiry list
-        await fetchData();
+        await fetchData(0, false); // Reset pagination after bulk upload
       }
     } catch (err: unknown) {
       const error = err as { response?: { data?: { error?: string; details?: string } } };
@@ -262,6 +302,34 @@ export default function DigitalEnquiryPage() {
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString();
+  };
+
+  const handleUpdateLeadScope = async (enquiryId: string, newLeadScope: string) => {
+    if (updatingLeadScope) return;
+    
+    setUpdatingLeadScope(true);
+    try {
+      const response = await axios.patch(`/api/digital-enquiry/${enquiryId}`, {
+        leadScope: newLeadScope,
+      });
+
+      if (response.data.success) {
+        // Update the enquiry in the local state
+        setEnquiries((prev) =>
+          prev.map((enquiry) =>
+            enquiry.id === enquiryId
+              ? { ...enquiry, leadScope: newLeadScope }
+              : enquiry
+          )
+        );
+        setEditingLeadScope(null);
+      }
+    } catch (error: any) {
+      console.error("Failed to update lead scope:", error);
+      alert(error.response?.data?.error || "Failed to update lead scope");
+    } finally {
+      setUpdatingLeadScope(false);
+    }
   };
 
   if (loading) {
@@ -319,8 +387,9 @@ export default function DigitalEnquiryPage() {
           </CardContent>
         </Card>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {enquiries.map((enquiry) => (
+        <>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {enquiries.slice(0, displayedCount).map((enquiry) => (
             <Card
               key={enquiry.id}
               className="overflow-hidden hover:shadow-md transition-all duration-200"
@@ -364,12 +433,50 @@ export default function DigitalEnquiryPage() {
                   </div>
                 </div>
                 <div className="flex flex-wrap items-center gap-2">
-                  <Badge
-                    className={getLeadScopeColor(enquiry.leadScope)}
-                    variant="secondary"
-                  >
-                    {enquiry.leadScope.toUpperCase()}
-                  </Badge>
+                  <div className="flex items-center gap-1.5 group">
+                    {editingLeadScope === enquiry.id ? (
+                      <Select
+                        value={enquiry.leadScope}
+                        onValueChange={(value) => {
+                          handleUpdateLeadScope(enquiry.id, value);
+                        }}
+                        disabled={updatingLeadScope}
+                      >
+                        <SelectTrigger className="h-6 w-20 text-xs">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="hot">Hot</SelectItem>
+                          <SelectItem value="warm">Warm</SelectItem>
+                          <SelectItem value="cold">Cold</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    ) : (
+                      <>
+                        <Badge
+                          className={getLeadScopeColor(enquiry.leadScope)}
+                          variant="secondary"
+                        >
+                          {enquiry.leadScope.toUpperCase()}
+                        </Badge>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-5 w-5 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setEditingLeadScope(enquiry.id);
+                          }}
+                          disabled={updatingLeadScope}
+                        >
+                          <Edit2 className="h-3 w-3" />
+                        </Button>
+                      </>
+                    )}
+                    {updatingLeadScope && editingLeadScope === enquiry.id && (
+                      <Loader2 className="h-3 w-3 animate-spin" />
+                    )}
+                  </div>
                   {enquiry.leadSource && (
                     <Badge variant="outline">{enquiry.leadSource.name}</Badge>
                   )}
@@ -411,8 +518,28 @@ export default function DigitalEnquiryPage() {
                 )}
               </CardContent>
             </Card>
-          ))}
-        </div>
+            ))}
+          </div>
+          {(hasMore && enquiries.length > displayedCount) || enquiries.length > displayedCount ? (
+            <div className="flex justify-center pt-4">
+              <Button
+                variant="outline"
+                onClick={handleLoadMore}
+                disabled={loadingMore}
+                className="w-full sm:w-auto"
+              >
+                {loadingMore ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Loading...
+                  </>
+                ) : (
+                  `Load More (${enquiries.length - displayedCount} remaining)`
+                )}
+              </Button>
+            </div>
+          ) : null}
+        </>
       )}
 
       {/* Create Enquiry Dialog */}
