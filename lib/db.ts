@@ -1,6 +1,20 @@
 import { PrismaClient } from "@prisma/client";
 
+// Validate DATABASE_URL is set
+if (!process.env.DATABASE_URL) {
+  console.error("❌ DATABASE_URL environment variable is not set!");
+  throw new Error("DATABASE_URL environment variable is required");
+}
+
 const prismaClientSingleton = () => {
+  const databaseUrl = process.env.DATABASE_URL;
+  
+  // Log connection info (without sensitive data)
+  if (process.env.NODE_ENV === "production") {
+    const urlObj = new URL(databaseUrl);
+    console.log(`🔌 Connecting to database: ${urlObj.hostname}:${urlObj.port || 5432}`);
+  }
+  
   return new PrismaClient({
     log:
       process.env.NODE_ENV === "development"
@@ -8,7 +22,7 @@ const prismaClientSingleton = () => {
         : ["error"],
     datasources: {
       db: {
-        url: process.env.DATABASE_URL,
+        url: databaseUrl,
       },
     },
   });
@@ -27,12 +41,17 @@ if (process.env.NODE_ENV !== "production") {
 
 // Test connection on startup (only in production)
 if (process.env.NODE_ENV === "production") {
-  prisma.$connect().catch((error) => {
-    console.error("Failed to connect to database:", error);
-    console.error(
-      "Please check your DATABASE_URL environment variable and ensure the database server is accessible."
-    );
-  });
+  prisma.$connect()
+    .then(() => {
+      console.log("✅ Database connected successfully");
+    })
+    .catch((error) => {
+      console.error("❌ Failed to connect to database:", error.message);
+      console.error("DATABASE_URL format:", process.env.DATABASE_URL?.replace(/:[^:@]+@/, ":****@"));
+      console.error(
+        "Please check your DATABASE_URL environment variable and ensure the database server is accessible."
+      );
+    });
 }
 
 export default prisma;

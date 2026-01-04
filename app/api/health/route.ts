@@ -8,6 +8,21 @@ import prisma from "@/lib/db";
  */
 export async function GET() {
   try {
+    // Check if DATABASE_URL is set
+    const hasDatabaseUrl = !!process.env.DATABASE_URL;
+    
+    if (!hasDatabaseUrl) {
+      return NextResponse.json(
+        {
+          status: "unhealthy",
+          timestamp: new Date().toISOString(),
+          database: "not_configured",
+          error: "DATABASE_URL environment variable is not set",
+        },
+        { status: 503 }
+      );
+    }
+
     // Check database connection
     await prisma.$queryRaw`SELECT 1`;
 
@@ -16,17 +31,22 @@ export async function GET() {
         status: "healthy",
         timestamp: new Date().toISOString(),
         database: "connected",
+        nodeEnv: process.env.NODE_ENV,
       },
       { status: 200 }
     );
   } catch (error) {
     console.error("Health check failed:", error);
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    
     return NextResponse.json(
       {
         status: "unhealthy",
         timestamp: new Date().toISOString(),
         database: "disconnected",
-        error: (error as Error).message,
+        error: errorMessage,
+        nodeEnv: process.env.NODE_ENV,
+        databaseUrlConfigured: !!process.env.DATABASE_URL,
       },
       { status: 503 }
     );

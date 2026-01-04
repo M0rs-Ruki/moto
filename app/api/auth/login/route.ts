@@ -60,8 +60,43 @@ export async function POST(request: NextRequest) {
     });
   } catch (error: unknown) {
     console.error("Login error:", error);
+    
+    // Check if it's a database connection error
+    if (error instanceof Error) {
+      // Prisma connection errors
+      if (error.message.includes("Can't reach database server") || 
+          error.message.includes("P1001") ||
+          error.message.includes("connection")) {
+        console.error("Database connection error:", error.message);
+        return NextResponse.json(
+          { 
+            error: "Database connection failed",
+            details: process.env.NODE_ENV === "development" ? error.message : undefined
+          },
+          { status: 503 }
+        );
+      }
+      
+      // Other Prisma errors
+      if (error.message.includes("Prisma") || error.message.includes("P")) {
+        console.error("Database error:", error.message);
+        return NextResponse.json(
+          { 
+            error: "Database error occurred",
+            details: process.env.NODE_ENV === "development" ? error.message : undefined
+          },
+          { status: 500 }
+        );
+      }
+    }
+    
     return NextResponse.json(
-      { error: "Internal server error" },
+      { 
+        error: "Internal server error",
+        details: process.env.NODE_ENV === "development" 
+          ? (error instanceof Error ? error.message : String(error))
+          : undefined
+      },
       { status: 500 }
     );
   }
