@@ -5,20 +5,14 @@
   "scripts": {
     "dev": "next dev",
     "build": "prisma generate && next build",
-    "start": "next start",
+    "start": "next start -p $PORT",
     "lint": "eslint",
     "postinstall": "prisma generate",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate deploy",
-    "prisma:studio": "prisma studio",
-    "prisma:reset": "prisma migrate reset",
-    "health": "node -e \"require('http').get('http://localhost:3000/api/health', (r) => { process.exit(r.statusCode === 200 ? 0 : 1) })\"",
-    "cron:test": "curl -X GET http://localhost:3000/api/cron/send-scheduled-messages -H \"Authorization: Bearer ${CRON_SECRET}\"",
-    "cron:setup": "chmod +x scripts/*.sh && bash scripts/setup-cron.sh",
-    "deploy:build": "npm run prisma:generate && npm run build",
-    "deploy:start": "npm run prisma:migrate && npm start",
-    "deploy:full": "npm run deploy:build && npm run deploy:start",
-    "prepare": "npm run prisma:generate"
+    "deploy:build": "npm run build",
+    "deploy:start": "npm run start",
+    "prepare": "prisma generate"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
