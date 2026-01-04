@@ -54,7 +54,7 @@ export async function POST(request: NextRequest) {
         id: user.id,
         email: user.email,
         theme: user.theme,
-        accentColor: user.accentColor,
+        profilePicture: user.profilePicture,
         dealership: user.dealership,
       },
     });

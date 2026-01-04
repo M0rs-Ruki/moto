@@ -2,18 +2,19 @@ import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db";
 import bcrypt from "bcryptjs";
 import { generateToken, setAuthCookie } from "@/lib/auth";
+import { writeFile, mkdir } from "fs/promises";
+import { join } from "path";
+import { existsSync } from "fs";
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
-    const {
-      email,
-      password,
-      dealershipName,
-      dealershipLocation,
-      theme,
-      accentColor,
-    } = body;
+    const formData = await request.formData();
+    const email = formData.get("email") as string;
+    const password = formData.get("password") as string;
+    const dealershipName = formData.get("dealershipName") as string;
+    const dealershipLocation = formData.get("dealershipLocation") as string;
+    const theme = (formData.get("theme") as string) || "light";
+    const profilePictureFile = formData.get("profilePicture") as File | null;
 
     // Validation
     if (!email || !password || !dealershipName || !dealershipLocation) {
@@ -46,16 +47,78 @@ export async function POST(request: NextRequest) {
       },
     });
 
+    // Handle profile picture upload if provided
+    let profilePicturePath: string | null = null;
+    if (profilePictureFile && profilePictureFile.size > 0) {
+      // Validate file type
+      const allowedTypes = ["image/jpeg", "image/jpg", "image/png", "image/webp", "image/gif"];
+      if (!allowedTypes.includes(profilePictureFile.type)) {
+        return NextResponse.json(
+          { error: "Invalid file type. Please upload a JPEG, PNG, WebP, or GIF image." },
+          { status: 400 }
+        );
+      }
+
+      // Validate file size (5MB max)
+      const maxSize = 5 * 1024 * 1024;
+      if (profilePictureFile.size > maxSize) {
+        return NextResponse.json(
+          { error: "File size too large. Maximum size is 5MB." },
+          { status: 400 }
+        );
+      }
+
+      // Generate unique filename (we'll use a temporary ID, then update after user creation)
+      const tempId = `temp-${Date.now()}`;
+      const fileExtension = profilePictureFile.name.split(".").pop()?.toLowerCase() || "jpg";
+      const filename = `${tempId}.${fileExtension}`;
+      const filepath = join(process.cwd(), "public", "profile-pictures", filename);
+
+      // Ensure directory exists
+      const dirPath = join(process.cwd(), "public", "profile-pictures");
+      if (!existsSync(dirPath)) {
+        await mkdir(dirPath, { recursive: true });
+      }
+
+      // Save file
+      const bytes = await profilePictureFile.arrayBuffer();
+      const buffer = Buffer.from(bytes);
+      await writeFile(filepath, buffer);
+
+      profilePicturePath = `profile-pictures/${filename}`;
+    }
+
     const user = await prisma.user.create({
       data: {
         email,
         password: hashedPassword,
         dealershipId: dealership.id,
         theme: theme || "light",
-        accentColor: accentColor || "#3b82f6",
+        profilePicture: profilePicturePath,
       },
       include: { dealership: true },
     });
+
+    // If profile picture was uploaded, rename file to use user ID
+    if (profilePicturePath && user.id) {
+      const oldPath = join(process.cwd(), "public", profilePicturePath);
+      const fileExtension = profilePicturePath.split(".").pop() || "jpg";
+      const newFilename = `${user.id}-${Date.now()}.${fileExtension}`;
+      const newPath = join(process.cwd(), "public", "profile-pictures", newFilename);
+      
+      // Rename file
+      const { rename } = await import("fs/promises");
+      await rename(oldPath, newPath);
+      
+      // Update user record with correct path
+      const correctPath = `profile-pictures/${newFilename}`;
+      await prisma.user.update({
+        where: { id: user.id },
+        data: { profilePicture: correctPath },
+      });
+      
+      profilePicturePath = correctPath;
+    }
 
     // Create default WhatsApp templates
     await prisma.whatsAppTemplate.createMany({
@@ -133,7 +196,7 @@ export async function POST(request: NextRequest) {
         id: user.id,
         email: user.email,
         theme: user.theme,
-        accentColor: user.accentColor,
+        profilePicture: profilePicturePath,
         dealership: user.dealership,
       },
     });

@@ -17,7 +17,7 @@ export async function GET(request: NextRequest) {
         id: true,
         email: true,
         theme: true,
-        accentColor: true,
+        profilePicture: true,
         dealership: {
           select: {
             id: true,

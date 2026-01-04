@@ -31,7 +31,7 @@ interface User {
   id: string;
   email: string;
   theme: string;
-  accentColor: string;
+  profilePicture: string | null;
   dealership: {
     id: string;
     name: string;
@@ -121,11 +121,30 @@ export default function DashboardLayout({
         }`}
       >
         <div className="flex flex-col h-full items-center py-4">
-            {/* Logo - Hidden on mobile with header */}
+            {/* Logo/Profile Picture - Hidden on mobile with header */}
             <div className="mb-6 hidden md:flex items-center justify-center">
-              <div className="w-10 h-10 rounded-lg bg-primary flex items-center justify-center">
-                <span className="text-primary-foreground font-bold text-lg">SM</span>
-              </div>
+              {user?.profilePicture ? (
+                <div className="w-10 h-10 rounded-lg overflow-hidden border-2 border-primary">
+                  <img
+                    src={`/${user.profilePicture}`}
+                    alt="Profile"
+                    className="w-full h-full object-cover"
+                    onError={(e) => {
+                      // Fallback to SM if image fails to load
+                      const target = e.target as HTMLImageElement;
+                      target.style.display = "none";
+                      const parent = target.parentElement;
+                      if (parent) {
+                        parent.innerHTML = '<span class="text-primary-foreground font-bold text-lg flex items-center justify-center w-full h-full bg-primary">SM</span>';
+                      }
+                    }}
+                  />
+                </div>
+              ) : (
+                <div className="w-10 h-10 rounded-lg bg-primary flex items-center justify-center">
+                  <span className="text-primary-foreground font-bold text-lg">SM</span>
+                </div>
+              )}
             </div>
 
             {/* Navigation */}

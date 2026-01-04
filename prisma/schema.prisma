@@ -22,8 +22,10 @@ model User {
   dealershipId String?
 
   // Theme preferences
-  theme       String @default("light") // light, dark, custom
-  accentColor String @default("#3b82f6") // hex color for custom theme
+  theme       String @default("light") // light, dark
+
+  // Profile picture
+  profilePicture String? // Path to profile picture in public folder
 
   @@index([dealershipId])
 }

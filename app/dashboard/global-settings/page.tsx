@@ -68,13 +68,7 @@ interface LeadSource {
 export default function SettingsPage() {
   const {
     theme,
-    primaryColor,
-    secondaryColor,
-    tertiaryColor,
     setTheme,
-    setPrimaryColor,
-    setSecondaryColor,
-    setTertiaryColor,
   } = useTheme();
   const [categories, setCategories] = useState<VehicleCategory[]>([]);
   const [templates, setTemplates] = useState<WhatsAppTemplate[]>([]);
@@ -87,6 +81,7 @@ export default function SettingsPage() {
   const [user, setUser] = useState<{
     id: string;
     email: string;
+    profilePicture: string | null;
     dealership: {
       id: string;
       name: string;
@@ -149,10 +144,12 @@ export default function SettingsPage() {
   // Theme settings
   const [themeSettings, setThemeSettings] = useState({
     theme: theme,
-    primaryColor: primaryColor,
-    secondaryColor: secondaryColor,
-    tertiaryColor: tertiaryColor,
   });
+
+  // Profile picture state
+  const [profilePictureFile, setProfilePictureFile] = useState<File | null>(null);
+  const [profilePicturePreview, setProfilePicturePreview] = useState<string | null>(null);
+  const [uploadingPicture, setUploadingPicture] = useState(false);
 
   useEffect(() => {
     fetchData();
@@ -161,11 +158,8 @@ export default function SettingsPage() {
   useEffect(() => {
     setThemeSettings({
       theme,
-      primaryColor,
-      secondaryColor,
-      tertiaryColor,
     });
-  }, [theme, primaryColor, secondaryColor, tertiaryColor]);
+  }, [theme]);
 
   const fetchData = async () => {
     try {
@@ -193,7 +187,12 @@ export default function SettingsPage() {
       
       // Set user and dealership info
       if (userRes.data?.user) {
-        setUser(userRes.data.user);
+        setUser({
+          id: userRes.data.user.id,
+          email: userRes.data.user.email,
+          profilePicture: userRes.data.user.profilePicture || null,
+          dealership: userRes.data.user.dealership,
+        });
       }
       if (dealershipRes.data?.dealership) {
         setDealershipForm({
@@ -318,11 +317,43 @@ export default function SettingsPage() {
   };
 
   const handleApplyTheme = () => {
-    setTheme(themeSettings.theme as "light" | "dark" | "custom");
-    if (themeSettings.theme === "custom") {
-      setPrimaryColor(themeSettings.primaryColor);
-      setSecondaryColor(themeSettings.secondaryColor);
-      setTertiaryColor(themeSettings.tertiaryColor);
+    setTheme(themeSettings.theme as "light" | "dark");
+  };
+
+  const handleUploadProfilePicture = async () => {
+    if (!profilePictureFile) return;
+
+    setUploadingPicture(true);
+    setError(null);
+
+    try {
+      const formData = new FormData();
+      formData.append("file", profilePictureFile);
+
+      const response = await axios.post("/api/auth/profile-picture", formData, {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      });
+
+      if (response.data.success) {
+        // Update user state with new profile picture
+        if (user) {
+          setUser({
+            ...user,
+            profilePicture: response.data.profilePicture,
+          });
+        }
+        // Clear preview and file
+        setProfilePictureFile(null);
+        setProfilePicturePreview(null);
+        // Refresh page to update sidebar
+        window.location.reload();
+      }
+    } catch (err: any) {
+      setError(err.response?.data?.error || "Failed to upload profile picture");
+    } finally {
+      setUploadingPicture(false);
     }
   };
 
@@ -1355,135 +1386,8 @@ export default function SettingsPage() {
                   >
                     Dark
                   </Button>
-                  <Button
-                    size="sm"
-                    variant={
-                      themeSettings.theme === "custom" ? "default" : "outline"
-                    }
-                    onClick={() =>
-                      setThemeSettings({ ...themeSettings, theme: "custom" })
-                    }
-                    className="w-full sm:w-auto text-xs sm:text-sm"
-                  >
-                    Custom
-                  </Button>
                 </div>
               </div>
-
-              {themeSettings.theme === "custom" && (
-                <div className="space-y-4">
-                  <div className="space-y-2">
-                    <Label
-                      htmlFor="primary-color"
-                      className="text-sm font-semibold"
-                    >
-                      Primary Color (Main)
-                    </Label>
-                    <p className="text-xs text-muted-foreground">
-                      Used for main buttons, headings, and primary actions
-                    </p>
-                    <div className="flex flex-col sm:flex-row gap-2">
-                      <Input
-                        id="primary-color"
-                        type="color"
-                        value={themeSettings.primaryColor}
-                        onChange={(e) =>
-                          setThemeSettings({
-                            ...themeSettings,
-                            primaryColor: e.target.value,
-                          })
-                        }
-                        className="w-full sm:w-20 h-10"
-                      />
-                      <Input
-                        value={themeSettings.primaryColor}
-                        onChange={(e) =>
-                          setThemeSettings({
-                            ...themeSettings,
-                            primaryColor: e.target.value,
-                          })
-                        }
-                        placeholder="#3b82f6"
-                        className="text-xs sm:text-sm flex-1"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label
-                      htmlFor="secondary-color"
-                      className="text-sm font-semibold"
-                    >
-                      Secondary Color
-                    </Label>
-                    <p className="text-xs text-muted-foreground">
-                      Used for secondary buttons, accents, and highlights
-                    </p>
-                    <div className="flex flex-col sm:flex-row gap-2">
-                      <Input
-                        id="secondary-color"
-                        type="color"
-                        value={themeSettings.secondaryColor}
-                        onChange={(e) =>
-                          setThemeSettings({
-                            ...themeSettings,
-                            secondaryColor: e.target.value,
-                          })
-                        }
-                        className="w-full sm:w-20 h-10"
-                      />
-                      <Input
-                        value={themeSettings.secondaryColor}
-                        onChange={(e) =>
-                          setThemeSettings({
-                            ...themeSettings,
-                            secondaryColor: e.target.value,
-                          })
-                        }
-                        placeholder="#8b5cf6"
-                        className="text-xs sm:text-sm flex-1"
-                      />
-                    </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label
-                      htmlFor="tertiary-color"
-                      className="text-sm font-semibold"
-                    >
-                      Tertiary Color
-                    </Label>
-                    <p className="text-xs text-muted-foreground">
-                      Used for borders, hover states, and subtle backgrounds
-                    </p>
-                    <div className="flex flex-col sm:flex-row gap-2">
-                      <Input
-                        id="tertiary-color"
-                        type="color"
-                        value={themeSettings.tertiaryColor}
-                        onChange={(e) =>
-                          setThemeSettings({
-                            ...themeSettings,
-                            tertiaryColor: e.target.value,
-                          })
-                        }
-                        className="w-full sm:w-20 h-10"
-                      />
-                      <Input
-                        value={themeSettings.tertiaryColor}
-                        onChange={(e) =>
-                          setThemeSettings({
-                            ...themeSettings,
-                            tertiaryColor: e.target.value,
-                          })
-                        }
-                        placeholder="#ec4899"
-                        className="text-xs sm:text-sm flex-1"
-                      />
-                    </div>
-                  </div>
-                </div>
-              )}
 
               <Button
                 onClick={handleApplyTheme}
@@ -1491,6 +1395,109 @@ export default function SettingsPage() {
               >
                 Apply Theme
               </Button>
+
+              {/* Profile Picture Section */}
+              <div className="space-y-4 pt-6 border-t">
+                <div className="space-y-2">
+                  <Label className="text-sm font-semibold">Profile Picture</Label>
+                  <p className="text-xs text-muted-foreground">
+                    Upload a profile picture to display in the sidebar
+                  </p>
+                  
+                  {/* Current Profile Picture */}
+                  {user?.profilePicture ? (
+                    <div className="flex items-center gap-4">
+                      <div className="w-20 h-20 rounded-lg overflow-hidden border-2 border-primary">
+                        <img
+                          src={`/${user.profilePicture}`}
+                          alt="Profile"
+                          className="w-full h-full object-cover"
+                          onError={(e) => {
+                            const target = e.target as HTMLImageElement;
+                            target.style.display = "none";
+                            const parent = target.parentElement;
+                            if (parent) {
+                              parent.innerHTML = '<div class="w-full h-full bg-muted flex items-center justify-center text-muted-foreground text-xs">No Image</div>';
+                            }
+                          }}
+                        />
+                      </div>
+                      <div className="flex-1">
+                        <p className="text-xs text-muted-foreground mb-2">Current profile picture</p>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="w-20 h-20 rounded-lg bg-muted flex items-center justify-center border-2 border-dashed">
+                      <span className="text-xs text-muted-foreground">No picture</span>
+                    </div>
+                  )}
+
+                  {/* Preview of new picture */}
+                  {profilePicturePreview && (
+                    <div className="mt-2">
+                      <p className="text-xs text-muted-foreground mb-2">New picture preview:</p>
+                      <div className="w-20 h-20 rounded-lg overflow-hidden border-2 border-primary">
+                        <img
+                          src={profilePicturePreview}
+                          alt="Preview"
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  {/* File Input */}
+                  <div className="flex flex-col sm:flex-row gap-2">
+                    <Input
+                      id="profile-picture-input"
+                      type="file"
+                      accept="image/jpeg,image/jpg,image/png,image/webp,image/gif"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                          // Validate file size (5MB max)
+                          if (file.size > 5 * 1024 * 1024) {
+                            setError("Profile picture must be less than 5MB");
+                            return;
+                          }
+                          // Validate file type
+                          const allowedTypes = ["image/jpeg", "image/jpg", "image/png", "image/webp", "image/gif"];
+                          if (!allowedTypes.includes(file.type)) {
+                            setError("Please upload a valid image file (JPEG, PNG, WebP, or GIF)");
+                            return;
+                          }
+                          setProfilePictureFile(file);
+                          const reader = new FileReader();
+                          reader.onloadend = () => {
+                            setProfilePicturePreview(reader.result as string);
+                          };
+                          reader.readAsDataURL(file);
+                        }
+                      }}
+                      className="text-xs sm:text-sm"
+                    />
+                    {profilePictureFile && (
+                      <Button
+                        onClick={handleUploadProfilePicture}
+                        disabled={uploadingPicture}
+                        className="w-full sm:w-auto text-xs sm:text-sm"
+                      >
+                        {uploadingPicture ? (
+                          <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            Uploading...
+                          </>
+                        ) : (
+                          <>
+                            <Save className="mr-2 h-4 w-4" />
+                            Upload Picture
+                          </>
+                        )}
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              </div>
             </CardContent>
           </Card>
         </TabsContent>

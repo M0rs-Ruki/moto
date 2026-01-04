@@ -39,8 +39,9 @@ function LoginContent() {
     dealershipName: "",
     dealershipLocation: "",
     theme: "light",
-    accentColor: "#3b82f6",
   });
+  const [profilePicture, setProfilePicture] = useState<File | null>(null);
+  const [profilePicturePreview, setProfilePicturePreview] = useState<string | null>(null);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -53,7 +54,6 @@ function LoginContent() {
       if (response.data.success) {
         // Apply theme immediately
         localStorage.setItem("theme", response.data.user.theme);
-        localStorage.setItem("accentColor", response.data.user.accentColor);
         router.push(redirect);
         router.refresh();
       }
@@ -83,19 +83,26 @@ function LoginContent() {
     }
 
     try {
-      const response = await axios.post("/api/auth/register", {
-        email: registerData.email,
-        password: registerData.password,
-        dealershipName: registerData.dealershipName,
-        dealershipLocation: registerData.dealershipLocation,
-        theme: registerData.theme,
-        accentColor: registerData.accentColor,
+      const formData = new FormData();
+      formData.append("email", registerData.email);
+      formData.append("password", registerData.password);
+      formData.append("dealershipName", registerData.dealershipName);
+      formData.append("dealershipLocation", registerData.dealershipLocation);
+      formData.append("theme", registerData.theme);
+      
+      if (profilePicture) {
+        formData.append("profilePicture", profilePicture);
+      }
+
+      const response = await axios.post("/api/auth/register", formData, {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
       });
 
       if (response.data.success) {
         // Apply theme immediately
         localStorage.setItem("theme", response.data.user.theme);
-        localStorage.setItem("accentColor", response.data.user.accentColor);
         router.push("/dashboard");
         router.refresh();
       }
@@ -308,29 +315,51 @@ function LoginContent() {
                   >
                     <option value="light">Light</option>
                     <option value="dark">Dark</option>
-                    <option value="custom">Custom</option>
                   </select>
                 </div>
 
-                {registerData.theme === "custom" && (
-                  <div className="space-y-2">
-                    <Label htmlFor="accent-color" className="text-sm">
-                      Accent Color
-                    </Label>
-                    <Input
-                      id="accent-color"
-                      type="color"
-                      value={registerData.accentColor}
-                      onChange={(e) =>
-                        setRegisterData({
-                          ...registerData,
-                          accentColor: e.target.value,
-                        })
+                <div className="space-y-2">
+                  <Label htmlFor="profile-picture" className="text-sm">
+                    Profile Picture (Optional)
+                  </Label>
+                  <Input
+                    id="profile-picture"
+                    type="file"
+                    accept="image/jpeg,image/jpg,image/png,image/webp,image/gif"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) {
+                        // Validate file size (5MB max)
+                        if (file.size > 5 * 1024 * 1024) {
+                          setError("Profile picture must be less than 5MB");
+                          return;
+                        }
+                        // Validate file type
+                        const allowedTypes = ["image/jpeg", "image/jpg", "image/png", "image/webp", "image/gif"];
+                        if (!allowedTypes.includes(file.type)) {
+                          setError("Please upload a valid image file (JPEG, PNG, WebP, or GIF)");
+                          return;
+                        }
+                        setProfilePicture(file);
+                        const reader = new FileReader();
+                        reader.onloadend = () => {
+                          setProfilePicturePreview(reader.result as string);
+                        };
+                        reader.readAsDataURL(file);
                       }
-                      className="h-10"
-                    />
-                  </div>
-                )}
+                    }}
+                    className="text-sm"
+                  />
+                  {profilePicturePreview && (
+                    <div className="mt-2">
+                      <img
+                        src={profilePicturePreview}
+                        alt="Profile preview"
+                        className="w-20 h-20 rounded-lg object-cover border"
+                      />
+                    </div>
+                  )}
+                </div>
 
                 <Button
                   type="submit"
