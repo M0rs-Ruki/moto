@@ -1,5 +1,3 @@
-// Prisma schema for showroom visitor management system
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -9,178 +7,130 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// User authentication and management
 model User {
-  id        String   @id @default(cuid())
-  email     String   @unique
-  password  String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  // Dealership association
-  dealership   Dealership? @relation(fields: [dealershipId], references: [id])
-  dealershipId String?
-
-  // Theme preferences
-  theme       String @default("light") // light, dark
-
-  // Profile picture
-  profilePicture String? // Path to profile picture in public folder
+  id             String      @id @default(cuid())
+  email          String      @unique
+  password       String
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+  dealershipId   String?
+  theme          String      @default("light")
+  profilePicture String?
+  dealership     Dealership? @relation(fields: [dealershipId], references: [id])
 
   @@index([dealershipId])
 }
 
-// Dealership/Company information
 model Dealership {
-  id             String  @id @default(cuid())
-  name           String
-  location       String
-  showroomNumber String? // Phone number for showroom (used in templates)
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  // Relations
+  id                String             @id @default(cuid())
+  name              String
+  location          String
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+  showroomNumber    String?
+  deliveryTickets   DeliveryTicket[]
+  digitalEnquiries  DigitalEnquiry[]
+  fieldInquiries    FieldInquiry[]
+  leadSources       LeadSource[]
   users             User[]
   vehicleCategories VehicleCategory[]
   visitors          Visitor[]
   whatsappTemplates WhatsAppTemplate[]
-  leadSources       LeadSource[]
-  digitalEnquiries  DigitalEnquiry[]
-  fieldInquiries    FieldInquiry[]
-  deliveryTickets   DeliveryTicket[]
 }
 
-// Vehicle categories (e.g., Car, Bike, Coupe, SUV, etc.)
 model VehicleCategory {
-  id   String @id @default(cuid())
-  name String
-
-  dealership   Dealership @relation(fields: [dealershipId], references: [id], onDelete: Cascade)
+  id           String         @id @default(cuid())
+  name         String
   dealershipId String
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  // Relations
-  models VehicleModel[]
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+  dealership   Dealership     @relation(fields: [dealershipId], references: [id], onDelete: Cascade)
+  models       VehicleModel[]
 
   @@unique([dealershipId, name])
   @@index([dealershipId])
 }
 
-// Vehicle models under categories
 model VehicleModel {
-  id   String @id @default(cuid())
-  name String
-  year Int?
-
-  category   VehicleCategory @relation(fields: [categoryId], references: [id], onDelete: Cascade)
-  categoryId String
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  // Relations
-  variants         VehicleVariant[]
-  visitorInterests VisitorInterest[]
-  testDrives       TestDrive[]
+  id               String            @id @default(cuid())
+  name             String
+  year             Int?
+  categoryId       String
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  deliveryTickets  DeliveryTicket[]
   digitalEnquiries DigitalEnquiry[]
   fieldInquiries   FieldInquiry[]
-  deliveryTickets  DeliveryTicket[]
+  testDrives       TestDrive[]
+  category         VehicleCategory   @relation(fields: [categoryId], references: [id], onDelete: Cascade)
+  variants         VehicleVariant[]
+  visitorInterests VisitorInterest[]
 
   @@index([categoryId])
 }
 
-// Vehicle variants under models (e.g., test3.xl, test3.s)
 model VehicleVariant {
-  id   String @id @default(cuid())
-  name String // Variant name like "xl", "s", "base"
-
-  model   VehicleModel @relation(fields: [modelId], references: [id], onDelete: Cascade)
-  modelId String
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  // Relations
-  visitorInterests VisitorInterest[]
-  testDrives       TestDrive[]
+  id               String            @id @default(cuid())
+  name             String
+  modelId          String
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+  deliveryTickets  DeliveryTicket[]
   digitalEnquiries DigitalEnquiry[]
   fieldInquiries   FieldInquiry[]
-  deliveryTickets  DeliveryTicket[]
+  testDrives       TestDrive[]
+  model            VehicleModel      @relation(fields: [modelId], references: [id], onDelete: Cascade)
+  visitorInterests VisitorInterest[]
 
   @@unique([modelId, name])
   @@index([modelId])
 }
 
-// Visitor contact information
 model Visitor {
-  id             String  @id @default(cuid())
-  firstName      String
-  lastName       String
-  whatsappNumber String
-  email          String?
-  address        String?
-
-  // WhatsApp contact ID from the API
+  id                String            @id @default(cuid())
+  firstName         String
+  lastName          String
+  whatsappNumber    String
+  email             String?
+  address           String?
   whatsappContactId String?
-
-  dealership   Dealership @relation(fields: [dealershipId], references: [id], onDelete: Cascade)
-  dealershipId String
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  // Relations
-  sessions  VisitorSession[]
-  interests VisitorInterest[]
+  dealershipId      String
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+  dealership        Dealership        @relation(fields: [dealershipId], references: [id], onDelete: Cascade)
+  interests         VisitorInterest[]
+  sessions          VisitorSession[]
 
   @@index([dealershipId])
   @@index([whatsappNumber])
 }
 
-// Visitor session tracking
 model VisitorSession {
-  id     String @id @default(cuid())
-  reason String // Why they're visiting
-
-  // Session status: intake, test_drive, completed, exited
-  status String @default("intake")
-
-  visitor   Visitor @relation(fields: [visitorId], references: [id], onDelete: Cascade)
-  visitorId String
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  // Relations
+  id               String            @id @default(cuid())
+  reason           String
+  status           String            @default("intake")
+  visitorId        String
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
   testDrives       TestDrive[]
   visitorInterests VisitorInterest[]
+  visitor          Visitor           @relation(fields: [visitorId], references: [id], onDelete: Cascade)
 
   @@index([visitorId])
   @@index([status])
 }
 
-// Vehicle models the visitor is interested in
 model VisitorInterest {
-  id String @id @default(cuid())
-
-  visitor   Visitor @relation(fields: [visitorId], references: [id], onDelete: Cascade)
+  id        String          @id @default(cuid())
   visitorId String
-
-  model   VehicleModel @relation(fields: [modelId], references: [id], onDelete: Cascade)
-  modelId String
-
-  // Optional variant selection
-  variant   VehicleVariant? @relation(fields: [variantId], references: [id], onDelete: Cascade)
-  variantId String?
-
-  // Link to session to track which visit this interest is from
-  session   VisitorSession? @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  modelId   String
+  createdAt DateTime        @default(now())
   sessionId String?
-
-  createdAt DateTime @default(now())
+  variantId String?
+  model     VehicleModel    @relation(fields: [modelId], references: [id], onDelete: Cascade)
+  session   VisitorSession? @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  variant   VehicleVariant? @relation(fields: [variantId], references: [id], onDelete: Cascade)
+  visitor   Visitor         @relation(fields: [visitorId], references: [id], onDelete: Cascade)
 
   @@unique([visitorId, modelId, variantId, sessionId])
   @@index([visitorId])
@@ -189,158 +139,116 @@ model VisitorInterest {
   @@index([sessionId])
 }
 
-// Test drive records
 model TestDrive {
-  id String @id @default(cuid())
-
-  session   VisitorSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  id        String          @id @default(cuid())
   sessionId String
-
-  model   VehicleModel @relation(fields: [modelId], references: [id], onDelete: Cascade)
-  modelId String
-
-  // Optional variant selection
-  variant   VehicleVariant? @relation(fields: [variantId], references: [id], onDelete: Cascade)
+  modelId   String
+  createdAt DateTime        @default(now())
+  updatedAt DateTime        @updatedAt
   variantId String?
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  model     VehicleModel    @relation(fields: [modelId], references: [id], onDelete: Cascade)
+  session   VisitorSession  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  variant   VehicleVariant? @relation(fields: [variantId], references: [id], onDelete: Cascade)
 
   @@index([sessionId])
   @@index([modelId])
   @@index([variantId])
 }
 
-// WhatsApp template configurations
 model WhatsAppTemplate {
-  id           String @id @default(cuid())
-  name         String // Internal name
-  templateId   String // API template ID
-  templateName String // API template name
-  language     String @default("en_US")
-
-  // Template type: welcome, test_drive, exit, digital_enquiry, field_inquiry, delivery_reminder
-  type String
-
-  // Section: daily_walkins, digital_enquiry, field_inquiry, delivery_update, or global
-  section String? @default("global")
-
-  dealership   Dealership @relation(fields: [dealershipId], references: [id], onDelete: Cascade)
+  id           String     @id @default(cuid())
+  name         String
+  templateId   String
+  templateName String
+  language     String     @default("en_US")
+  type         String
   dealershipId String
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+  section      String?    @default("global")
+  dealership   Dealership @relation(fields: [dealershipId], references: [id], onDelete: Cascade)
 
   @@unique([dealershipId, type, section])
   @@index([dealershipId])
 }
 
-// Lead source options (configurable in Global Settings)
 model LeadSource {
-  id        String  @id @default(cuid())
-  name      String
-  order     Int     @default(0)
-  isDefault Boolean @default(false) // For default sources that can't be deleted
-
-  dealership   Dealership @relation(fields: [dealershipId], references: [id], onDelete: Cascade)
-  dealershipId String
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  // Relations
+  id               String           @id @default(cuid())
+  name             String
+  order            Int              @default(0)
+  isDefault        Boolean          @default(false)
+  dealershipId     String
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
   digitalEnquiries DigitalEnquiry[]
   fieldInquiries   FieldInquiry[]
+  dealership       Dealership       @relation(fields: [dealershipId], references: [id], onDelete: Cascade)
 
   @@unique([dealershipId, name])
   @@index([dealershipId])
 }
 
-// Digital enquiry/lead tracking
 model DigitalEnquiry {
-  id             String  @id @default(cuid())
-  firstName      String
-  lastName       String
-  whatsappNumber String
-  email          String?
-  address        String?
-  reason         String // Reason for enquiry
-  leadScope      String  @default("warm") // Lead status: hot, warm, cold
-
-  // WhatsApp contact ID from the API
-  whatsappContactId String?
-
-  dealership   Dealership @relation(fields: [dealershipId], references: [id], onDelete: Cascade)
-  dealershipId String
-
-  leadSource   LeadSource? @relation(fields: [leadSourceId], references: [id], onDelete: SetNull)
-  leadSourceId String?
-
-  model             VehicleModel? @relation(fields: [interestedModelId], references: [id], onDelete: SetNull)
-  interestedModelId String?
-
-  // Optional variant selection
-  variant             VehicleVariant? @relation(fields: [interestedVariantId], references: [id], onDelete: SetNull)
+  id                  String                  @id @default(cuid())
+  firstName           String
+  lastName            String
+  whatsappNumber      String
+  email               String?
+  address             String?
+  reason              String
+  leadScope           String                  @default("warm")
+  whatsappContactId   String?
+  dealershipId        String
+  leadSourceId        String?
+  interestedModelId   String?
+  createdAt           DateTime                @default(now())
+  updatedAt           DateTime                @updatedAt
   interestedVariantId String?
-
-  // Relations
-  sessions DigitalEnquirySession[]
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  dealership          Dealership              @relation(fields: [dealershipId], references: [id], onDelete: Cascade)
+  model               VehicleModel?           @relation(fields: [interestedModelId], references: [id])
+  variant             VehicleVariant?         @relation(fields: [interestedVariantId], references: [id])
+  leadSource          LeadSource?             @relation(fields: [leadSourceId], references: [id])
+  sessions            DigitalEnquirySession[]
 
   @@index([dealershipId])
   @@index([whatsappNumber])
   @@index([leadSourceId])
 }
 
-// Digital Enquiry Session tracking
 model DigitalEnquirySession {
-  id     String  @id @default(cuid())
-  notes  String? // Session notes or follow-up information
-  status String  @default("active") // active, completed, closed
-
-  digitalEnquiry   DigitalEnquiry @relation(fields: [digitalEnquiryId], references: [id], onDelete: Cascade)
+  id               String         @id @default(cuid())
+  notes            String?
+  status           String         @default("active")
   digitalEnquiryId String
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+  digitalEnquiry   DigitalEnquiry @relation(fields: [digitalEnquiryId], references: [id], onDelete: Cascade)
 
   @@index([digitalEnquiryId])
   @@index([status])
 }
 
-// Delivery ticket/client information
 model DeliveryTicket {
-  id             String   @id @default(cuid())
-  firstName      String
-  lastName       String
-  whatsappNumber String
-  email          String?
-  address        String?
-  description    String? // Description/notes
-  deliveryDate   DateTime
-  messageSent    Boolean  @default(false) // Whether message has been sent
-  completionSent Boolean  @default(false) // Whether completion message has been sent
-  status         String   @default("active") // active, closed
-
-  // WhatsApp contact ID from the API
+  id                String             @id @default(cuid())
+  firstName         String
+  lastName          String
+  whatsappNumber    String
+  email             String?
+  address           String?
+  description       String?
+  deliveryDate      DateTime
+  messageSent       Boolean            @default(false)
   whatsappContactId String?
-
-  dealership   Dealership @relation(fields: [dealershipId], references: [id], onDelete: Cascade)
-  dealershipId String
-
-  model   VehicleModel @relation(fields: [modelId], references: [id], onDelete: Cascade)
-  modelId String
-
-  // Optional variant selection
-  variant   VehicleVariant? @relation(fields: [variantId], references: [id], onDelete: SetNull)
-  variantId String?
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  // Relations
+  dealershipId      String
+  modelId           String
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+  variantId         String?
+  completionSent    Boolean            @default(false)
+  status            String             @default("active")
+  dealership        Dealership         @relation(fields: [dealershipId], references: [id], onDelete: Cascade)
+  model             VehicleModel       @relation(fields: [modelId], references: [id], onDelete: Cascade)
+  variant           VehicleVariant?    @relation(fields: [variantId], references: [id])
   scheduledMessages ScheduledMessage[]
 
   @@index([dealershipId])
@@ -349,74 +257,57 @@ model DeliveryTicket {
   @@index([modelId])
 }
 
-// Scheduled WhatsApp messages for delivery reminders
 model ScheduledMessage {
-  id           String    @id @default(cuid())
-  scheduledFor DateTime // When to send the message
-  sentAt       DateTime? // When it was actually sent
-  status       String    @default("pending") // pending, sent, failed
-  retryCount   Int       @default(0)
-
-  deliveryTicket   DeliveryTicket @relation(fields: [deliveryTicketId], references: [id], onDelete: Cascade)
+  id               String         @id @default(cuid())
+  scheduledFor     DateTime
+  sentAt           DateTime?
+  status           String         @default("pending")
+  retryCount       Int            @default(0)
   deliveryTicketId String
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+  deliveryTicket   DeliveryTicket @relation(fields: [deliveryTicketId], references: [id], onDelete: Cascade)
 
   @@index([deliveryTicketId])
   @@index([scheduledFor])
   @@index([status])
 }
 
-// Field enquiry/lead tracking
 model FieldInquiry {
-  id             String  @id @default(cuid())
-  firstName      String
-  lastName       String
-  whatsappNumber String
-  email          String?
-  address        String?
-  reason         String // Reason for enquiry
-  leadScope      String  @default("warm") // Lead status: hot, warm, cold
-
-  // WhatsApp contact ID from the API
-  whatsappContactId String?
-
-  dealership   Dealership @relation(fields: [dealershipId], references: [id], onDelete: Cascade)
-  dealershipId String
-
-  leadSource   LeadSource? @relation(fields: [leadSourceId], references: [id], onDelete: SetNull)
-  leadSourceId String?
-
-  model             VehicleModel? @relation(fields: [interestedModelId], references: [id], onDelete: SetNull)
-  interestedModelId String?
-
-  // Optional variant selection
-  variant             VehicleVariant? @relation(fields: [interestedVariantId], references: [id], onDelete: SetNull)
+  id                  String                @id @default(cuid())
+  firstName           String
+  lastName            String
+  whatsappNumber      String
+  email               String?
+  address             String?
+  reason              String
+  leadScope           String                @default("warm")
+  whatsappContactId   String?
+  dealershipId        String
+  leadSourceId        String?
+  interestedModelId   String?
   interestedVariantId String?
-
-  // Relations
-  sessions FieldInquirySession[]
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt           DateTime              @default(now())
+  updatedAt           DateTime              @updatedAt
+  dealership          Dealership            @relation(fields: [dealershipId], references: [id], onDelete: Cascade)
+  model               VehicleModel?         @relation(fields: [interestedModelId], references: [id])
+  variant             VehicleVariant?       @relation(fields: [interestedVariantId], references: [id])
+  leadSource          LeadSource?           @relation(fields: [leadSourceId], references: [id])
+  sessions            FieldInquirySession[]
 
   @@index([dealershipId])
   @@index([whatsappNumber])
   @@index([leadSourceId])
 }
 
-// Field Enquiry Session tracking
 model FieldInquirySession {
-  id     String  @id @default(cuid())
-  notes  String? // Session notes or follow-up information
-  status String  @default("active") // active, completed, closed
-
-  fieldInquiry   FieldInquiry @relation(fields: [fieldInquiryId], references: [id], onDelete: Cascade)
+  id             String       @id @default(cuid())
+  notes          String?
+  status         String       @default("active")
   fieldInquiryId String
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  fieldInquiry   FieldInquiry @relation(fields: [fieldInquiryId], references: [id], onDelete: Cascade)
 
   @@index([fieldInquiryId])
   @@index([status])
