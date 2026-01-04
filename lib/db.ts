@@ -6,13 +6,18 @@ if (!process.env.DATABASE_URL) {
   throw new Error("DATABASE_URL environment variable is required");
 }
 
+// Store DATABASE_URL with type assertion (we've validated it above)
+const DATABASE_URL = process.env.DATABASE_URL as string;
+
 const prismaClientSingleton = () => {
-  const databaseUrl = process.env.DATABASE_URL;
-  
   // Log connection info (without sensitive data)
   if (process.env.NODE_ENV === "production") {
-    const urlObj = new URL(databaseUrl);
-    console.log(`🔌 Connecting to database: ${urlObj.hostname}:${urlObj.port || 5432}`);
+    try {
+      const urlObj = new URL(DATABASE_URL);
+      console.log(`🔌 Connecting to database: ${urlObj.hostname}:${urlObj.port || 5432}`);
+    } catch (error) {
+      console.warn("⚠️ Could not parse DATABASE_URL for logging");
+    }
   }
   
   return new PrismaClient({
@@ -22,7 +27,7 @@ const prismaClientSingleton = () => {
         : ["error"],
     datasources: {
       db: {
-        url: databaseUrl,
+        url: DATABASE_URL,
       },
     },
   });
