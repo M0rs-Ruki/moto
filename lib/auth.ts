@@ -56,14 +56,20 @@ export async function getCurrentUser(): Promise<JWTPayload | null> {
  * Set auth cookie
  */
 export async function setAuthCookie(token: string) {
-  const cookieStore = await cookies();
-  cookieStore.set("auth-token", token, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
-    maxAge: 60 * 60 * 24 * 7, // 7 days
-    path: "/",
-  });
+  try {
+    const cookieStore = await cookies();
+    cookieStore.set("auth-token", token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      maxAge: 60 * 60 * 24 * 7, // 7 days
+      path: "/",
+    });
+  } catch (error) {
+    console.error("Failed to set auth cookie:", error);
+    // Re-throw to let caller handle it
+    throw error;
+  }
 }
 
 /**

@@ -39,14 +39,26 @@ export async function POST(request: NextRequest) {
     }
 
     // Generate token
-    const token = await generateToken({
-      userId: user.id,
-      email: user.email,
-      dealershipId: user.dealershipId || undefined,
-    });
+    let token: string;
+    try {
+      token = await generateToken({
+        userId: user.id,
+        email: user.email,
+        dealershipId: user.dealershipId || undefined,
+      });
+    } catch (error) {
+      console.error("Token generation error:", error);
+      throw new Error(`Failed to generate token: ${error instanceof Error ? error.message : String(error)}`);
+    }
 
     // Set cookie
-    await setAuthCookie(token);
+    try {
+      await setAuthCookie(token);
+    } catch (error) {
+      console.error("Cookie setting error:", error);
+      // Don't fail the request if cookie setting fails, but log it
+      // The token is still returned in the response
+    }
 
     return NextResponse.json({
       success: true,
@@ -59,43 +71,77 @@ export async function POST(request: NextRequest) {
       },
     });
   } catch (error: unknown) {
-    console.error("Login error:", error);
+    // Enhanced error logging
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    const errorStack = error instanceof Error ? error.stack : undefined;
+    const errorName = error instanceof Error ? error.name : "Unknown";
+    
+    console.error("=== LOGIN ERROR ===");
+    console.error("Error name:", errorName);
+    console.error("Error message:", errorMessage);
+    if (errorStack) {
+      console.error("Error stack:", errorStack);
+    }
+    console.error("Full error:", error);
+    console.error("==================");
     
     // Check if it's a database connection error
     if (error instanceof Error) {
       // Prisma connection errors
       if (error.message.includes("Can't reach database server") || 
           error.message.includes("P1001") ||
-          error.message.includes("connection")) {
-        console.error("Database connection error:", error.message);
+          error.message.includes("connection") ||
+          error.message.includes("ECONNREFUSED") ||
+          error.message.includes("timeout")) {
+        console.error("Database connection error detected");
         return NextResponse.json(
           { 
             error: "Database connection failed",
-            details: process.env.NODE_ENV === "development" ? error.message : undefined
+            errorType: "DATABASE_CONNECTION",
+            message: "Unable to connect to database server. Please check server logs.",
           },
           { status: 503 }
         );
       }
       
       // Other Prisma errors
-      if (error.message.includes("Prisma") || error.message.includes("P")) {
-        console.error("Database error:", error.message);
+      if (error.message.includes("Prisma") || 
+          error.message.includes("P1") || 
+          error.message.includes("P2") ||
+          error.message.includes("P3")) {
+        console.error("Database error detected:", error.message);
         return NextResponse.json(
           { 
             error: "Database error occurred",
-            details: process.env.NODE_ENV === "development" ? error.message : undefined
+            errorType: "DATABASE_ERROR",
+            message: error.message.substring(0, 100), // First 100 chars for debugging
+          },
+          { status: 500 }
+        );
+      }
+      
+      // Authentication/token errors
+      if (error.message.includes("JWT") || 
+          error.message.includes("token") ||
+          error.message.includes("cookie")) {
+        console.error("Authentication error detected:", error.message);
+        return NextResponse.json(
+          { 
+            error: "Authentication error",
+            errorType: "AUTH_ERROR",
+            message: "Failed to generate or set authentication token",
           },
           { status: 500 }
         );
       }
     }
     
+    // Generic error response with error type for debugging
     return NextResponse.json(
       { 
         error: "Internal server error",
-        details: process.env.NODE_ENV === "development" 
-          ? (error instanceof Error ? error.message : String(error))
-          : undefined
+        errorType: "UNKNOWN_ERROR",
+        message: errorMessage.substring(0, 200), // First 200 chars for debugging
       },
       { status: 500 }
     );
