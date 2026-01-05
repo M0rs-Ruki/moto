@@ -4,8 +4,8 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "prisma generate && prisma migrate deploy && next build",
-    "start": "next start -p $PORT",
+    "build": "next build",
+    "start": "next start",
     "lint": "eslint",
     "postinstall": "prisma generate || echo 'Warning: prisma generate failed, but continuing...'",
     "prisma:generate": "prisma generate",
@@ -27,6 +27,7 @@
     "@radix-ui/react-switch": "^1.2.6",
     "@radix-ui/react-tabs": "^1.1.13",
     "@radix-ui/react-tooltip": "^1.2.8",
+    "@vercel/blob": "^0.25.0",
     "axios": "^1.13.2",
     "bcryptjs": "^3.0.3",
     "class-variance-authority": "^0.7.1",

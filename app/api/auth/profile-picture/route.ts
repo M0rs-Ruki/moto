@@ -1,9 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import prisma from "@/lib/db";
-import { writeFile, mkdir } from "fs/promises";
-import { join } from "path";
-import { existsSync } from "fs";
+import { put, del } from "@vercel/blob";
 
 export async function POST(request: NextRequest) {
   try {
@@ -43,19 +41,7 @@ export async function POST(request: NextRequest) {
     
     // Generate unique filename
     const timestamp = Date.now();
-    const filename = `${user.userId}-${timestamp}.${fileExtension}`;
-    const filepath = join(process.cwd(), "public", "profile-pictures", filename);
-
-    // Ensure directory exists
-    const dirPath = join(process.cwd(), "public", "profile-pictures");
-    if (!existsSync(dirPath)) {
-      await mkdir(dirPath, { recursive: true });
-    }
-
-    // Convert file to buffer and save
-    const bytes = await file.arrayBuffer();
-    const buffer = Buffer.from(bytes);
-    await writeFile(filepath, buffer);
+    const filename = `profile-pictures/${user.userId}-${timestamp}.${fileExtension}`;
 
     // Get existing user to check for old profile picture
     const existingUser = await prisma.user.findUnique({
@@ -63,27 +49,31 @@ export async function POST(request: NextRequest) {
       select: { profilePicture: true },
     });
 
-    // Delete old profile picture if it exists
-    if (existingUser?.profilePicture) {
-      const oldFilePath = join(process.cwd(), "public", existingUser.profilePicture);
-      if (existsSync(oldFilePath)) {
-        const { unlink } = await import("fs/promises");
-        await unlink(oldFilePath).catch(() => {
-          // Ignore errors if file doesn't exist
-        });
+    // Delete old profile picture from Vercel Blob if it exists
+    if (existingUser?.profilePicture && existingUser.profilePicture.startsWith("https://")) {
+      try {
+        await del(existingUser.profilePicture);
+      } catch (error) {
+        // Ignore errors if file doesn't exist or deletion fails
+        console.warn("Failed to delete old profile picture:", error);
       }
     }
 
-    // Update user record with new profile picture path
-    const relativePath = `profile-pictures/${filename}`;
+    // Upload to Vercel Blob Storage
+    const blob = await put(filename, file, {
+      access: "public",
+      contentType: file.type,
+    });
+
+    // Update user record with new profile picture URL
     await prisma.user.update({
       where: { id: user.userId },
-      data: { profilePicture: relativePath },
+      data: { profilePicture: blob.url },
     });
 
     return NextResponse.json({
       success: true,
-      profilePicture: relativePath,
+      profilePicture: blob.url,
     });
   } catch (error: unknown) {
     console.error("Profile picture upload error:", error);

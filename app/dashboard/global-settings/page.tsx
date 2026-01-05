@@ -1409,7 +1409,7 @@ export default function SettingsPage() {
                     <div className="flex items-center gap-4">
                       <div className="w-20 h-20 rounded-lg overflow-hidden border-2 border-primary">
                         <img
-                          src={`/${user.profilePicture}`}
+                          src={user.profilePicture.startsWith("http") ? user.profilePicture : `/${user.profilePicture}`}
                           alt="Profile"
                           className="w-full h-full object-cover"
                           onError={(e) => {

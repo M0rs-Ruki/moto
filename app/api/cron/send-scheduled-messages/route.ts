@@ -7,12 +7,19 @@ const BATCH_SIZE = 100;
 
 export async function GET(request: NextRequest) {
   try {
-    // Optional: Add authentication for cron endpoint
+    // Vercel cron authentication
     const authHeader = request.headers.get("authorization");
+    const vercelCronHeader = request.headers.get("x-vercel-cron");
     const cronSecret = process.env.CRON_SECRET;
 
-    if (cronSecret && authHeader !== `Bearer ${cronSecret}`) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    // Check if this is a Vercel cron request
+    const isVercelCron = vercelCronHeader === "1";
+    
+    // If not a Vercel cron, check for manual authorization
+    if (!isVercelCron) {
+      if (cronSecret && authHeader !== `Bearer ${cronSecret}`) {
+        return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+      }
     }
 
     const now = new Date();

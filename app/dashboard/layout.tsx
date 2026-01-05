@@ -126,7 +126,7 @@ export default function DashboardLayout({
               {user?.profilePicture ? (
                 <div className="w-10 h-10 rounded-lg overflow-hidden border-2 border-primary">
                   <img
-                    src={`/${user.profilePicture}`}
+                    src={user.profilePicture.startsWith("http") ? user.profilePicture : `/${user.profilePicture}`}
                     alt="Profile"
                     className="w-full h-full object-cover"
                     onError={(e) => {
