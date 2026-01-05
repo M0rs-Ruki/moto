@@ -2,7 +2,10 @@ import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db";
 import bcrypt from "bcryptjs";
 import { generateToken, setAuthCookie } from "@/lib/auth";
-import { put } from "@vercel/blob";
+import { put, del } from "@vercel/blob";
+import { writeFile, mkdir, rename, unlink } from "fs/promises";
+import { join } from "path";
+import { existsSync } from "fs";
 
 export async function POST(request: NextRequest) {
   try {
@@ -66,18 +69,41 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      // Generate unique filename (we'll use a temporary ID, then update after user creation)
-      const tempId = `temp-${Date.now()}`;
+      // Check if Vercel Blob token is available
+      const blobToken = process.env.BLOB_READ_WRITE_TOKEN;
       const fileExtension = profilePictureFile.name.split(".").pop()?.toLowerCase() || "jpg";
-      const filename = `profile-pictures/${tempId}.${fileExtension}`;
 
-      // Upload to Vercel Blob Storage
-      const blob = await put(filename, profilePictureFile, {
-        access: "public",
-        contentType: profilePictureFile.type,
-      });
+      if (blobToken) {
+        // Use Vercel Blob Storage (production)
+        const tempId = `temp-${Date.now()}`;
+        const filename = `profile-pictures/${tempId}.${fileExtension}`;
 
-      profilePicturePath = blob.url;
+        // Upload to Vercel Blob Storage
+        const blob = await put(filename, profilePictureFile, {
+          access: "public",
+          contentType: profilePictureFile.type,
+        });
+
+        profilePicturePath = blob.url;
+      } else {
+        // Fallback to local filesystem (local development)
+        const tempId = `temp-${Date.now()}`;
+        const filename = `${tempId}.${fileExtension}`;
+        const filepath = join(process.cwd(), "public", "profile-pictures", filename);
+
+        // Ensure directory exists
+        const dirPath = join(process.cwd(), "public", "profile-pictures");
+        if (!existsSync(dirPath)) {
+          await mkdir(dirPath, { recursive: true });
+        }
+
+        // Save file
+        const bytes = await profilePictureFile.arrayBuffer();
+        const buffer = Buffer.from(bytes);
+        await writeFile(filepath, buffer);
+
+        profilePicturePath = `profile-pictures/${filename}`;
+      }
     }
 
     const user = await prisma.user.create({
@@ -92,34 +118,55 @@ export async function POST(request: NextRequest) {
     });
 
     // If profile picture was uploaded, update filename to use user ID
-    if (profilePicturePath && user.id && profilePicturePath.startsWith("https://")) {
-      // Extract file extension from URL
-      const urlParts = profilePicturePath.split(".");
-      const fileExtension = urlParts[urlParts.length - 1]?.split("?")[0] || "jpg";
-      const newFilename = `profile-pictures/${user.id}-${Date.now()}.${fileExtension}`;
-      
-      // Re-upload with new filename (Vercel Blob doesn't support rename, so we upload again)
-      if (profilePictureFile && profilePictureFile.size > 0) {
-        const { del } = await import("@vercel/blob");
-        const blob = await put(newFilename, profilePictureFile, {
-          access: "public",
-          contentType: profilePictureFile.type,
-        });
-        
-        // Delete old temp file
-        try {
-          await del(profilePicturePath);
-        } catch (error) {
-          console.warn("Failed to delete temp profile picture:", error);
+    if (profilePicturePath && user.id) {
+      const blobToken = process.env.BLOB_READ_WRITE_TOKEN;
+
+      if (blobToken && profilePicturePath.startsWith("https://")) {
+        // Vercel Blob: Re-upload with new filename (Vercel Blob doesn't support rename)
+        if (profilePictureFile && profilePictureFile.size > 0) {
+          // Extract file extension from URL
+          const urlParts = profilePicturePath.split(".");
+          const fileExtension = urlParts[urlParts.length - 1]?.split("?")[0] || "jpg";
+          const newFilename = `profile-pictures/${user.id}-${Date.now()}.${fileExtension}`;
+          
+          const blob = await put(newFilename, profilePictureFile, {
+            access: "public",
+            contentType: profilePictureFile.type,
+          });
+          
+          // Delete old temp file
+          try {
+            await del(profilePicturePath);
+          } catch (error) {
+            console.warn("Failed to delete temp profile picture:", error);
+          }
+          
+          // Update user record with correct URL
+          await prisma.user.update({
+            where: { id: user.id },
+            data: { profilePicture: blob.url },
+          });
+          
+          profilePicturePath = blob.url;
         }
+      } else if (!blobToken && !profilePicturePath.startsWith("https://")) {
+        // Local filesystem: Rename file to use user ID
+        const oldPath = join(process.cwd(), "public", profilePicturePath);
+        const fileExtension = profilePicturePath.split(".").pop() || "jpg";
+        const newFilename = `${user.id}-${Date.now()}.${fileExtension}`;
+        const newPath = join(process.cwd(), "public", "profile-pictures", newFilename);
         
-        // Update user record with correct URL
+        // Rename file
+        await rename(oldPath, newPath);
+        
+        // Update user record with correct path
+        const correctPath = `profile-pictures/${newFilename}`;
         await prisma.user.update({
           where: { id: user.id },
-          data: { profilePicture: blob.url },
+          data: { profilePicture: correctPath },
         });
         
-        profilePicturePath = blob.url;
+        profilePicturePath = correctPath;
       }
     }
 
