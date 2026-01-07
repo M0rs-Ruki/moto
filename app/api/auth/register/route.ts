@@ -69,12 +69,36 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      // Check if Vercel Blob token is available
+      // Check if we're on Vercel
+      const isVercel = process.env.VERCEL === "1";
       const blobToken = process.env.BLOB_READ_WRITE_TOKEN;
       const fileExtension = profilePictureFile.name.split(".").pop()?.toLowerCase() || "jpg";
 
-      if (blobToken) {
-        // Use Vercel Blob Storage (production)
+      // On Vercel, we MUST use Blob Storage (filesystem is read-only)
+      if (isVercel) {
+        if (!blobToken) {
+          return NextResponse.json(
+            {
+              error:
+                "BLOB_READ_WRITE_TOKEN environment variable is not configured. Please add it in your Vercel project settings.",
+            },
+            { status: 500 }
+          );
+        }
+
+        // Use Vercel Blob Storage
+        const tempId = `temp-${Date.now()}`;
+        const filename = `profile-pictures/${tempId}.${fileExtension}`;
+
+        // Upload to Vercel Blob Storage
+        const blob = await put(filename, profilePictureFile, {
+          access: "public",
+          contentType: profilePictureFile.type,
+        });
+
+        profilePicturePath = blob.url;
+      } else if (blobToken) {
+        // Local development but token is available - use Blob Storage
         const tempId = `temp-${Date.now()}`;
         const filename = `profile-pictures/${tempId}.${fileExtension}`;
 
@@ -86,7 +110,7 @@ export async function POST(request: NextRequest) {
 
         profilePicturePath = blob.url;
       } else {
-        // Fallback to local filesystem (local development)
+        // Local development without token - use local filesystem
         const tempId = `temp-${Date.now()}`;
         const filename = `${tempId}.${fileExtension}`;
         const filepath = join(process.cwd(), "public", "profile-pictures", filename);
@@ -119,9 +143,10 @@ export async function POST(request: NextRequest) {
 
     // If profile picture was uploaded, update filename to use user ID
     if (profilePicturePath && user.id) {
+      const isVercel = process.env.VERCEL === "1";
       const blobToken = process.env.BLOB_READ_WRITE_TOKEN;
 
-      if (blobToken && profilePicturePath.startsWith("https://")) {
+      if ((isVercel || blobToken) && profilePicturePath.startsWith("https://")) {
         // Vercel Blob: Re-upload with new filename (Vercel Blob doesn't support rename)
         if (profilePictureFile && profilePictureFile.size > 0) {
           // Extract file extension from URL

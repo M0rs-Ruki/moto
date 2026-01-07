@@ -61,12 +61,23 @@ export async function POST(request: NextRequest) {
       select: { profilePicture: true },
     });
 
-    // Check if Vercel Blob token is available
+    // Check if we're on Vercel
+    const isVercel = process.env.VERCEL === "1";
     const blobToken = process.env.BLOB_READ_WRITE_TOKEN;
     let profilePictureUrl: string;
 
-    if (blobToken) {
-      // Use Vercel Blob Storage (production)
+    // On Vercel, we MUST use Blob Storage (filesystem is read-only)
+    if (isVercel) {
+      if (!blobToken) {
+        return NextResponse.json(
+          {
+            error:
+              "BLOB_READ_WRITE_TOKEN environment variable is not configured. Please add it in your Vercel project settings.",
+          },
+          { status: 500 }
+        );
+      }
+
       // Delete old profile picture from Vercel Blob if it exists
       if (
         existingUser?.profilePicture &&
@@ -87,8 +98,29 @@ export async function POST(request: NextRequest) {
       });
 
       profilePictureUrl = blob.url;
+    } else if (blobToken) {
+      // Local development but token is available - use Blob Storage
+      // Delete old profile picture from Vercel Blob if it exists
+      if (
+        existingUser?.profilePicture &&
+        existingUser.profilePicture.startsWith("https://")
+      ) {
+        try {
+          await del(existingUser.profilePicture);
+        } catch (error) {
+          console.warn("Failed to delete old profile picture:", error);
+        }
+      }
+
+      // Upload to Vercel Blob Storage
+      const blob = await put(filename, file, {
+        access: "public",
+        contentType: file.type,
+      });
+
+      profilePictureUrl = blob.url;
     } else {
-      // Fallback to local filesystem (local development)
+      // Local development without token - use local filesystem
       const filepath = join(process.cwd(), "public", filename);
 
       // Ensure directory exists
