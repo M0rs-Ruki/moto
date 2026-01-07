@@ -83,21 +83,29 @@ export async function POST(request: NextRequest) {
             address: visitor.address || "",
           });
 
-          whatsappContactId = contactResult.contactId;
+          whatsappContactId = contactResult.contactId || "";
 
+          // If contact already exists, createContact returns success with empty contactId
+          // That's okay - we can still send messages using phone number
           if (whatsappContactId) {
             // Update visitor with the new contact ID
             await prisma.visitor.update({
               where: { id: visitor.id },
               data: { whatsappContactId },
             });
+          } else {
+            console.log(
+              "Contact exists but no contact ID available. Will use phone number for messaging."
+            );
           }
         } catch (error: unknown) {
+          const errorMessage = (error as Error).message;
           console.error(
             "Failed to create WhatsApp contact for existing visitor:",
-            (error as Error).message
+            errorMessage
           );
-          // Continue without contact ID - message sending will be skipped
+          // Continue without contact ID - we can still send messages using phone number
+          whatsappContactId = "";
         }
       }
 
@@ -127,23 +135,20 @@ export async function POST(request: NextRequest) {
           address: address || "",
         });
 
-        whatsappContactId = contactResult.contactId;
+        whatsappContactId = contactResult.contactId || "";
 
+        // If contact already exists, createContact returns success with empty contactId
+        // That's okay - we can still send messages using phone number
         if (!whatsappContactId) {
-          throw new Error("No contact ID returned from WhatsApp API");
+          console.log(
+            "Contact exists but no contact ID available. Will use phone number for messaging."
+          );
         }
       } catch (error: unknown) {
-        console.error(
-          "Failed to create WhatsApp contact:",
-          (error as Error).message
-        );
-        return NextResponse.json(
-          {
-            error: "Failed to create WhatsApp contact",
-            details: (error as Error).message,
-          },
-          { status: 500 }
-        );
+        const errorMessage = (error as Error).message;
+        console.error("Failed to create WhatsApp contact:", errorMessage);
+        // Continue without contact ID - we can still send messages using phone number
+        whatsappContactId = "";
       }
 
       // Create new visitor in database
@@ -219,15 +224,9 @@ export async function POST(request: NextRequest) {
     let messageStatus = "not_sent";
     let messageError = null;
     const name = `${firstName} ${lastName}`;
-    // Get dealership showroom number
-    const dealership = await prisma.dealership.findUnique({
-      where: { id: user.dealershipId },
-      select: { showroomNumber: true },
-    });
-    const showroomNumber = dealership?.showroomNumber || "9999999999";
 
-    // Only send message if we have a contact ID
-    if (whatsappContactId) {
+    // Send message if we have a contact ID or phone number (contactId is optional for sendTemplate)
+    if (whatsappContactId || whatsappNumber) {
       if (isNewVisitor && sessionCount === 0) {
         // First visit for new visitor - send welcome message
         const welcomeTemplate = await prisma.whatsAppTemplate.findFirst({
@@ -245,7 +244,7 @@ export async function POST(request: NextRequest) {
               templateName: welcomeTemplate.templateName,
               templateId: welcomeTemplate.templateId,
               templateLanguage: welcomeTemplate.language,
-              parameters: [name, showroomNumber],
+              parameters: [name],
             });
             messageStatus = "sent";
           } catch (error: unknown) {
@@ -309,7 +308,7 @@ export async function POST(request: NextRequest) {
                 templateName: welcomeTemplate.templateName,
                 templateId: welcomeTemplate.templateId,
                 templateLanguage: welcomeTemplate.language,
-                parameters: [visitor.firstName, showroomNumber],
+                parameters: [name],
               });
               messageStatus = "sent";
             } catch (error: unknown) {
@@ -517,12 +516,12 @@ export async function GET(request: NextRequest) {
     const hasMore = uniqueVisitors.length > skip + limit;
     const total = uniqueVisitors.length;
 
-    return NextResponse.json({ 
+    return NextResponse.json({
       visitors: paginatedVisitors,
       hasMore,
       total,
       skip,
-      limit
+      limit,
     });
   } catch (error: unknown) {
     console.error("Get visitors error:", error);

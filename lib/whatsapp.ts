@@ -201,17 +201,40 @@ class WhatsAppClient {
       };
 
       // If contact already exists, try to fetch the existing contact
+      const errorMessage = axiosError.response?.data?.message || "";
+      const errorMessageLower = errorMessage.toLowerCase();
+      
       if (
-        axiosError.response?.data?.message?.includes("already exist") ||
+        errorMessageLower.includes("already exist") ||
+        errorMessageLower.includes("already exists") ||
+        errorMessageLower.includes("contact already") ||
         axiosError.response?.status === 400
       ) {
-        console.log(`Contact already exists, fetching existing contact...`);
-        const existingContact = await this.getContactByPhone(
-          data.contact_number
-        );
-        if (existingContact) {
+        console.log(`Contact already exists, attempting to fetch existing contact...`);
+        try {
+          const existingContact = await this.getContactByPhone(
+            data.contact_number
+          );
+          if (existingContact) {
+            console.log(`Successfully retrieved existing contact ID: ${existingContact.contactId}`);
+            return {
+              contactId: existingContact.contactId,
+              success: true,
+            };
+          } else {
+            // Contact exists but we can't fetch ID - that's okay, we can still send messages with phone number
+            console.log("Contact already exists. Will use phone number for messaging.");
+            // Return success with empty contactId - caller can use phone number instead
+            return {
+              contactId: "",
+              success: true,
+            };
+          }
+        } catch (fetchError) {
+          console.log("Could not fetch existing contact ID, but contact exists. Will use phone number for messaging.");
+          // Contact exists but we can't fetch ID - that's okay, we can still send messages with phone number
           return {
-            contactId: existingContact.contactId,
+            contactId: "",
             success: true,
           };
         }

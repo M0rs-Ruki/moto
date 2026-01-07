@@ -277,29 +277,35 @@ export default function DailyWalkinsPage() {
       ]);
 
       setCategories(categoriesRes.data.categories);
-      
+
       // Append or replace visitors
       if (append) {
         setVisitors([...visitors, ...visitorsRes.data.visitors]);
       } else {
         setVisitors(visitorsRes.data.visitors);
       }
-      
+
       setHasMore(visitorsRes.data.hasMore || false);
-      setTotalVisitors(visitorsRes.data.total || visitorsRes.data.visitors.length);
-      
+      setTotalVisitors(
+        visitorsRes.data.total || visitorsRes.data.visitors.length
+      );
+
       // Handle sessions
       if (append) {
         // Don't reload sessions when loading more visitors
       } else {
         setAllSessions(sessionsRes.data.sessions || []);
         setSessionsHasMore(sessionsRes.data.hasMore || false);
-        setSessionsTotal(sessionsRes.data.total || sessionsRes.data.sessions?.length || 0);
+        setSessionsTotal(
+          sessionsRes.data.total || sessionsRes.data.sessions?.length || 0
+        );
         setSessionsDisplayedCount(30);
       }
 
       // Fetch phone lookups for new visitors only
-      const newVisitors = append ? visitorsRes.data.visitors : visitorsRes.data.visitors;
+      const newVisitors = append
+        ? visitorsRes.data.visitors
+        : visitorsRes.data.visitors;
       const lookups: Record<string, PhoneLookup> = { ...phoneLookups };
       await Promise.all(
         newVisitors.map(async (visitor: Visitor) => {
@@ -331,7 +337,7 @@ export default function DailyWalkinsPage() {
     // If we have more filtered visitors than displayed, just show more from what we already have
     if (filteredVisitors.length > displayedCount) {
       setDisplayedCount(Math.min(displayedCount + 30, filteredVisitors.length));
-    } 
+    }
     // Otherwise, fetch more from backend if available
     else if (hasMore) {
       const currentSkip = visitors.length;
@@ -341,26 +347,35 @@ export default function DailyWalkinsPage() {
     }
   };
 
-  const fetchAllSessions = async (skip: number = 0, append: boolean = false) => {
+  const fetchAllSessions = async (
+    skip: number = 0,
+    append: boolean = false
+  ) => {
     if (!append) {
       setLoadingSessions(true);
     } else {
       setSessionsLoadingMore(true);
     }
-    
+
     try {
-      const visitorIdParam = selectedVisitorId ? `&visitorId=${selectedVisitorId}` : "";
-      const response = await axios.get(`/api/sessions?limit=30&skip=${skip}${visitorIdParam}`);
-      
+      const visitorIdParam = selectedVisitorId
+        ? `&visitorId=${selectedVisitorId}`
+        : "";
+      const response = await axios.get(
+        `/api/sessions?limit=30&skip=${skip}${visitorIdParam}`
+      );
+
       if (append) {
         setAllSessions([...allSessions, ...(response.data.sessions || [])]);
       } else {
         setAllSessions(response.data.sessions || []);
         setSessionsDisplayedCount(30);
       }
-      
+
       setSessionsHasMore(response.data.hasMore || false);
-      setSessionsTotal(response.data.total || response.data.sessions?.length || 0);
+      setSessionsTotal(
+        response.data.total || response.data.sessions?.length || 0
+      );
     } catch (error) {
       console.error("Failed to fetch sessions:", error);
       if (!append) {
@@ -377,10 +392,12 @@ export default function DailyWalkinsPage() {
     const displayedSessions = selectedVisitorId
       ? allSessions.filter((s: Session) => s.visitor.id === selectedVisitorId)
       : allSessions;
-    
+
     if (displayedSessions.length > sessionsDisplayedCount) {
-      setSessionsDisplayedCount(Math.min(sessionsDisplayedCount + 30, displayedSessions.length));
-    } 
+      setSessionsDisplayedCount(
+        Math.min(sessionsDisplayedCount + 30, displayedSessions.length)
+      );
+    }
     // Otherwise, fetch more from backend if available
     else if (sessionsHasMore) {
       await fetchAllSessions(allSessions.length, true);
@@ -1094,107 +1111,183 @@ export default function DailyWalkinsPage() {
             </Card>
           ) : (
             <>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                {filteredVisitors.slice(0, displayedCount).map((visitor) => {
-                return (
-                  <Card
-                    key={visitor.id}
-                    className="overflow-hidden hover:shadow-md transition-all duration-200 cursor-pointer"
-                    onClick={() => handleViewSessions(visitor)}
-                  >
-                    <CardHeader className="pb-3 bg-gradient-to-r from-muted/50 to-transparent border-b">
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 mb-2 flex-wrap">
-                            <CardTitle className="text-base sm:text-lg font-semibold truncate">
-                              {visitor.firstName} {visitor.lastName}
-                            </CardTitle>
-                            <Badge
-                              variant="secondary"
-                              className="text-xs font-medium whitespace-nowrap"
-                            >
-                              {visitor.sessions.length} session
-                              {visitor.sessions.length !== 1 ? "s" : ""}
-                            </Badge>
-                          </div>
-                        </div>
-                      </div>
-                    </CardHeader>
-                    <CardContent className="pt-4 pb-4 sm:pb-6 space-y-3">
-                      <div className="space-y-2">
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs font-semibold text-muted-foreground min-w-[60px]">
-                            Phone:
-                          </span>
-                          <span className="text-xs sm:text-sm">
-                            {visitor.whatsappNumber}
-                          </span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs font-semibold text-muted-foreground min-w-[60px]">
-                            Last Visit:
-                          </span>
-                          <span className="text-xs sm:text-sm">
-                            {visitor.sessions && visitor.sessions.length > 0
-                              ? formatDate(
-                                  visitor.sessions.sort(
-                                    (a, b) =>
-                                      new Date(b.createdAt).getTime() -
-                                      new Date(a.createdAt).getTime()
-                                  )[0].createdAt
-                                )
-                              : formatDate(visitor.createdAt)}
-                          </span>
-                        </div>
-                        {visitor.email && (
-                          <div className="flex items-center gap-2">
-                            <span className="text-xs font-semibold text-muted-foreground min-w-[60px]">
-                              Email:
-                            </span>
-                            <span className="text-xs sm:text-sm break-words">
-                              {visitor.email}
-                            </span>
-                          </div>
-                        )}
-                      </div>
-                      {phoneLookups[visitor.whatsappNumber] && (
-                        <div className="flex flex-wrap items-center gap-1.5 pt-2 border-t">
-                          {phoneLookups[visitor.whatsappNumber]
-                            .digitalEnquiry && (
-                            <Link
-                              href="/dashboard/digital-enquiry"
-                              onClick={(e) => e.stopPropagation()}
-                            >
-                              <Badge
-                                variant="outline"
-                                className="text-xs cursor-pointer hover:bg-primary/10 transition-colors"
+              <Card>
+                <CardContent className="p-0">
+                  <div className="overflow-x-auto">
+                    <table className="w-full border-collapse">
+                      <thead>
+                        <tr className="border-b bg-muted/50">
+                          <th className="text-left py-3 px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                            Visitor
+                          </th>
+                          <th className="text-left py-3 px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                            Contact
+                          </th>
+                          <th className="text-left py-3 px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                            Last Visit
+                          </th>
+                          <th className="text-left py-3 px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                            Sessions
+                          </th>
+                          <th className="text-left py-3 px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                            Interested Models
+                          </th>
+                          <th className="text-left py-3 px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                            Actions
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {filteredVisitors
+                          .slice(0, displayedCount)
+                          .map((visitor) => {
+                            const initials = `${visitor.firstName.charAt(
+                              0
+                            )}${visitor.lastName.charAt(0)}`.toUpperCase();
+                            const lastVisit =
+                              visitor.sessions && visitor.sessions.length > 0
+                                ? formatDate(
+                                    visitor.sessions.sort(
+                                      (a, b) =>
+                                        new Date(b.createdAt).getTime() -
+                                        new Date(a.createdAt).getTime()
+                                    )[0].createdAt
+                                  )
+                                : formatDate(visitor.createdAt);
+
+                            return (
+                              <tr
+                                key={visitor.id}
+                                className="border-b hover:bg-muted/30 transition-colors cursor-pointer"
+                                onClick={() => handleViewSessions(visitor)}
                               >
-                                Digital Enquiry
-                              </Badge>
-                            </Link>
-                          )}
-                          {phoneLookups[visitor.whatsappNumber]
-                            .deliveryUpdate && (
-                            <Link
-                              href="/dashboard/delivery-update"
-                              onClick={(e) => e.stopPropagation()}
-                            >
-                              <Badge
-                                variant="outline"
-                                className="text-xs cursor-pointer hover:bg-primary/10 transition-colors"
-                              >
-                                Delivery Update
-                              </Badge>
-                            </Link>
-                          )}
-                        </div>
-                      )}
-                    </CardContent>
-                  </Card>
-                );
-                })}
-              </div>
-              {((hasMore && visitors.length > displayedCount) || filteredVisitors.length > displayedCount) && (
+                                {/* Visitor Column */}
+                                <td className="py-3 px-4">
+                                  <div className="flex items-center gap-3">
+                                    <div className="w-10 h-10 rounded-full bg-primary flex items-center justify-center text-primary-foreground font-semibold text-sm flex-shrink-0">
+                                      {initials}
+                                    </div>
+                                    <div className="min-w-0">
+                                      <p className="text-sm font-medium truncate">
+                                        {visitor.firstName} {visitor.lastName}
+                                      </p>
+                                      {visitor.email && (
+                                        <p className="text-xs text-muted-foreground truncate">
+                                          {visitor.email}
+                                        </p>
+                                      )}
+                                    </div>
+                                  </div>
+                                </td>
+
+                                {/* Contact Column */}
+                                <td className="py-3 px-4">
+                                  <div className="space-y-1">
+                                    <p className="text-sm">
+                                      {visitor.whatsappNumber || "No phone"}
+                                    </p>
+                                  </div>
+                                </td>
+
+                                {/* Last Visit Column */}
+                                <td className="py-3 px-4">
+                                  <p className="text-sm">{lastVisit}</p>
+                                </td>
+
+                                {/* Sessions Column */}
+                                <td className="py-3 px-4">
+                                  <Badge
+                                    variant="secondary"
+                                    className="text-xs font-medium"
+                                  >
+                                    {visitor.sessions.length} session
+                                    {visitor.sessions.length !== 1 ? "s" : ""}
+                                  </Badge>
+                                </td>
+
+                                {/* Interested Models Column */}
+                                <td className="py-3 px-4">
+                                  {visitor.interests &&
+                                  visitor.interests.length > 0 ? (
+                                    <div className="space-y-1">
+                                      {visitor.interests
+                                        .slice(0, 2)
+                                        .map((interest, idx) => (
+                                          <p
+                                            key={idx}
+                                            className="text-xs text-muted-foreground"
+                                          >
+                                            {interest.model.category.name} -{" "}
+                                            {interest.model.name}
+                                          </p>
+                                        ))}
+                                      {visitor.interests.length > 2 && (
+                                        <p className="text-xs text-muted-foreground">
+                                          +{visitor.interests.length - 2} more
+                                        </p>
+                                      )}
+                                    </div>
+                                  ) : (
+                                    <span className="text-xs text-muted-foreground">
+                                      None
+                                    </span>
+                                  )}
+                                </td>
+
+                                {/* Actions Column */}
+                                <td className="py-3 px-4">
+                                  <div className="flex items-center gap-2">
+                                    {phoneLookups[visitor.whatsappNumber]
+                                      ?.digitalEnquiry && (
+                                      <Link
+                                        href="/dashboard/digital-enquiry"
+                                        onClick={(e) => e.stopPropagation()}
+                                      >
+                                        <Badge
+                                          variant="outline"
+                                          className="text-xs cursor-pointer hover:bg-primary/10 transition-colors"
+                                        >
+                                          Digital
+                                        </Badge>
+                                      </Link>
+                                    )}
+                                    {phoneLookups[visitor.whatsappNumber]
+                                      ?.deliveryUpdate && (
+                                      <Link
+                                        href="/dashboard/delivery-update"
+                                        onClick={(e) => e.stopPropagation()}
+                                      >
+                                        <Badge
+                                          variant="outline"
+                                          className="text-xs cursor-pointer hover:bg-primary/10 transition-colors"
+                                        >
+                                          Delivery
+                                        </Badge>
+                                      </Link>
+                                    )}
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      className="h-8 w-8 p-0"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleViewSessions(visitor);
+                                      }}
+                                    >
+                                      <UserCheck className="h-4 w-4" />
+                                    </Button>
+                                  </div>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                      </tbody>
+                    </table>
+                  </div>
+                </CardContent>
+              </Card>
+              {((hasMore && visitors.length > displayedCount) ||
+                filteredVisitors.length > displayedCount) && (
                 <div className="flex justify-center pt-4">
                   <Button
                     variant="outline"
@@ -1208,7 +1301,9 @@ export default function DailyWalkinsPage() {
                         Loading...
                       </>
                     ) : (
-                      `Load More (${filteredVisitors.length - displayedCount} remaining)`
+                      `Load More (${
+                        filteredVisitors.length - displayedCount
+                      } remaining)`
                     )}
                   </Button>
                 </div>
@@ -1286,187 +1381,198 @@ export default function DailyWalkinsPage() {
                 )
                   .slice(0, sessionsDisplayedCount)
                   .map((session: Session) => {
-                const isExited = session.status === "exited";
-                const hasTestDrives = session.testDrives.length > 0;
-                const isExpanded = expandedSessions.has(session.id);
+                    const isExited = session.status === "exited";
+                    const hasTestDrives = session.testDrives.length > 0;
+                    const isExpanded = expandedSessions.has(session.id);
 
-                return (
-                  <Card key={session.id} className="overflow-hidden">
-                    <Collapsible
-                      open={isExpanded}
-                      onOpenChange={(open) => {
-                        setExpandedSessions((prev) => {
-                          const newSet = new Set(prev);
-                          if (open) {
-                            newSet.add(session.id);
-                          } else {
-                            newSet.delete(session.id);
-                          }
-                          return newSet;
-                        });
-                      }}
-                    >
-                      <CollapsibleTrigger asChild>
-                        <CardHeader className="pb-3 border-b cursor-pointer hover:bg-muted/30 transition-colors">
-                          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-                            <div className="flex items-center gap-2 flex-1">
-                              <ChevronDown
-                                className={`h-4 w-4 text-muted-foreground transition-transform flex-shrink-0 ${
-                                  isExpanded ? "rotate-180" : ""
-                                }`}
-                              />
-                              <div className="flex-1 min-w-0">
-                                <CardTitle className="text-sm sm:text-base">
-                                  {session.visitor.firstName}{" "}
-                                  {session.visitor.lastName} - Session{" "}
-                                  {formatDateTime(session.createdAt)}
-                                </CardTitle>
-                                <CardDescription className="text-xs mt-1">
-                                  Status: {session.status}
-                                  {!isExpanded && (
-                                    <span className="ml-2">
-                                      •{" "}
-                                      {session.reason.length > 40
-                                        ? session.reason.substring(0, 40) +
-                                          "..."
-                                        : session.reason}
-                                    </span>
-                                  )}
-                                </CardDescription>
-                              </div>
-                            </div>
-                            <Badge
-                              variant={
-                                isExited
-                                  ? "default"
-                                  : session.status === "test_drive"
-                                  ? "secondary"
-                                  : "outline"
+                    return (
+                      <Card key={session.id} className="overflow-hidden">
+                        <Collapsible
+                          open={isExpanded}
+                          onOpenChange={(open) => {
+                            setExpandedSessions((prev) => {
+                              const newSet = new Set(prev);
+                              if (open) {
+                                newSet.add(session.id);
+                              } else {
+                                newSet.delete(session.id);
                               }
-                              className="text-xs flex-shrink-0"
-                            >
-                              {session.status}
-                            </Badge>
-                          </div>
-                        </CardHeader>
-                      </CollapsibleTrigger>
-                      <CollapsibleContent>
-                        <CardContent className="space-y-4 pt-4">
-                          <div className="flex items-start gap-3 p-3 bg-muted/30 rounded-lg">
-                            <span className="text-xs font-semibold text-muted-foreground uppercase min-w-fit">
-                              Reason:
-                            </span>
-                            <p className="text-xs sm:text-sm text-muted-foreground break-words flex-1">
-                              {session.reason}
-                            </p>
-                          </div>
-
-                          {session.visitorInterests &&
-                            session.visitorInterests.length > 0 && (
-                              <div>
-                                <p className="text-xs sm:text-sm font-semibold mb-2">
-                                  Vehicle Interests:
-                                </p>
-                                <div className="flex flex-wrap gap-2">
-                                  {session.visitorInterests.map((interest) => (
-                                    <Badge
-                                      key={interest.id}
-                                      variant="secondary"
-                                      className="text-xs"
-                                    >
-                                      {interest.model.category.name} -{" "}
-                                      {interest.model.name}
-                                    </Badge>
-                                  ))}
-                                </div>
-                              </div>
-                            )}
-
-                          {hasTestDrives && (
-                            <div>
-                              <p className="text-xs sm:text-sm font-semibold mb-2">
-                                Test Drives ({session.testDrives.length}):
-                              </p>
-                              <div className="space-y-2">
-                                {session.testDrives.map((td) => (
-                                  <div
-                                    key={td.id}
-                                    className="text-xs sm:text-sm pl-4 border-l-2 border-primary/30"
-                                  >
-                                    <p className="font-medium">
-                                      {td.model.category.name} - {td.model.name}
-                                    </p>
+                              return newSet;
+                            });
+                          }}
+                        >
+                          <CollapsibleTrigger asChild>
+                            <CardHeader className="pb-3 border-b cursor-pointer hover:bg-muted/30 transition-colors">
+                              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                                <div className="flex items-center gap-2 flex-1">
+                                  <ChevronDown
+                                    className={`h-4 w-4 text-muted-foreground transition-transform flex-shrink-0 ${
+                                      isExpanded ? "rotate-180" : ""
+                                    }`}
+                                  />
+                                  <div className="flex-1 min-w-0">
+                                    <CardTitle className="text-sm sm:text-base">
+                                      {session.visitor.firstName}{" "}
+                                      {session.visitor.lastName} - Session{" "}
+                                      {formatDateTime(session.createdAt)}
+                                    </CardTitle>
+                                    <CardDescription className="text-xs mt-1">
+                                      Status: {session.status}
+                                      {!isExpanded && (
+                                        <span className="ml-2">
+                                          •{" "}
+                                          {session.reason.length > 40
+                                            ? session.reason.substring(0, 40) +
+                                              "..."
+                                            : session.reason}
+                                        </span>
+                                      )}
+                                    </CardDescription>
                                   </div>
-                                ))}
+                                </div>
+                                <Badge
+                                  variant={
+                                    isExited
+                                      ? "default"
+                                      : session.status === "test_drive"
+                                      ? "secondary"
+                                      : "outline"
+                                  }
+                                  className="text-xs flex-shrink-0"
+                                >
+                                  {session.status}
+                                </Badge>
                               </div>
-                            </div>
-                          )}
+                            </CardHeader>
+                          </CollapsibleTrigger>
+                          <CollapsibleContent>
+                            <CardContent className="space-y-4 pt-4">
+                              <div className="flex items-start gap-3 p-3 bg-muted/30 rounded-lg">
+                                <span className="text-xs font-semibold text-muted-foreground uppercase min-w-fit">
+                                  Reason:
+                                </span>
+                                <p className="text-xs sm:text-sm text-muted-foreground break-words flex-1">
+                                  {session.reason}
+                                </p>
+                              </div>
 
-                          {!isExited && (
-                            <div className="flex flex-col sm:flex-row gap-2 pt-2 border-t">
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setSelectedSession(session);
-                                  setTestDriveDialogOpen(true);
-                                }}
-                                className="w-full sm:w-auto text-xs sm:text-sm"
-                              >
-                                <Car className="mr-2 h-3 w-3 sm:h-4 sm:w-4" />
-                                Add Test Drive
-                              </Button>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleExitSession(session);
-                                }}
-                                disabled={sessionSubmitting}
-                                className="w-full sm:w-auto text-xs sm:text-sm"
-                              >
-                                {sessionSubmitting ? (
-                                  <Loader2 className="mr-2 h-3 w-3 sm:h-4 sm:w-4 animate-spin" />
-                                ) : (
-                                  <LogOut className="mr-2 h-3 w-3 sm:h-4 sm:w-4" />
+                              {session.visitorInterests &&
+                                session.visitorInterests.length > 0 && (
+                                  <div>
+                                    <p className="text-xs sm:text-sm font-semibold mb-2">
+                                      Vehicle Interests:
+                                    </p>
+                                    <div className="flex flex-wrap gap-2">
+                                      {session.visitorInterests.map(
+                                        (interest) => (
+                                          <Badge
+                                            key={interest.id}
+                                            variant="secondary"
+                                            className="text-xs"
+                                          >
+                                            {interest.model.category.name} -{" "}
+                                            {interest.model.name}
+                                          </Badge>
+                                        )
+                                      )}
+                                    </div>
+                                  </div>
                                 )}
-                                Exit Session
-                              </Button>
-                            </div>
-                          )}
-                        </CardContent>
-                      </CollapsibleContent>
-                    </Collapsible>
-                  </Card>
-                );
-                })}
+
+                              {hasTestDrives && (
+                                <div>
+                                  <p className="text-xs sm:text-sm font-semibold mb-2">
+                                    Test Drives ({session.testDrives.length}):
+                                  </p>
+                                  <div className="space-y-2">
+                                    {session.testDrives.map((td) => (
+                                      <div
+                                        key={td.id}
+                                        className="text-xs sm:text-sm pl-4 border-l-2 border-primary/30"
+                                      >
+                                        <p className="font-medium">
+                                          {td.model.category.name} -{" "}
+                                          {td.model.name}
+                                        </p>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+
+                              {!isExited && (
+                                <div className="flex flex-col sm:flex-row gap-2 pt-2 border-t">
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setSelectedSession(session);
+                                      setTestDriveDialogOpen(true);
+                                    }}
+                                    className="w-full sm:w-auto text-xs sm:text-sm"
+                                  >
+                                    <Car className="mr-2 h-3 w-3 sm:h-4 sm:w-4" />
+                                    Add Test Drive
+                                  </Button>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleExitSession(session);
+                                    }}
+                                    disabled={sessionSubmitting}
+                                    className="w-full sm:w-auto text-xs sm:text-sm"
+                                  >
+                                    {sessionSubmitting ? (
+                                      <Loader2 className="mr-2 h-3 w-3 sm:h-4 sm:w-4 animate-spin" />
+                                    ) : (
+                                      <LogOut className="mr-2 h-3 w-3 sm:h-4 sm:w-4" />
+                                    )}
+                                    Exit Session
+                                  </Button>
+                                </div>
+                              )}
+                            </CardContent>
+                          </CollapsibleContent>
+                        </Collapsible>
+                      </Card>
+                    );
+                  })}
               </div>
               {(() => {
                 const displayedSessions = selectedVisitorId
-                  ? allSessions.filter((s: Session) => s.visitor.id === selectedVisitorId)
+                  ? allSessions.filter(
+                      (s: Session) => s.visitor.id === selectedVisitorId
+                    )
                   : allSessions;
-                const hasMoreToShow = displayedSessions.length > sessionsDisplayedCount || sessionsHasMore;
-                
-                return hasMoreToShow && (
-                  <div className="flex justify-center pt-4">
-                    <Button
-                      variant="outline"
-                      onClick={handleLoadMoreSessions}
-                      disabled={sessionsLoadingMore}
-                      className="w-full sm:w-auto"
-                    >
-                      {sessionsLoadingMore ? (
-                        <>
-                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          Loading...
-                        </>
-                      ) : (
-                        `Load More (${displayedSessions.length - sessionsDisplayedCount} remaining)`
-                      )}
-                    </Button>
-                  </div>
+                const hasMoreToShow =
+                  displayedSessions.length > sessionsDisplayedCount ||
+                  sessionsHasMore;
+
+                return (
+                  hasMoreToShow && (
+                    <div className="flex justify-center pt-4">
+                      <Button
+                        variant="outline"
+                        onClick={handleLoadMoreSessions}
+                        disabled={sessionsLoadingMore}
+                        className="w-full sm:w-auto"
+                      >
+                        {sessionsLoadingMore ? (
+                          <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            Loading...
+                          </>
+                        ) : (
+                          `Load More (${
+                            displayedSessions.length - sessionsDisplayedCount
+                          } remaining)`
+                        )}
+                      </Button>
+                    </div>
+                  )
                 );
               })()}
             </>
@@ -1567,12 +1673,16 @@ export default function DailyWalkinsPage() {
       </Dialog>
 
       {/* Exit Session Confirmation Dialog */}
-      <Dialog open={exitConfirmDialogOpen} onOpenChange={setExitConfirmDialogOpen}>
+      <Dialog
+        open={exitConfirmDialogOpen}
+        onOpenChange={setExitConfirmDialogOpen}
+      >
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>Exit Session</DialogTitle>
             <DialogDescription>
-              Are you sure you want to exit this session? This will close the session and send a thank you message to the visitor.
+              Are you sure you want to exit this session? This will close the
+              session and send a thank you message to the visitor.
             </DialogDescription>
           </DialogHeader>
           <div className="flex flex-col sm:flex-row justify-end gap-2 mt-4">

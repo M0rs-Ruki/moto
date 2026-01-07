@@ -85,6 +85,10 @@ interface VehicleCategory {
 export default function DeliveryUpdatePage() {
   const [tickets, setTickets] = useState<DeliveryTicket[]>([]);
   const [loading, setLoading] = useState(true);
+  const [displayedCount, setDisplayedCount] = useState(50); // Show 50 initially
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(false);
+  const [totalTickets, setTotalTickets] = useState(0);
   const [phoneLookups, setPhoneLookups] = useState<Record<string, PhoneLookup>>(
     {}
   );
@@ -116,7 +120,7 @@ export default function DeliveryUpdatePage() {
   });
 
   useEffect(() => {
-    fetchTickets();
+    fetchTickets(0, false);
   }, []);
 
   const fetchCreateFormData = async () => {
@@ -153,7 +157,7 @@ export default function DeliveryUpdatePage() {
         variantId: "",
         scheduleOption: "d3",
       });
-      fetchTickets();
+      fetchTickets(0, false); // Reset pagination when creating new ticket
     } catch (err: unknown) {
       const error = err as { response?: { data?: { error?: string } } };
       setError(error.response?.data?.error || "Failed to create ticket");
@@ -162,15 +166,32 @@ export default function DeliveryUpdatePage() {
     }
   };
 
-  const fetchTickets = async () => {
+  const fetchTickets = async (skip: number = 0, append: boolean = false) => {
     try {
-      const response = await axios.get("/api/delivery-tickets");
-      setTickets(response.data.tickets);
+      if (!append) {
+        setLoading(true);
+      } else {
+        setLoadingMore(true);
+      }
 
-      // Fetch phone lookups for all tickets
-      const lookups: Record<string, PhoneLookup> = {};
+      const response = await axios.get(`/api/delivery-tickets?limit=50&skip=${skip}`);
+      
+      // Append or replace tickets
+      if (append) {
+        setTickets([...tickets, ...response.data.tickets]);
+      } else {
+        setTickets(response.data.tickets);
+        setDisplayedCount(50);
+      }
+      
+      setHasMore(response.data.hasMore || false);
+      setTotalTickets(response.data.total || response.data.tickets.length);
+
+      // Fetch phone lookups for new tickets only
+      const newTickets = append ? response.data.tickets : response.data.tickets;
+      const lookups: Record<string, PhoneLookup> = { ...phoneLookups };
       await Promise.all(
-        response.data.tickets.map(async (ticket: DeliveryTicket) => {
+        newTickets.map(async (ticket: DeliveryTicket) => {
           try {
             const lookupRes = await axios.get(
               `/api/phone-lookup?phone=${encodeURIComponent(
@@ -191,6 +212,21 @@ export default function DeliveryUpdatePage() {
       console.error("Failed to fetch tickets:", error);
     } finally {
       setLoading(false);
+      setLoadingMore(false);
+    }
+  };
+
+  const handleLoadMore = async () => {
+    // If we have more tickets than displayed, just show more from what we already have
+    if (tickets.length > displayedCount) {
+      setDisplayedCount(Math.min(displayedCount + 50, tickets.length));
+    } 
+    // Otherwise, fetch more from backend if available
+    else if (hasMore) {
+      const currentSkip = tickets.length;
+      await fetchTickets(currentSkip, true);
+      // Increase displayed count after new data is loaded
+      setDisplayedCount(displayedCount + 50);
     }
   };
 
@@ -229,7 +265,7 @@ export default function DeliveryUpdatePage() {
       const response = await axios.post(`/api/delivery-tickets/${ticketId}/send-completion`);
       if (response.data.success) {
         // Refresh tickets to get updated completionSent status from database
-        await fetchTickets();
+        await fetchTickets(0, false);
       } else {
         alert(response.data.message?.error || "Failed to send completion message");
       }
@@ -239,7 +275,7 @@ export default function DeliveryUpdatePage() {
       alert(errorMessage);
       // If error is about already sent, refresh to update UI
       if (errorMessage.includes("already been sent")) {
-        await fetchTickets();
+        await fetchTickets(0, false);
       }
     } finally {
       setSendingCompletion((prev) => ({ ...prev, [ticketId]: false }));
@@ -282,127 +318,220 @@ export default function DeliveryUpdatePage() {
           </CardContent>
         </Card>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {tickets.map((ticket) => {
-            const daysUntil = getDaysUntilDelivery(ticket.deliveryDate);
-            const hasPendingMessage = ticket.scheduledMessages.length > 0;
+        <>
+          <Card>
+            <CardContent className="p-0">
+              <div className="overflow-x-auto">
+                <table className="w-full border-collapse">
+                  <thead>
+                    <tr className="border-b bg-muted/50">
+                      <th className="text-left py-3 px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                        Ticket
+                      </th>
+                      <th className="text-left py-3 px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                        Contact
+                      </th>
+                      <th className="text-left py-3 px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                        Delivery Date
+                      </th>
+                      <th className="text-left py-3 px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                        Model
+                      </th>
+                      <th className="text-left py-3 px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                        Status
+                      </th>
+                      <th className="text-left py-3 px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                        Actions
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {tickets.slice(0, displayedCount).map((ticket) => {
+                      const initials = `${ticket.firstName.charAt(0)}${ticket.lastName.charAt(0)}`.toUpperCase();
+                      const daysUntil = getDaysUntilDelivery(ticket.deliveryDate);
+                      const hasPendingMessage = ticket.scheduledMessages.length > 0;
+                      const deliveryDate = new Date(ticket.deliveryDate).toLocaleDateString();
+                      
+                      return (
+                        <tr
+                          key={ticket.id}
+                          className="border-b hover:bg-muted/30 transition-colors"
+                        >
+                          {/* Ticket Column */}
+                          <td className="py-3 px-4">
+                            <div className="flex items-center gap-3">
+                              <div className="w-10 h-10 rounded-full bg-primary flex items-center justify-center text-primary-foreground font-semibold text-sm flex-shrink-0">
+                                {initials}
+                              </div>
+                              <div className="min-w-0">
+                                <p className="text-sm font-medium truncate">
+                                  {ticket.firstName} {ticket.lastName}
+                                </p>
+                                {ticket.email && (
+                                  <p className="text-xs text-muted-foreground truncate">
+                                    {ticket.email}
+                                  </p>
+                                )}
+                                {ticket.description && (
+                                  <p className="text-xs text-muted-foreground truncate max-w-[200px]">
+                                    {ticket.description.length > 50
+                                      ? ticket.description.substring(0, 50) + "..."
+                                      : ticket.description}
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+                          </td>
 
-            return (
-              <Card
-                key={ticket.id}
-                className="hover:shadow-lg transition-shadow"
+                          {/* Contact Column */}
+                          <td className="py-3 px-4">
+                            <p className="text-sm">
+                              {ticket.whatsappNumber || "No phone"}
+                            </p>
+                            {phoneLookups[ticket.whatsappNumber] && (
+                              <div className="flex flex-wrap items-center gap-1 mt-1">
+                                {phoneLookups[ticket.whatsappNumber].dailyWalkins && (
+                                  <Link href="/dashboard/daily-walkins">
+                                    <Badge
+                                      variant="outline"
+                                      className="text-xs cursor-pointer hover:bg-primary/10 transition-colors"
+                                    >
+                                      Walkins
+                                    </Badge>
+                                  </Link>
+                                )}
+                                {phoneLookups[ticket.whatsappNumber].digitalEnquiry && (
+                                  <Link href="/dashboard/digital-enquiry">
+                                    <Badge
+                                      variant="outline"
+                                      className="text-xs cursor-pointer hover:bg-primary/10 transition-colors"
+                                    >
+                                      Digital
+                                    </Badge>
+                                  </Link>
+                                )}
+                              </div>
+                            )}
+                          </td>
+
+                          {/* Delivery Date Column */}
+                          <td className="py-3 px-4">
+                            <div className="space-y-1">
+                              <div className="flex items-center gap-2">
+                                <Calendar className="h-3 w-3 text-muted-foreground" />
+                                <p className="text-sm">{deliveryDate}</p>
+                              </div>
+                              {daysUntil >= 0 && (
+                                <Badge variant="outline" className="text-xs">
+                                  {daysUntil === 0
+                                    ? "Today"
+                                    : daysUntil === 1
+                                    ? "Tomorrow"
+                                    : `${daysUntil} days`}
+                                </Badge>
+                              )}
+                            </div>
+                          </td>
+
+                          {/* Model Column */}
+                          <td className="py-3 px-4">
+                            <div className="space-y-1">
+                              <p className="text-xs text-muted-foreground">
+                                {ticket.model.category.name}
+                              </p>
+                              <p className="text-sm font-medium">
+                                {ticket.model.name}
+                              </p>
+                            </div>
+                          </td>
+
+                          {/* Status Column */}
+                          <td className="py-3 px-4">
+                            <div className="space-y-1">
+                              {ticket.messageSent ? (
+                                <Badge className="bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400 text-xs">
+                                  <Send className="h-3 w-3 mr-1" />
+                                  Sent
+                                </Badge>
+                              ) : hasPendingMessage ? (
+                                <Badge variant="secondary" className="text-xs">Scheduled</Badge>
+                              ) : (
+                                <Badge variant="outline" className="text-xs">Not Sent</Badge>
+                              )}
+                              {ticket.completionSent || ticket.status === "closed" ? (
+                                <Badge className="bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400 text-xs mt-1">
+                                  <CheckCircle className="h-3 w-3 mr-1" />
+                                  Closed
+                                </Badge>
+                              ) : null}
+                            </div>
+                          </td>
+
+                          {/* Actions Column */}
+                          <td className="py-3 px-4">
+                            {ticket.completionSent || ticket.status === "closed" ? (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                disabled
+                                className="text-xs bg-green-100 dark:bg-green-900/30 text-green-900 dark:text-green-400 border-green-300 dark:border-green-900"
+                              >
+                                <CheckCircle className="mr-2 h-3 w-3" />
+                                Closed
+                              </Button>
+                            ) : (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleSendCompletion(ticket.id);
+                                }}
+                                disabled={sendingCompletion[ticket.id] || ticket.completionSent}
+                                className="text-xs"
+                              >
+                                {sendingCompletion[ticket.id] ? (
+                                  <>
+                                    <Loader2 className="mr-2 h-3 w-3 animate-spin" />
+                                    Sending...
+                                  </>
+                                ) : (
+                                  <>
+                                    <CheckCircle className="mr-2 h-3 w-3" />
+                                    Send Completion
+                                  </>
+                                )}
+                              </Button>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </CardContent>
+          </Card>
+          {(hasMore && tickets.length > displayedCount) || tickets.length > displayedCount ? (
+            <div className="flex justify-center pt-4">
+              <Button
+                variant="outline"
+                onClick={handleLoadMore}
+                disabled={loadingMore}
+                className="w-full sm:w-auto"
               >
-                <CardHeader>
-                  <CardTitle className="text-base sm:text-lg">
-                    {ticket.firstName} {ticket.lastName}
-                  </CardTitle>
-                  <CardDescription className="text-xs sm:text-sm">
-                    {ticket.whatsappNumber}
-                  </CardDescription>
-                  {phoneLookups[ticket.whatsappNumber] && (
-                    <div className="flex flex-wrap items-center gap-1.5 mt-2">
-                      {phoneLookups[ticket.whatsappNumber].dailyWalkins && (
-                        <Link href="/dashboard/daily-walkins">
-                          <Badge
-                            variant="outline"
-                            className="text-xs cursor-pointer hover:bg-primary/10 transition-colors"
-                          >
-                            Daily Walkins
-                          </Badge>
-                        </Link>
-                      )}
-                      {phoneLookups[ticket.whatsappNumber].digitalEnquiry && (
-                        <Link href="/dashboard/digital-enquiry">
-                          <Badge
-                            variant="outline"
-                            className="text-xs cursor-pointer hover:bg-primary/10 transition-colors"
-                          >
-                            Digital Enquiry
-                          </Badge>
-                        </Link>
-                      )}
-                    </div>
-                  )}
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-2 text-xs sm:text-sm">
-                    <div className="flex items-center gap-2 text-muted-foreground">
-                      <Calendar className="h-4 w-4" />
-                      <span>
-                        {new Date(ticket.deliveryDate).toLocaleDateString()}
-                      </span>
-                      {daysUntil >= 0 && (
-                        <Badge variant="outline">
-                          {daysUntil === 0
-                            ? "Today"
-                            : daysUntil === 1
-                            ? "Tomorrow"
-                            : `${daysUntil} days`}
-                        </Badge>
-                      )}
-                    </div>
-                    <div className="text-muted-foreground">
-                      {ticket.model.category.name} - {ticket.model.name}
-                    </div>
-                    {ticket.description && (
-                      <div className="text-muted-foreground line-clamp-2">
-                        {ticket.description}
-                      </div>
-                    )}
-                    <div className="flex flex-wrap items-center gap-2 pt-2">
-                      {ticket.messageSent ? (
-                        <Badge className="bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400">
-                          <Send className="h-3 w-3 mr-1" />
-                          Sent
-                        </Badge>
-                      ) : hasPendingMessage ? (
-                        <Badge variant="secondary">Scheduled</Badge>
-                      ) : (
-                        <Badge variant="outline">Not Sent</Badge>
-                      )}
-                    </div>
-                    <div className="pt-3 border-t">
-                      {ticket.completionSent || ticket.status === "closed" ? (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          disabled
-                          className="w-full text-xs bg-green-100 dark:bg-green-900/30 text-green-900 dark:text-green-400 border-green-300 dark:border-green-900"
-                        >
-                          <CheckCircle className="mr-2 h-3 w-3" />
-                          Ticket Closed
-                        </Button> 
-                      ) : (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleSendCompletion(ticket.id);
-                          }}
-                          disabled={sendingCompletion[ticket.id] || ticket.completionSent}
-                          className="w-full text-xs"
-                        >
-                          {sendingCompletion[ticket.id] ? (
-                            <>
-                              <Loader2 className="mr-2 h-3 w-3 animate-spin" />
-                              Sending...
-                            </>
-                          ) : (
-                            <>
-                              <CheckCircle className="mr-2 h-3 w-3" />
-                              Send Completion
-                            </>
-                          )}
-                        </Button>
-                      )}
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            );
-          })}
-        </div>
+                {loadingMore ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Loading...
+                  </>
+                ) : (
+                  `Load More (${tickets.length - displayedCount} remaining)`
+                )}
+              </Button>
+            </div>
+          ) : null}
+        </>
       )}
 
       {/* Create Ticket Dialog */}

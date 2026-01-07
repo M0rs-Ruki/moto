@@ -300,6 +300,18 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
     }
 
+    // Get pagination parameters
+    const searchParams = request.nextUrl.searchParams;
+    const limit = parseInt(searchParams.get("limit") || "50", 10);
+    const skip = parseInt(searchParams.get("skip") || "0", 10);
+
+    // Get total count for pagination
+    const total = await prisma.deliveryTicket.count({
+      where: {
+        dealershipId: user.dealershipId,
+      },
+    });
+
     const tickets = await prisma.deliveryTicket.findMany({
       where: {
         dealershipId: user.dealershipId,
@@ -323,9 +335,17 @@ export async function GET(request: NextRequest) {
       orderBy: {
         createdAt: "desc",
       },
+      take: limit,
+      skip: skip,
     });
 
-    return NextResponse.json({ tickets });
+    const hasMore = skip + tickets.length < total;
+
+    return NextResponse.json({
+      tickets,
+      total,
+      hasMore,
+    });
   } catch (error: unknown) {
     console.error("Get delivery tickets error:", error);
     return NextResponse.json(

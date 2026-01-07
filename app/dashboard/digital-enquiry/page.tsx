@@ -388,138 +388,196 @@ export default function DigitalEnquiryPage() {
         </Card>
       ) : (
         <>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {enquiries.slice(0, displayedCount).map((enquiry) => (
-            <Card
-              key={enquiry.id}
-              className="overflow-hidden hover:shadow-md transition-all duration-200"
-            >
-              <CardHeader className="pb-3 bg-gradient-to-r from-muted/50 to-transparent border-b">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="flex-1 min-w-0">
-                    <CardTitle className="text-base sm:text-lg font-semibold truncate">
-                      {enquiry.firstName} {enquiry.lastName}
-                    </CardTitle>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent className="pt-4 pb-4 sm:pb-6 space-y-3">
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-semibold text-muted-foreground min-w-[60px]">
-                      Phone:
-                    </span>
-                    <span className="text-xs sm:text-sm">
-                      {enquiry.whatsappNumber}
-                    </span>
-                  </div>
-                  {enquiry.email && (
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs font-semibold text-muted-foreground min-w-[60px]">
-                        Email:
-                      </span>
-                      <span className="text-xs sm:text-sm break-words">
-                        {enquiry.email}
-                      </span>
-                    </div>
-                  )}
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-semibold text-muted-foreground min-w-[60px]">
-                      Created:
-                    </span>
-                    <span className="text-xs sm:text-sm">
-                      {formatDate(enquiry.createdAt)}
-                    </span>
-                  </div>
-                </div>
-                <div className="flex flex-wrap items-center gap-2">
-                  <div className="flex items-center gap-1.5 group">
-                    {editingLeadScope === enquiry.id ? (
-                      <Select
-                        value={enquiry.leadScope}
-                        onValueChange={(value) => {
-                          handleUpdateLeadScope(enquiry.id, value);
-                        }}
-                        disabled={updatingLeadScope}
-                      >
-                        <SelectTrigger className="h-6 w-20 text-xs">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="hot">Hot</SelectItem>
-                          <SelectItem value="warm">Warm</SelectItem>
-                          <SelectItem value="cold">Cold</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    ) : (
-                      <>
-                        <Badge
-                          className={getLeadScopeColor(enquiry.leadScope)}
-                          variant="secondary"
+          <Card>
+            <CardContent className="p-0">
+              <div className="overflow-x-auto">
+                <table className="w-full border-collapse">
+                  <thead>
+                    <tr className="border-b bg-muted/50">
+                      <th className="text-left py-3 px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                        Enquiry
+                      </th>
+                      <th className="text-left py-3 px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                        Contact
+                      </th>
+                      <th className="text-left py-3 px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                        Lead Scope
+                      </th>
+                      <th className="text-left py-3 px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                        Lead Source
+                      </th>
+                      <th className="text-left py-3 px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                        Model
+                      </th>
+                      <th className="text-left py-3 px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                        Created
+                      </th>
+                      <th className="text-left py-3 px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                        Actions
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {enquiries.slice(0, displayedCount).map((enquiry) => {
+                      const initials = `${enquiry.firstName.charAt(0)}${enquiry.lastName.charAt(0)}`.toUpperCase();
+                      
+                      return (
+                        <tr
+                          key={enquiry.id}
+                          className="border-b hover:bg-muted/30 transition-colors"
                         >
-                          {enquiry.leadScope.toUpperCase()}
-                        </Badge>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-5 w-5 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setEditingLeadScope(enquiry.id);
-                          }}
-                          disabled={updatingLeadScope}
-                        >
-                          <Edit2 className="h-3 w-3" />
-                        </Button>
-                      </>
-                    )}
-                    {updatingLeadScope && editingLeadScope === enquiry.id && (
-                      <Loader2 className="h-3 w-3 animate-spin" />
-                    )}
-                  </div>
-                  {enquiry.leadSource && (
-                    <Badge variant="outline">{enquiry.leadSource.name}</Badge>
-                  )}
-                  {enquiry.model && (
-                    <Badge variant="outline">
-                      {enquiry.model.category.name} - {enquiry.model.name}
-                    </Badge>
-                  )}
-                </div>
-                {phoneLookups[enquiry.whatsappNumber] && (
-                  <div className="flex flex-wrap items-center gap-1.5 pt-2 border-t">
-                    {phoneLookups[enquiry.whatsappNumber].dailyWalkins && (
-                      <Link
-                        href="/dashboard/daily-walkins"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        <Badge
-                          variant="outline"
-                          className="text-xs cursor-pointer hover:bg-primary/10 transition-colors"
-                        >
-                          Daily Walkins
-                        </Badge>
-                      </Link>
-                    )}
-                    {phoneLookups[enquiry.whatsappNumber].deliveryUpdate && (
-                      <Link
-                        href="/dashboard/delivery-update"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        <Badge
-                          variant="outline"
-                          className="text-xs cursor-pointer hover:bg-primary/10 transition-colors"
-                        >
-                          Delivery Update
-                        </Badge>
-                      </Link>
-                    )}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-            ))}
-          </div>
+                          {/* Enquiry Column */}
+                          <td className="py-3 px-4">
+                            <div className="flex items-center gap-3">
+                              <div className="w-10 h-10 rounded-full bg-primary flex items-center justify-center text-primary-foreground font-semibold text-sm flex-shrink-0">
+                                {initials}
+                              </div>
+                              <div className="min-w-0">
+                                <p className="text-sm font-medium truncate">
+                                  {enquiry.firstName} {enquiry.lastName}
+                                </p>
+                                {enquiry.email && (
+                                  <p className="text-xs text-muted-foreground truncate">
+                                    {enquiry.email}
+                                  </p>
+                                )}
+                                {enquiry.reason && (
+                                  <p className="text-xs text-muted-foreground truncate max-w-[200px]">
+                                    {enquiry.reason.length > 50
+                                      ? enquiry.reason.substring(0, 50) + "..."
+                                      : enquiry.reason}
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+                          </td>
+
+                          {/* Contact Column */}
+                          <td className="py-3 px-4">
+                            <p className="text-sm">
+                              {enquiry.whatsappNumber || "No phone"}
+                            </p>
+                          </td>
+
+                          {/* Lead Scope Column */}
+                          <td className="py-3 px-4">
+                            <div className="flex items-center gap-1.5 group">
+                              {editingLeadScope === enquiry.id ? (
+                                <Select
+                                  value={enquiry.leadScope}
+                                  onValueChange={(value) => {
+                                    handleUpdateLeadScope(enquiry.id, value);
+                                  }}
+                                  disabled={updatingLeadScope}
+                                >
+                                  <SelectTrigger className="h-7 w-20 text-xs">
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="hot">Hot</SelectItem>
+                                    <SelectItem value="warm">Warm</SelectItem>
+                                    <SelectItem value="cold">Cold</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              ) : (
+                                <>
+                                  <Badge
+                                    className={getLeadScopeColor(enquiry.leadScope)}
+                                    variant="secondary"
+                                  >
+                                    {enquiry.leadScope.toUpperCase()}
+                                  </Badge>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-5 w-5 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setEditingLeadScope(enquiry.id);
+                                    }}
+                                    disabled={updatingLeadScope}
+                                  >
+                                    <Edit2 className="h-3 w-3" />
+                                  </Button>
+                                </>
+                              )}
+                              {updatingLeadScope && editingLeadScope === enquiry.id && (
+                                <Loader2 className="h-3 w-3 animate-spin" />
+                              )}
+                            </div>
+                          </td>
+
+                          {/* Lead Source Column */}
+                          <td className="py-3 px-4">
+                            {enquiry.leadSource ? (
+                              <Badge variant="outline" className="text-xs">
+                                {enquiry.leadSource.name}
+                              </Badge>
+                            ) : (
+                              <span className="text-xs text-muted-foreground">None</span>
+                            )}
+                          </td>
+
+                          {/* Model Column */}
+                          <td className="py-3 px-4">
+                            {enquiry.model ? (
+                              <div className="space-y-1">
+                                <p className="text-xs text-muted-foreground">
+                                  {enquiry.model.category.name}
+                                </p>
+                                <p className="text-sm font-medium">
+                                  {enquiry.model.name}
+                                </p>
+                              </div>
+                            ) : (
+                              <span className="text-xs text-muted-foreground">None</span>
+                            )}
+                          </td>
+
+                          {/* Created Column */}
+                          <td className="py-3 px-4">
+                            <p className="text-sm">{formatDate(enquiry.createdAt)}</p>
+                          </td>
+
+                          {/* Actions Column */}
+                          <td className="py-3 px-4">
+                            <div className="flex items-center gap-2">
+                              {phoneLookups[enquiry.whatsappNumber]?.dailyWalkins && (
+                                <Link
+                                  href="/dashboard/daily-walkins"
+                                  onClick={(e) => e.stopPropagation()}
+                                >
+                                  <Badge
+                                    variant="outline"
+                                    className="text-xs cursor-pointer hover:bg-primary/10 transition-colors"
+                                  >
+                                    Walkins
+                                  </Badge>
+                                </Link>
+                              )}
+                              {phoneLookups[enquiry.whatsappNumber]?.deliveryUpdate && (
+                                <Link
+                                  href="/dashboard/delivery-update"
+                                  onClick={(e) => e.stopPropagation()}
+                                >
+                                  <Badge
+                                    variant="outline"
+                                    className="text-xs cursor-pointer hover:bg-primary/10 transition-colors"
+                                  >
+                                    Delivery
+                                  </Badge>
+                                </Link>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </CardContent>
+          </Card>
           {(hasMore && enquiries.length > displayedCount) || enquiries.length > displayedCount ? (
             <div className="flex justify-center pt-4">
               <Button
