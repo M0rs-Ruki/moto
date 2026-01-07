@@ -403,12 +403,11 @@ export default function SettingsPage() {
       )}
 
       <Tabs defaultValue="profile" className="w-full">
-        <TabsList className="grid w-full grid-cols-5 text-xs sm:text-base">
-          <TabsTrigger value="profile">Profile</TabsTrigger>
+        <TabsList className="grid w-full grid-cols-4 text-xs sm:text-base">
+          <TabsTrigger value="profile">Profile & Appearance</TabsTrigger>
           <TabsTrigger value="vehicles">Vehicle Models</TabsTrigger>
-          <TabsTrigger value="templates">WhatsApp</TabsTrigger>
           <TabsTrigger value="lead-sources">Lead Sources</TabsTrigger>
-          <TabsTrigger value="appearance">Appearance</TabsTrigger>
+          <TabsTrigger value="templates">WhatsApp</TabsTrigger>
         </TabsList>
 
         <TabsContent value="profile" className="space-y-4">
@@ -477,6 +476,157 @@ export default function SettingsPage() {
                   </Button>
                 </>
               )}
+            </CardContent>
+          </Card>
+
+          {/* Appearance Section */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg sm:text-xl">Appearance</CardTitle>
+              <CardDescription className="text-xs sm:text-sm">
+                Customize the look and feel of your dashboard
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label className="text-sm">Theme</Label>
+                <div className="flex flex-col sm:flex-row gap-2">
+                  <Button
+                    size="sm"
+                    variant={
+                      themeSettings.theme === "light" ? "default" : "outline"
+                    }
+                    onClick={() =>
+                      setThemeSettings({ ...themeSettings, theme: "light" })
+                    }
+                    className="w-full sm:w-auto text-xs sm:text-sm"
+                  >
+                    Light
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant={
+                      themeSettings.theme === "dark" ? "default" : "outline"
+                    }
+                    onClick={() =>
+                      setThemeSettings({ ...themeSettings, theme: "dark" })
+                    }
+                    className="w-full sm:w-auto text-xs sm:text-sm"
+                  >
+                    Dark
+                  </Button>
+                </div>
+              </div>
+
+              <Button
+                onClick={handleApplyTheme}
+                className="w-full sm:w-auto text-xs sm:text-sm"
+              >
+                Apply Theme
+              </Button>
+
+              {/* Profile Picture Section */}
+              <div className="space-y-4 pt-6 border-t">
+                <div className="space-y-2">
+                  <Label className="text-sm font-semibold">Profile Picture</Label>
+                  <p className="text-xs text-muted-foreground">
+                    Upload a profile picture to display in the sidebar
+                  </p>
+                  
+                  {/* Current Profile Picture */}
+                  {user?.profilePicture ? (
+                    <div className="flex items-center gap-4">
+                      <div className="w-20 h-20 rounded-lg overflow-hidden border-2 border-primary">
+                        <img
+                          src={user.profilePicture.startsWith("http") ? user.profilePicture : `/${user.profilePicture}`}
+                          alt="Profile"
+                          className="w-full h-full object-cover"
+                          onError={(e) => {
+                            const target = e.target as HTMLImageElement;
+                            target.style.display = "none";
+                            const parent = target.parentElement;
+                            if (parent) {
+                              parent.innerHTML = '<div class="w-full h-full bg-muted flex items-center justify-center text-muted-foreground text-xs">No Image</div>';
+                            }
+                          }}
+                        />
+                      </div>
+                      <div className="flex-1">
+                        <p className="text-xs text-muted-foreground mb-2">Current profile picture</p>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="w-20 h-20 rounded-lg bg-muted flex items-center justify-center border-2 border-dashed">
+                      <span className="text-xs text-muted-foreground">No picture</span>
+                    </div>
+                  )}
+
+                  {/* Preview of new picture */}
+                  {profilePicturePreview && (
+                    <div className="mt-2">
+                      <p className="text-xs text-muted-foreground mb-2">New picture preview:</p>
+                      <div className="w-20 h-20 rounded-lg overflow-hidden border-2 border-primary">
+                        <img
+                          src={profilePicturePreview}
+                          alt="Preview"
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                    </div>
+                  )}
+
+                  {/* File Input */}
+                  <div className="flex flex-col sm:flex-row gap-2">
+                    <Input
+                      id="profile-picture-input"
+                      type="file"
+                      accept="image/jpeg,image/jpg,image/png,image/webp,image/gif"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                          // Validate file size (5MB max)
+                          if (file.size > 5 * 1024 * 1024) {
+                            setError("Profile picture must be less than 5MB");
+                            return;
+                          }
+                          // Validate file type
+                          const allowedTypes = ["image/jpeg", "image/jpg", "image/png", "image/webp", "image/gif"];
+                          if (!allowedTypes.includes(file.type)) {
+                            setError("Please upload a valid image file (JPEG, PNG, WebP, or GIF)");
+                            return;
+                          }
+                          setProfilePictureFile(file);
+                          const reader = new FileReader();
+                          reader.onloadend = () => {
+                            setProfilePicturePreview(reader.result as string);
+                          };
+                          reader.readAsDataURL(file);
+                        }
+                      }}
+                      className="text-xs sm:text-sm"
+                    />
+                    {profilePictureFile && (
+                      <Button
+                        onClick={handleUploadProfilePicture}
+                        disabled={uploadingPicture}
+                        className="w-full sm:w-auto text-xs sm:text-sm"
+                      >
+                        {uploadingPicture ? (
+                          <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            Uploading...
+                          </>
+                        ) : (
+                          <>
+                            <Save className="mr-2 h-4 w-4" />
+                            Upload Picture
+                          </>
+                        )}
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              </div>
             </CardContent>
           </Card>
         </TabsContent>
@@ -1350,157 +1500,6 @@ export default function SettingsPage() {
           </Dialog>
         </TabsContent>
 
-        <TabsContent value="appearance" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg sm:text-xl">Appearance</CardTitle>
-              <CardDescription className="text-xs sm:text-sm">
-                Customize the look and feel of your dashboard
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
-                <Label className="text-sm">Theme</Label>
-                <div className="flex flex-col sm:flex-row gap-2">
-                  <Button
-                    size="sm"
-                    variant={
-                      themeSettings.theme === "light" ? "default" : "outline"
-                    }
-                    onClick={() =>
-                      setThemeSettings({ ...themeSettings, theme: "light" })
-                    }
-                    className="w-full sm:w-auto text-xs sm:text-sm"
-                  >
-                    Light
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant={
-                      themeSettings.theme === "dark" ? "default" : "outline"
-                    }
-                    onClick={() =>
-                      setThemeSettings({ ...themeSettings, theme: "dark" })
-                    }
-                    className="w-full sm:w-auto text-xs sm:text-sm"
-                  >
-                    Dark
-                  </Button>
-                </div>
-              </div>
-
-              <Button
-                onClick={handleApplyTheme}
-                className="w-full sm:w-auto text-xs sm:text-sm"
-              >
-                Apply Theme
-              </Button>
-
-              {/* Profile Picture Section */}
-              <div className="space-y-4 pt-6 border-t">
-                <div className="space-y-2">
-                  <Label className="text-sm font-semibold">Profile Picture</Label>
-                  <p className="text-xs text-muted-foreground">
-                    Upload a profile picture to display in the sidebar
-                  </p>
-                  
-                  {/* Current Profile Picture */}
-                  {user?.profilePicture ? (
-                    <div className="flex items-center gap-4">
-                      <div className="w-20 h-20 rounded-lg overflow-hidden border-2 border-primary">
-                        <img
-                          src={user.profilePicture.startsWith("http") ? user.profilePicture : `/${user.profilePicture}`}
-                          alt="Profile"
-                          className="w-full h-full object-cover"
-                          onError={(e) => {
-                            const target = e.target as HTMLImageElement;
-                            target.style.display = "none";
-                            const parent = target.parentElement;
-                            if (parent) {
-                              parent.innerHTML = '<div class="w-full h-full bg-muted flex items-center justify-center text-muted-foreground text-xs">No Image</div>';
-                            }
-                          }}
-                        />
-                      </div>
-                      <div className="flex-1">
-                        <p className="text-xs text-muted-foreground mb-2">Current profile picture</p>
-                      </div>
-                    </div>
-                  ) : (
-                    <div className="w-20 h-20 rounded-lg bg-muted flex items-center justify-center border-2 border-dashed">
-                      <span className="text-xs text-muted-foreground">No picture</span>
-                    </div>
-                  )}
-
-                  {/* Preview of new picture */}
-                  {profilePicturePreview && (
-                    <div className="mt-2">
-                      <p className="text-xs text-muted-foreground mb-2">New picture preview:</p>
-                      <div className="w-20 h-20 rounded-lg overflow-hidden border-2 border-primary">
-                        <img
-                          src={profilePicturePreview}
-                          alt="Preview"
-                          className="w-full h-full object-cover"
-                        />
-                      </div>
-                    </div>
-                  )}
-
-                  {/* File Input */}
-                  <div className="flex flex-col sm:flex-row gap-2">
-                    <Input
-                      id="profile-picture-input"
-                      type="file"
-                      accept="image/jpeg,image/jpg,image/png,image/webp,image/gif"
-                      onChange={(e) => {
-                        const file = e.target.files?.[0];
-                        if (file) {
-                          // Validate file size (5MB max)
-                          if (file.size > 5 * 1024 * 1024) {
-                            setError("Profile picture must be less than 5MB");
-                            return;
-                          }
-                          // Validate file type
-                          const allowedTypes = ["image/jpeg", "image/jpg", "image/png", "image/webp", "image/gif"];
-                          if (!allowedTypes.includes(file.type)) {
-                            setError("Please upload a valid image file (JPEG, PNG, WebP, or GIF)");
-                            return;
-                          }
-                          setProfilePictureFile(file);
-                          const reader = new FileReader();
-                          reader.onloadend = () => {
-                            setProfilePicturePreview(reader.result as string);
-                          };
-                          reader.readAsDataURL(file);
-                        }
-                      }}
-                      className="text-xs sm:text-sm"
-                    />
-                    {profilePictureFile && (
-                      <Button
-                        onClick={handleUploadProfilePicture}
-                        disabled={uploadingPicture}
-                        className="w-full sm:w-auto text-xs sm:text-sm"
-                      >
-                        {uploadingPicture ? (
-                          <>
-                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                            Uploading...
-                          </>
-                        ) : (
-                          <>
-                            <Save className="mr-2 h-4 w-4" />
-                            Upload Picture
-                          </>
-                        )}
-                      </Button>
-                    )}
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
       </Tabs>
     </div>
   );
