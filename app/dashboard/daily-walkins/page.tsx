@@ -141,7 +141,7 @@ export default function DailyWalkinsPage() {
   // Visitors state
   const [visitors, setVisitors] = useState<Visitor[]>([]);
   const [filteredVisitors, setFilteredVisitors] = useState<Visitor[]>([]);
-  const [displayedCount, setDisplayedCount] = useState(30); // Show 30 initially
+  const [displayedCount, setDisplayedCount] = useState(20); // Show 20 initially
   const [loadingMore, setLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(false);
   const [totalVisitors, setTotalVisitors] = useState(0);
@@ -170,7 +170,7 @@ export default function DailyWalkinsPage() {
   // Sessions state
   const [allSessions, setAllSessions] = useState<Session[]>([]);
   const [loadingSessions, setLoadingSessions] = useState(false);
-  const [sessionsDisplayedCount, setSessionsDisplayedCount] = useState(30); // Show 30 initially
+  const [sessionsDisplayedCount, setSessionsDisplayedCount] = useState(20); // Show 20 initially
   const [sessionsLoadingMore, setSessionsLoadingMore] = useState(false);
   const [sessionsHasMore, setSessionsHasMore] = useState(false);
   const [sessionsTotal, setSessionsTotal] = useState(0);
@@ -272,8 +272,8 @@ export default function DailyWalkinsPage() {
 
       const [categoriesRes, visitorsRes, sessionsRes] = await Promise.all([
         axios.get("/api/categories"),
-        axios.get(`/api/visitors?limit=30&skip=${skip}`),
-        axios.get(`/api/sessions?limit=30&skip=0`),
+        axios.get(`/api/visitors?limit=20&skip=${skip}`),
+        axios.get(`/api/sessions?limit=20&skip=0`),
       ]);
 
       setCategories(categoriesRes.data.categories);
@@ -283,6 +283,7 @@ export default function DailyWalkinsPage() {
         setVisitors([...visitors, ...visitorsRes.data.visitors]);
       } else {
         setVisitors(visitorsRes.data.visitors);
+        setDisplayedCount(20);
       }
 
       setHasMore(visitorsRes.data.hasMore || false);
@@ -299,32 +300,32 @@ export default function DailyWalkinsPage() {
         setSessionsTotal(
           sessionsRes.data.total || sessionsRes.data.sessions?.length || 0
         );
-        setSessionsDisplayedCount(30);
+        setSessionsDisplayedCount(20);
       }
 
-      // Fetch phone lookups for new visitors only
-      const newVisitors = append
-        ? visitorsRes.data.visitors
-        : visitorsRes.data.visitors;
-      const lookups: Record<string, PhoneLookup> = { ...phoneLookups };
-      await Promise.all(
-        newVisitors.map(async (visitor: Visitor) => {
-          try {
-            const lookupRes = await axios.get(
-              `/api/phone-lookup?phone=${encodeURIComponent(
-                visitor.whatsappNumber
-              )}`
-            );
-            lookups[visitor.whatsappNumber] = lookupRes.data;
-          } catch (error) {
-            console.error(
-              `Failed to lookup phone ${visitor.whatsappNumber}:`,
-              error
-            );
-          }
-        })
-      );
-      setPhoneLookups(lookups);
+      // Only fetch phone lookups when loading more data (not on initial load)
+      // Use batch lookup to avoid multiple API calls
+      if (append && visitorsRes.data.visitors.length > 0) {
+        const newVisitors = visitorsRes.data.visitors;
+        const lookups: Record<string, PhoneLookup> = { ...phoneLookups };
+        
+        try {
+          // Extract unique phone numbers
+          const phoneNumbers = [...new Set(newVisitors.map((v: Visitor) => v.whatsappNumber))];
+          
+          // Batch lookup all phones in one request
+          const lookupRes = await axios.post('/api/phone-lookup', {
+            phones: phoneNumbers
+          });
+          
+          // Merge batch results into lookups
+          Object.assign(lookups, lookupRes.data);
+          setPhoneLookups(lookups);
+        } catch (error) {
+          console.error('Failed to batch lookup phones:', error);
+          // Don't break the page if phone lookup fails
+        }
+      }
     } catch (error) {
       console.error("Failed to fetch data:", error);
     } finally {
@@ -336,14 +337,14 @@ export default function DailyWalkinsPage() {
   const handleLoadMore = async () => {
     // If we have more filtered visitors than displayed, just show more from what we already have
     if (filteredVisitors.length > displayedCount) {
-      setDisplayedCount(Math.min(displayedCount + 30, filteredVisitors.length));
+      setDisplayedCount(Math.min(displayedCount + 20, filteredVisitors.length));
     }
     // Otherwise, fetch more from backend if available
     else if (hasMore) {
       const currentSkip = visitors.length;
       await fetchData(currentSkip, true);
       // Increase displayed count after new data is loaded
-      setDisplayedCount(displayedCount + 30);
+      setDisplayedCount(displayedCount + 20);
     }
   };
 
@@ -362,14 +363,14 @@ export default function DailyWalkinsPage() {
         ? `&visitorId=${selectedVisitorId}`
         : "";
       const response = await axios.get(
-        `/api/sessions?limit=30&skip=${skip}${visitorIdParam}`
+        `/api/sessions?limit=20&skip=${skip}${visitorIdParam}`
       );
 
       if (append) {
         setAllSessions([...allSessions, ...(response.data.sessions || [])]);
       } else {
         setAllSessions(response.data.sessions || []);
-        setSessionsDisplayedCount(30);
+        setSessionsDisplayedCount(20);
       }
 
       setSessionsHasMore(response.data.hasMore || false);
@@ -395,13 +396,13 @@ export default function DailyWalkinsPage() {
 
     if (displayedSessions.length > sessionsDisplayedCount) {
       setSessionsDisplayedCount(
-        Math.min(sessionsDisplayedCount + 30, displayedSessions.length)
+        Math.min(sessionsDisplayedCount + 20, displayedSessions.length)
       );
     }
     // Otherwise, fetch more from backend if available
     else if (sessionsHasMore) {
       await fetchAllSessions(allSessions.length, true);
-      setSessionsDisplayedCount(sessionsDisplayedCount + 30);
+      setSessionsDisplayedCount(sessionsDisplayedCount + 20);
     }
   };
 
@@ -438,7 +439,7 @@ export default function DailyWalkinsPage() {
     setActiveTab("sessions");
 
     // Reset sessions pagination and fetch sessions for this visitor
-    setSessionsDisplayedCount(30);
+    setSessionsDisplayedCount(20);
     await fetchAllSessions(0, false);
 
     // Find and expand the latest session for this visitor
@@ -1286,8 +1287,7 @@ export default function DailyWalkinsPage() {
                   </div>
                 </CardContent>
               </Card>
-              {((hasMore && visitors.length > displayedCount) ||
-                filteredVisitors.length > displayedCount) && (
+              {(hasMore || filteredVisitors.length > displayedCount) && (
                 <div className="flex justify-center pt-4">
                   <Button
                     variant="outline"
@@ -1301,8 +1301,8 @@ export default function DailyWalkinsPage() {
                         Loading...
                       </>
                     ) : (
-                      `Load More (${
-                        filteredVisitors.length - displayedCount
+                      `See More (${
+                        hasMore ? totalVisitors - displayedCount : filteredVisitors.length - displayedCount
                       } remaining)`
                     )}
                   </Button>
@@ -1345,7 +1345,7 @@ export default function DailyWalkinsPage() {
                         size="sm"
                         onClick={() => {
                           setSelectedVisitorId(null);
-                          setSessionsDisplayedCount(30);
+                          setSessionsDisplayedCount(20);
                           fetchAllSessions(0, false);
                         }}
                       >
@@ -1566,8 +1566,8 @@ export default function DailyWalkinsPage() {
                             Loading...
                           </>
                         ) : (
-                          `Load More (${
-                            displayedSessions.length - sessionsDisplayedCount
+                          `See More (${
+                            sessionsHasMore ? sessionsTotal - sessionsDisplayedCount : displayedSessions.length - sessionsDisplayedCount
                           } remaining)`
                         )}
                       </Button>

@@ -94,23 +94,21 @@ export async function POST(request: NextRequest) {
           address: address || "",
         });
 
-        whatsappContactId = contactResult.contactId;
+        whatsappContactId = contactResult.contactId || "";
 
+        // If contact exists but ID can't be retrieved, that's okay
+        // We can still send messages using phone number directly
         if (!whatsappContactId) {
-          throw new Error("No contact ID returned from WhatsApp API");
+          console.warn("No contact ID returned, but contact may exist. Will use phone number for messaging.");
         }
       } catch (error: unknown) {
+        // Log error but continue - don't block ticket creation
         console.error(
-          "Failed to create WhatsApp contact:",
+          "Failed to create WhatsApp contact, continuing without contact ID:",
           (error as Error).message
         );
-        return NextResponse.json(
-          {
-            error: "Failed to create WhatsApp contact",
-            details: (error as Error).message,
-          },
-          { status: 500 }
-        );
+        // Continue with empty contact ID - ticket will be created but messages will use phone number
+        whatsappContactId = "";
       }
     }
 
@@ -161,13 +159,13 @@ export async function POST(request: NextRequest) {
 
     if (
       !template ||
-      !whatsappContactId ||
+      (!whatsappContactId && !whatsappNumber) ||
       !template.templateId ||
       !template.templateName
     ) {
-      if (template && !whatsappContactId) {
+      if (template && !whatsappContactId && !whatsappNumber) {
         console.warn(
-          "Template configured but no contact ID available for delivery ticket"
+          "Template configured but no contact ID or phone number available for delivery ticket"
         );
       } else if (template && (!template.templateId || !template.templateName)) {
         console.warn(

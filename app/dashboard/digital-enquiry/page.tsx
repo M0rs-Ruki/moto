@@ -81,7 +81,7 @@ interface PhoneLookup {
 export default function DigitalEnquiryPage() {
   const [enquiries, setEnquiries] = useState<DigitalEnquiry[]>([]);
   const [loading, setLoading] = useState(true);
-  const [displayedCount, setDisplayedCount] = useState(50); // Show 50 initially
+  const [displayedCount, setDisplayedCount] = useState(20); // Show 20 initially
   const [loadingMore, setLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(false);
   const [totalEnquiries, setTotalEnquiries] = useState(0);
@@ -140,40 +140,42 @@ export default function DigitalEnquiryPage() {
         setLoadingMore(true);
       }
 
-      const response = await axios.get(`/api/digital-enquiry?limit=50&skip=${skip}`);
+      const response = await axios.get(`/api/digital-enquiry?limit=20&skip=${skip}`);
       
       // Append or replace enquiries
       if (append) {
         setEnquiries([...enquiries, ...response.data.enquiries]);
       } else {
         setEnquiries(response.data.enquiries);
-        setDisplayedCount(50);
+        setDisplayedCount(20);
       }
       
       setHasMore(response.data.hasMore || false);
       setTotalEnquiries(response.data.total || response.data.enquiries.length);
 
-      // Fetch phone lookups for new enquiries only
-      const newEnquiries = append ? response.data.enquiries : response.data.enquiries;
-      const lookups: Record<string, PhoneLookup> = { ...phoneLookups };
-      await Promise.all(
-        newEnquiries.map(async (enquiry: DigitalEnquiry) => {
-          try {
-            const lookupRes = await axios.get(
-              `/api/phone-lookup?phone=${encodeURIComponent(
-                enquiry.whatsappNumber
-              )}`
-            );
-            lookups[enquiry.whatsappNumber] = lookupRes.data;
-          } catch (error) {
-            console.error(
-              `Failed to lookup phone ${enquiry.whatsappNumber}:`,
-              error
-            );
-          }
-        })
-      );
-      setPhoneLookups(lookups);
+      // Only fetch phone lookups when loading more data (not on initial load)
+      // Use batch lookup to avoid multiple API calls
+      if (append && response.data.enquiries.length > 0) {
+        const newEnquiries = response.data.enquiries;
+        const lookups: Record<string, PhoneLookup> = { ...phoneLookups };
+        
+        try {
+          // Extract unique phone numbers
+          const phoneNumbers = [...new Set(newEnquiries.map((e: DigitalEnquiry) => e.whatsappNumber))];
+          
+          // Batch lookup all phones in one request
+          const lookupRes = await axios.post('/api/phone-lookup', {
+            phones: phoneNumbers
+          });
+          
+          // Merge batch results into lookups
+          Object.assign(lookups, lookupRes.data);
+          setPhoneLookups(lookups);
+        } catch (error) {
+          console.error('Failed to batch lookup phones:', error);
+          // Don't break the page if phone lookup fails
+        }
+      }
     } catch (error) {
       console.error("Failed to fetch enquiries:", error);
     } finally {
@@ -185,14 +187,14 @@ export default function DigitalEnquiryPage() {
   const handleLoadMore = async () => {
     // If we have more enquiries than displayed, just show more from what we already have
     if (enquiries.length > displayedCount) {
-      setDisplayedCount(Math.min(displayedCount + 50, enquiries.length));
+      setDisplayedCount(Math.min(displayedCount + 20, enquiries.length));
     } 
     // Otherwise, fetch more from backend if available
     else if (hasMore) {
       const currentSkip = enquiries.length;
       await fetchData(currentSkip, true);
       // Increase displayed count after new data is loaded
-      setDisplayedCount(displayedCount + 50);
+      setDisplayedCount(displayedCount + 20);
     }
   };
 
@@ -578,7 +580,7 @@ export default function DigitalEnquiryPage() {
               </div>
             </CardContent>
           </Card>
-          {(hasMore && enquiries.length > displayedCount) || enquiries.length > displayedCount ? (
+          {(hasMore || enquiries.length > displayedCount) ? (
             <div className="flex justify-center pt-4">
               <Button
                 variant="outline"
@@ -592,7 +594,7 @@ export default function DigitalEnquiryPage() {
                     Loading...
                   </>
                 ) : (
-                  `Load More (${enquiries.length - displayedCount} remaining)`
+                  `See More (${hasMore ? totalEnquiries - displayedCount : enquiries.length - displayedCount} remaining)`
                 )}
               </Button>
             </div>

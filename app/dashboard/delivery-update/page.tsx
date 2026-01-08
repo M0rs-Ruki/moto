@@ -85,7 +85,7 @@ interface VehicleCategory {
 export default function DeliveryUpdatePage() {
   const [tickets, setTickets] = useState<DeliveryTicket[]>([]);
   const [loading, setLoading] = useState(true);
-  const [displayedCount, setDisplayedCount] = useState(50); // Show 50 initially
+  const [displayedCount, setDisplayedCount] = useState(20); // Show 20 initially
   const [loadingMore, setLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(false);
   const [totalTickets, setTotalTickets] = useState(0);
@@ -174,40 +174,42 @@ export default function DeliveryUpdatePage() {
         setLoadingMore(true);
       }
 
-      const response = await axios.get(`/api/delivery-tickets?limit=50&skip=${skip}`);
+      const response = await axios.get(`/api/delivery-tickets?limit=20&skip=${skip}`);
       
       // Append or replace tickets
       if (append) {
         setTickets([...tickets, ...response.data.tickets]);
       } else {
         setTickets(response.data.tickets);
-        setDisplayedCount(50);
+        setDisplayedCount(20);
       }
       
       setHasMore(response.data.hasMore || false);
       setTotalTickets(response.data.total || response.data.tickets.length);
 
-      // Fetch phone lookups for new tickets only
-      const newTickets = append ? response.data.tickets : response.data.tickets;
-      const lookups: Record<string, PhoneLookup> = { ...phoneLookups };
-      await Promise.all(
-        newTickets.map(async (ticket: DeliveryTicket) => {
-          try {
-            const lookupRes = await axios.get(
-              `/api/phone-lookup?phone=${encodeURIComponent(
-                ticket.whatsappNumber
-              )}`
-            );
-            lookups[ticket.whatsappNumber] = lookupRes.data;
-          } catch (error) {
-            console.error(
-              `Failed to lookup phone ${ticket.whatsappNumber}:`,
-              error
-            );
-          }
-        })
-      );
-      setPhoneLookups(lookups);
+      // Only fetch phone lookups when loading more data (not on initial load)
+      // Use batch lookup to avoid multiple API calls
+      if (append && response.data.tickets.length > 0) {
+        const newTickets = response.data.tickets;
+        const lookups: Record<string, PhoneLookup> = { ...phoneLookups };
+        
+        try {
+          // Extract unique phone numbers
+          const phoneNumbers = [...new Set(newTickets.map((t: DeliveryTicket) => t.whatsappNumber))];
+          
+          // Batch lookup all phones in one request
+          const lookupRes = await axios.post('/api/phone-lookup', {
+            phones: phoneNumbers
+          });
+          
+          // Merge batch results into lookups
+          Object.assign(lookups, lookupRes.data);
+          setPhoneLookups(lookups);
+        } catch (error) {
+          console.error('Failed to batch lookup phones:', error);
+          // Don't break the page if phone lookup fails
+        }
+      }
     } catch (error) {
       console.error("Failed to fetch tickets:", error);
     } finally {
@@ -219,14 +221,14 @@ export default function DeliveryUpdatePage() {
   const handleLoadMore = async () => {
     // If we have more tickets than displayed, just show more from what we already have
     if (tickets.length > displayedCount) {
-      setDisplayedCount(Math.min(displayedCount + 50, tickets.length));
+      setDisplayedCount(Math.min(displayedCount + 20, tickets.length));
     } 
     // Otherwise, fetch more from backend if available
     else if (hasMore) {
       const currentSkip = tickets.length;
       await fetchTickets(currentSkip, true);
       // Increase displayed count after new data is loaded
-      setDisplayedCount(displayedCount + 50);
+      setDisplayedCount(displayedCount + 20);
     }
   };
 
@@ -512,7 +514,7 @@ export default function DeliveryUpdatePage() {
               </div>
             </CardContent>
           </Card>
-          {(hasMore && tickets.length > displayedCount) || tickets.length > displayedCount ? (
+          {(hasMore || tickets.length > displayedCount) ? (
             <div className="flex justify-center pt-4">
               <Button
                 variant="outline"
@@ -526,7 +528,7 @@ export default function DeliveryUpdatePage() {
                     Loading...
                   </>
                 ) : (
-                  `Load More (${tickets.length - displayedCount} remaining)`
+                  `See More (${hasMore ? totalTickets - displayedCount : tickets.length - displayedCount} remaining)`
                 )}
               </Button>
             </div>
