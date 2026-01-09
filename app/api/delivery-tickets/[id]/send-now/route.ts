@@ -40,11 +40,41 @@ export async function POST(
       return NextResponse.json({ error: "Ticket not found" }, { status: 404 });
     }
 
-    if (!ticket.whatsappContactId) {
-      return NextResponse.json(
-        { error: "WhatsApp contact not found for this ticket" },
-        { status: 400 }
-      );
+    // If contact ID is missing, try to create or fetch it
+    let whatsappContactId = ticket.whatsappContactId;
+    if (!whatsappContactId) {
+      try {
+        // First, try to get existing contact by phone number
+        const existingContact = await whatsappClient.getContactByPhone(
+          ticket.whatsappNumber
+        );
+        
+        if (existingContact?.contactId) {
+          whatsappContactId = existingContact.contactId;
+        } else {
+          // If contact doesn't exist, create it
+          const contactResult = await whatsappClient.createContact({
+            firstName: ticket.firstName,
+            lastName: ticket.lastName,
+            contact_number: ticket.whatsappNumber,
+            email: ticket.email || "",
+            address: ticket.address || "",
+          });
+          
+          whatsappContactId = contactResult.contactId || "";
+        }
+        
+        // Update ticket with contact ID if we got one
+        if (whatsappContactId) {
+          await prisma.deliveryTicket.update({
+            where: { id: ticket.id },
+            data: { whatsappContactId },
+          });
+        }
+      } catch (error) {
+        console.error("Failed to create/fetch WhatsApp contact:", error);
+        // Continue anyway - we can send messages using phone number
+      }
     }
 
     // Get WhatsApp template
@@ -114,7 +144,7 @@ export async function POST(
       });
 
       await whatsappClient.sendTemplate({
-        contactId: ticket.whatsappContactId,
+        contactId: whatsappContactId || undefined,
         contactNumber: ticket.whatsappNumber,
         templateName: template.templateName,
         templateId: template.templateId,
