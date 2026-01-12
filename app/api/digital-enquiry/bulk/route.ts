@@ -103,7 +103,7 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    // Get all models for matching
+    // Get all models for matching (optional - won't fail if not found)
     const allModels = await prisma.vehicleModel.findMany({
       where: {
         category: {
@@ -192,21 +192,12 @@ export async function POST(request: NextRequest) {
           }
         }
 
-        // Match model by exact name
+        // Get model name from Excel (no validation - accept any model name)
         const modelName = String(row.Model).trim();
+        // Try to match model if it exists, but don't fail if it doesn't
         const matchedModel = allModels.find(
           (m) => m.name.toLowerCase() === modelName.toLowerCase()
         );
-
-        if (!matchedModel) {
-          results.push({
-            success: false,
-            rowNumber,
-            error: `Model "${modelName}" not found`,
-          });
-          errorCount++;
-          continue;
-        }
 
         // Match lead source
         let leadSourceId: string | null = null;
@@ -280,7 +271,7 @@ export async function POST(request: NextRequest) {
             whatsappContactId,
             dealershipId: user.dealershipId,
             leadSourceId,
-            interestedModelId: matchedModel.id,
+            interestedModelId: matchedModel?.id || null,
             interestedVariantId: null,
           },
         });
