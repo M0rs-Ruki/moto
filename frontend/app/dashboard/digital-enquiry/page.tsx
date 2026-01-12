@@ -1,0 +1,1076 @@
+"use client";
+
+import { useState, useEffect } from "react";
+import apiClient from "@/lib/api";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Plus, Loader2, MessageSquare, ChevronDown, Upload, FileSpreadsheet, Edit2 } from "lucide-react";
+import Link from "next/link";
+
+interface LeadSource {
+  id: string;
+  name: string;
+}
+
+interface VehicleModel {
+  id: string;
+  name: string;
+  year: number | null;
+  variants?: Array<{ id: string; name: string }>;
+}
+
+interface VehicleCategory {
+  id: string;
+  name: string;
+  models: VehicleModel[];
+}
+
+interface DigitalEnquiry {
+  id: string;
+  firstName: string;
+  lastName: string;
+  whatsappNumber: string;
+  email: string | null;
+  reason: string;
+  leadScope: string;
+  leadSource: {
+    id: string;
+    name: string;
+  } | null;
+  model: {
+    name: string;
+    category: {
+      name: string;
+    };
+  } | null;
+  createdAt: string;
+}
+
+interface PhoneLookup {
+  dailyWalkins: boolean;
+  digitalEnquiry: boolean;
+  deliveryUpdate: boolean;
+  visitorId: string | null;
+  enquiryId: string | null;
+  ticketId: string | null;
+}
+
+export default function DigitalEnquiryPage() {
+  const [enquiries, setEnquiries] = useState<DigitalEnquiry[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [displayedCount, setDisplayedCount] = useState(20); // Show 20 initially
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(false);
+  const [totalEnquiries, setTotalEnquiries] = useState(0);
+  const [phoneLookups, setPhoneLookups] = useState<Record<string, PhoneLookup>>(
+    {}
+  );
+
+  // Create enquiry dialog state
+  const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState("");
+
+  // Bulk upload dialog state
+  const [bulkUploadDialogOpen, setBulkUploadDialogOpen] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState("");
+  const [uploadResults, setUploadResults] = useState<{
+    summary: { total: number; success: number; errors: number };
+    results: Array<{ success: boolean; rowNumber: number; enquiryId?: string; error?: string }>;
+  } | null>(null);
+
+  // Edit lead scope state
+  const [editingLeadScope, setEditingLeadScope] = useState<string | null>(null);
+  const [updatingLeadScope, setUpdatingLeadScope] = useState(false);
+  const [leadSources, setLeadSources] = useState<LeadSource[]>([]);
+  const [categories, setCategories] = useState<VehicleCategory[]>([]);
+  const [openModelCategories, setOpenModelCategories] = useState<Set<string>>(
+    new Set()
+  );
+  const [expandedVariants, setExpandedVariants] = useState<Set<string>>(
+    new Set()
+  );
+
+  const [formData, setFormData] = useState({
+    firstName: "",
+    lastName: "",
+    whatsappNumber: "",
+    email: "",
+    address: "",
+    reason: "",
+    leadSourceId: "",
+    leadScope: "warm",
+    interestedModelId: "",
+    interestedVariantId: "",
+  });
+
+  useEffect(() => {
+    fetchData(0, false);
+  }, []);
+
+  const fetchData = async (skip: number = 0, append: boolean = false) => {
+    try {
+      if (!append) {
+        setLoading(true);
+      } else {
+        setLoadingMore(true);
+      }
+
+      const response = await apiClient.get(`/digital-enquiry?limit=20&skip=${skip}`);
+      
+      // Append or replace enquiries
+      if (append) {
+        setEnquiries([...enquiries, ...response.data.enquiries]);
+      } else {
+        setEnquiries(response.data.enquiries);
+        setDisplayedCount(20);
+      }
+      
+      setHasMore(response.data.hasMore || false);
+      setTotalEnquiries(response.data.total || response.data.enquiries.length);
+
+      // Only fetch phone lookups when loading more data (not on initial load)
+      // Use batch lookup to avoid multiple API calls
+      if (append && response.data.enquiries.length > 0) {
+        const newEnquiries = response.data.enquiries;
+        const lookups: Record<string, PhoneLookup> = { ...phoneLookups };
+        
+        try {
+          // Extract unique phone numbers
+          const phoneNumbers = [...new Set(newEnquiries.map((e: DigitalEnquiry) => e.whatsappNumber))];
+          
+          // Batch lookup all phones in one request
+          const lookupRes = await apiClient.post('/phone-lookup', {
+            phones: phoneNumbers
+          });
+          
+          // Merge batch results into lookups
+          Object.assign(lookups, lookupRes.data);
+          setPhoneLookups(lookups);
+        } catch (error) {
+          console.error('Failed to batch lookup phones:', error);
+          // Don't break the page if phone lookup fails
+        }
+      }
+    } catch (error) {
+      console.error("Failed to fetch enquiries:", error);
+    } finally {
+      setLoading(false);
+      setLoadingMore(false);
+    }
+  };
+
+  const handleLoadMore = async () => {
+    // If we have more enquiries than displayed, just show more from what we already have
+    if (enquiries.length > displayedCount) {
+      setDisplayedCount(Math.min(displayedCount + 20, enquiries.length));
+    } 
+    // Otherwise, fetch more from backend if available
+    else if (hasMore) {
+      const currentSkip = enquiries.length;
+      await fetchData(currentSkip, true);
+      // Increase displayed count after new data is loaded
+      setDisplayedCount(displayedCount + 20);
+    }
+  };
+
+  const fetchCreateFormData = async () => {
+    try {
+      const [leadSourcesRes, categoriesRes] = await Promise.all([
+        apiClient.get("/lead-sources"),
+        apiClient.get("/categories"),
+      ]);
+      setLeadSources(leadSourcesRes.data.leadSources);
+      setCategories(categoriesRes.data.categories);
+    } catch (error) {
+      console.error("Failed to fetch form data:", error);
+    }
+  };
+
+  const handleCreateEnquiry = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setSubmitting(true);
+    setError("");
+
+    try {
+      const response = await apiClient.post("/digital-enquiry", {
+        ...formData,
+        leadSourceId: formData.leadSourceId || null,
+        interestedModelId: formData.interestedModelId || null,
+        interestedVariantId: formData.interestedVariantId || null,
+      });
+
+      if (response.data.success) {
+        setCreateDialogOpen(false);
+        setFormData({
+          firstName: "",
+          lastName: "",
+          whatsappNumber: "",
+          email: "",
+          address: "",
+          reason: "",
+          leadSourceId: "",
+          leadScope: "warm",
+          interestedModelId: "",
+          interestedVariantId: "",
+        });
+        fetchData(0, false); // Reset pagination when creating new enquiry
+      }
+    } catch (err: unknown) {
+      const error = err as { response?: { data?: { error?: string } } };
+      setError(error.response?.data?.error || "Failed to create enquiry");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handleBulkUpload = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    setUploading(true);
+    setUploadError("");
+    setUploadResults(null);
+
+    const formData = new FormData(e.currentTarget);
+    const fileInput = e.currentTarget.querySelector('input[type="file"]') as HTMLInputElement;
+    const file = fileInput?.files?.[0];
+
+    if (!file) {
+      setUploadError("Please select a file");
+      setUploading(false);
+      return;
+    }
+
+    const uploadFormData = new FormData();
+    uploadFormData.append("file", file);
+
+    try {
+      const response = await apiClient.post("/digital-enquiry/bulk", uploadFormData, {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      });
+
+      if (response.data.success) {
+        setUploadResults(response.data);
+        // Refresh the enquiry list
+        await fetchData(0, false); // Reset pagination after bulk upload
+      }
+    } catch (err: unknown) {
+      const error = err as { response?: { data?: { error?: string; details?: string } } };
+      setUploadError(
+        error.response?.data?.error || error.response?.data?.details || "Failed to upload file"
+      );
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const getLeadScopeColor = (scope: string) => {
+    switch (scope) {
+      case "hot":
+        return "bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400";
+      case "warm":
+        return "bg-yellow-100 dark:bg-yellow-900/30 text-yellow-600 dark:text-yellow-400";
+      case "cold":
+        return "bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400";
+      default:
+        return "bg-gray-100 dark:bg-gray-900/30 text-gray-600 dark:text-gray-400";
+    }
+  };
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString();
+  };
+
+  const handleUpdateLeadScope = async (enquiryId: string, newLeadScope: string) => {
+    if (updatingLeadScope) return;
+    
+    setUpdatingLeadScope(true);
+    try {
+      const response = await axios.patch(`/api/digital-enquiry/${enquiryId}`, {
+        leadScope: newLeadScope,
+      });
+
+      if (response.data.success) {
+        // Update the enquiry in the local state
+        setEnquiries((prev) =>
+          prev.map((enquiry) =>
+            enquiry.id === enquiryId
+              ? { ...enquiry, leadScope: newLeadScope }
+              : enquiry
+          )
+        );
+        setEditingLeadScope(null);
+      }
+    } catch (error: any) {
+      console.error("Failed to update lead scope:", error);
+      alert(error.response?.data?.error || "Failed to update lead scope");
+    } finally {
+      setUpdatingLeadScope(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6 sm:space-y-8">
+      <div className="pb-2 border-b">
+        <h1 className="text-2xl sm:text-3xl lg:text-4xl font-bold bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent">
+          Digital Enquiry
+        </h1>
+        <p className="text-xs sm:text-sm lg:text-base text-muted-foreground mt-2">
+          Manage digital lead inquiries
+        </p>
+      </div>
+
+      <div className="flex justify-end gap-2">
+        <Button
+          variant="outline"
+          onClick={() => {
+            setBulkUploadDialogOpen(true);
+            setUploadError("");
+            setUploadResults(null);
+          }}
+        >
+          <Upload className="mr-2 h-4 w-4" />
+          Bulk Upload
+        </Button>
+        <Button
+          onClick={() => {
+            setCreateDialogOpen(true);
+            fetchCreateFormData();
+          }}
+        >
+          <Plus className="mr-2 h-4 w-4" />
+          Create Inquiry
+        </Button>
+      </div>
+
+      {enquiries.length === 0 ? (
+        <Card>
+          <CardContent className="pt-6">
+            <div className="text-center py-8 text-muted-foreground">
+              <MessageSquare className="h-12 w-12 mx-auto mb-4 opacity-50" />
+              <p className="text-sm sm:text-base">
+                No digital enquiries yet. Create your first inquiry to get
+                started.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      ) : (
+        <>
+          <Card>
+            <CardContent className="p-0">
+              <div className="overflow-x-auto">
+                <table className="w-full border-collapse">
+                  <thead>
+                    <tr className="border-b bg-muted/50">
+                      <th className="text-left py-3 px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                        Enquiry
+                      </th>
+                      <th className="text-left py-3 px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                        Contact
+                      </th>
+                      <th className="text-left py-3 px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                        Lead Scope
+                      </th>
+                      <th className="text-left py-3 px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                        Lead Source
+                      </th>
+                      <th className="text-left py-3 px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                        Model
+                      </th>
+                      <th className="text-left py-3 px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                        Created
+                      </th>
+                      <th className="text-left py-3 px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                        Actions
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {enquiries.slice(0, displayedCount).map((enquiry) => {
+                      const initials = `${enquiry.firstName.charAt(0)}${enquiry.lastName.charAt(0)}`.toUpperCase();
+                      
+                      return (
+                        <tr
+                          key={enquiry.id}
+                          className="border-b hover:bg-muted/30 transition-colors"
+                        >
+                          {/* Enquiry Column */}
+                          <td className="py-3 px-4">
+                            <div className="flex items-center gap-3">
+                              <div className="w-10 h-10 rounded-full bg-primary flex items-center justify-center text-primary-foreground font-semibold text-sm flex-shrink-0">
+                                {initials}
+                              </div>
+                              <div className="min-w-0">
+                                <p className="text-sm font-medium truncate">
+                                  {enquiry.firstName} {enquiry.lastName}
+                                </p>
+                                {enquiry.email && (
+                                  <p className="text-xs text-muted-foreground truncate">
+                                    {enquiry.email}
+                                  </p>
+                                )}
+                                {enquiry.reason && (
+                                  <p className="text-xs text-muted-foreground truncate max-w-[200px]">
+                                    {enquiry.reason.length > 50
+                                      ? enquiry.reason.substring(0, 50) + "..."
+                                      : enquiry.reason}
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+                          </td>
+
+                          {/* Contact Column */}
+                          <td className="py-3 px-4">
+                            <p className="text-sm">
+                              {enquiry.whatsappNumber || "No phone"}
+                            </p>
+                          </td>
+
+                          {/* Lead Scope Column */}
+                          <td className="py-3 px-4">
+                            <div className="flex items-center gap-1.5 group">
+                              {editingLeadScope === enquiry.id ? (
+                                <Select
+                                  value={enquiry.leadScope}
+                                  onValueChange={(value) => {
+                                    handleUpdateLeadScope(enquiry.id, value);
+                                  }}
+                                  disabled={updatingLeadScope}
+                                >
+                                  <SelectTrigger className="h-7 w-20 text-xs">
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="hot">Hot</SelectItem>
+                                    <SelectItem value="warm">Warm</SelectItem>
+                                    <SelectItem value="cold">Cold</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                              ) : (
+                                <>
+                                  <Badge
+                                    className={getLeadScopeColor(enquiry.leadScope)}
+                                    variant="secondary"
+                                  >
+                                    {enquiry.leadScope.toUpperCase()}
+                                  </Badge>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-5 w-5 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setEditingLeadScope(enquiry.id);
+                                    }}
+                                    disabled={updatingLeadScope}
+                                  >
+                                    <Edit2 className="h-3 w-3" />
+                                  </Button>
+                                </>
+                              )}
+                              {updatingLeadScope && editingLeadScope === enquiry.id && (
+                                <Loader2 className="h-3 w-3 animate-spin" />
+                              )}
+                            </div>
+                          </td>
+
+                          {/* Lead Source Column */}
+                          <td className="py-3 px-4">
+                            {enquiry.leadSource ? (
+                              <Badge variant="outline" className="text-xs">
+                                {enquiry.leadSource.name}
+                              </Badge>
+                            ) : (
+                              <span className="text-xs text-muted-foreground">None</span>
+                            )}
+                          </td>
+
+                          {/* Model Column */}
+                          <td className="py-3 px-4">
+                            {enquiry.model ? (
+                              <div className="space-y-1">
+                                <p className="text-xs text-muted-foreground">
+                                  {enquiry.model.category.name}
+                                </p>
+                                <p className="text-sm font-medium">
+                                  {enquiry.model.name}
+                                </p>
+                              </div>
+                            ) : (
+                              <span className="text-xs text-muted-foreground">None</span>
+                            )}
+                          </td>
+
+                          {/* Created Column */}
+                          <td className="py-3 px-4">
+                            <p className="text-sm">{formatDate(enquiry.createdAt)}</p>
+                          </td>
+
+                          {/* Actions Column */}
+                          <td className="py-3 px-4">
+                            <div className="flex items-center gap-2">
+                              {phoneLookups[enquiry.whatsappNumber]?.dailyWalkins && (
+                                <Link
+                                  href="/dashboard/daily-walkins"
+                                  onClick={(e) => e.stopPropagation()}
+                                >
+                                  <Badge
+                                    variant="outline"
+                                    className="text-xs cursor-pointer hover:bg-primary/10 transition-colors"
+                                  >
+                                    Walkins
+                                  </Badge>
+                                </Link>
+                              )}
+                              {phoneLookups[enquiry.whatsappNumber]?.deliveryUpdate && (
+                                <Link
+                                  href="/dashboard/delivery-update"
+                                  onClick={(e) => e.stopPropagation()}
+                                >
+                                  <Badge
+                                    variant="outline"
+                                    className="text-xs cursor-pointer hover:bg-primary/10 transition-colors"
+                                  >
+                                    Delivery
+                                  </Badge>
+                                </Link>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </CardContent>
+          </Card>
+          {(hasMore || enquiries.length > displayedCount) ? (
+            <div className="flex justify-center pt-4">
+              <Button
+                variant="outline"
+                onClick={handleLoadMore}
+                disabled={loadingMore}
+                className="w-full sm:w-auto"
+              >
+                {loadingMore ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Loading...
+                  </>
+                ) : (
+                  `See More (${hasMore ? totalEnquiries - displayedCount : enquiries.length - displayedCount} remaining)`
+                )}
+              </Button>
+            </div>
+          ) : null}
+        </>
+      )}
+
+      {/* Create Enquiry Dialog */}
+      <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Create Digital Enquiry</DialogTitle>
+            <DialogDescription>
+              Add a new digital lead inquiry
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleCreateEnquiry} className="space-y-4 mt-4">
+            {error && (
+              <div className="bg-destructive/10 text-destructive text-xs sm:text-sm p-3 rounded">
+                {error}
+              </div>
+            )}
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="firstName" className="text-sm">
+                  First Name *
+                </Label>
+                <Input
+                  id="firstName"
+                  placeholder="John"
+                  value={formData.firstName}
+                  onChange={(e) =>
+                    setFormData({ ...formData, firstName: e.target.value })
+                  }
+                  required
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="lastName" className="text-sm">
+                  Last Name *
+                </Label>
+                <Input
+                  id="lastName"
+                  placeholder="Doe"
+                  value={formData.lastName}
+                  onChange={(e) =>
+                    setFormData({ ...formData, lastName: e.target.value })
+                  }
+                  required
+                />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="whatsappNumber" className="text-sm">
+                WhatsApp Number *
+              </Label>
+              <Input
+                id="whatsappNumber"
+                placeholder="+1234567890"
+                value={formData.whatsappNumber}
+                onChange={(e) =>
+                  setFormData({
+                    ...formData,
+                    whatsappNumber: e.target.value,
+                  })
+                }
+                required
+              />
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="email" className="text-sm">
+                  Email
+                </Label>
+                <Input
+                  id="email"
+                  type="email"
+                  placeholder="john@example.com"
+                  value={formData.email}
+                  onChange={(e) =>
+                    setFormData({ ...formData, email: e.target.value })
+                  }
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="address" className="text-sm">
+                  Address
+                </Label>
+                <Input
+                  id="address"
+                  placeholder="123 Main St"
+                  value={formData.address}
+                  onChange={(e) =>
+                    setFormData({ ...formData, address: e.target.value })
+                  }
+                />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="reason" className="text-sm">
+                Reason for Enquiry *
+              </Label>
+              <Textarea
+                id="reason"
+                placeholder="Why are they interested?"
+                value={formData.reason}
+                onChange={(e) =>
+                  setFormData({ ...formData, reason: e.target.value })
+                }
+                required
+              />
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="leadSource" className="text-sm">
+                  Lead Source
+                </Label>
+                <Select
+                  value={formData.leadSourceId}
+                  onValueChange={(value) =>
+                    setFormData({ ...formData, leadSourceId: value })
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select lead source" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {leadSources.map((source) => (
+                      <SelectItem key={source.id} value={source.id}>
+                        {source.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="leadScope" className="text-sm">
+                  Lead Scope (Priority)
+                </Label>
+                <Select
+                  value={formData.leadScope}
+                  onValueChange={(value) =>
+                    setFormData({ ...formData, leadScope: value })
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="hot">Hot</SelectItem>
+                    <SelectItem value="warm">Warm</SelectItem>
+                    <SelectItem value="cold">Cold</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              <Label className="text-sm font-semibold">Interested Model</Label>
+              <div className="border border-border/40 rounded-lg bg-background p-3 max-h-64 overflow-y-auto">
+                {categories.length === 0 ? (
+                  <p className="text-sm text-muted-foreground text-center py-6">
+                    No models available. Add models in Global Settings.
+                  </p>
+                ) : (
+                  <div className="space-y-1">
+                    {categories.map((category) => {
+                      const isOpen = openModelCategories.has(category.id);
+                      return (
+                        <Collapsible
+                          key={category.id}
+                          open={isOpen}
+                          onOpenChange={(open) => {
+                            setOpenModelCategories((prev) => {
+                              const newSet = new Set(prev);
+                              if (open) {
+                                newSet.add(category.id);
+                              } else {
+                                newSet.delete(category.id);
+                              }
+                              return newSet;
+                            });
+                          }}
+                        >
+                          <CollapsibleTrigger className="w-full flex items-center justify-between px-3 py-2 bg-muted/40 hover:bg-muted/60 rounded-md text-sm font-medium transition-colors">
+                            <span className="text-foreground">
+                              {category.name}
+                            </span>
+                            <ChevronDown
+                              className={`h-4 w-4 text-muted-foreground transition-transform ${
+                                isOpen ? "rotate-180" : ""
+                              }`}
+                            />
+                          </CollapsibleTrigger>
+                          <CollapsibleContent className="mt-1.5 space-y-1">
+                            {category.models.map((model) => {
+                              const isModelSelected =
+                                formData.interestedModelId === model.id &&
+                                !formData.interestedVariantId;
+                              const hasVariants =
+                                model.variants && model.variants.length > 0;
+                              return (
+                                <div key={model.id} className="space-y-0.5">
+                                  <label className="flex items-center gap-2.5 px-2 py-1.5 rounded hover:bg-muted/30 cursor-pointer transition-colors group">
+                                    <div className="relative flex items-center justify-center shrink-0">
+                                      <div
+                                        className={`flex items-center justify-center w-5 h-5 rounded-full border-2 transition-all ${
+                                          isModelSelected
+                                            ? "bg-primary border-primary"
+                                            : "bg-background border-border hover:border-primary/50"
+                                        }`}
+                                      >
+                                        {isModelSelected && (
+                                          <div className="w-2 h-2 rounded-full bg-primary-foreground" />
+                                        )}
+                                      </div>
+                                      <input
+                                        type="radio"
+                                        name="interestedModel"
+                                        checked={isModelSelected}
+                                        onChange={() =>
+                                          setFormData({
+                                            ...formData,
+                                            interestedModelId: model.id,
+                                            interestedVariantId: "",
+                                          })
+                                        }
+                                        className="absolute opacity-0 cursor-pointer w-5 h-5"
+                                      />
+                                    </div>
+                                    <span className="text-sm text-foreground flex-1">
+                                      {model.name}
+                                      {model.year && (
+                                        <span className="text-muted-foreground ml-1">
+                                          ({model.year})
+                                        </span>
+                                      )}
+                                    </span>
+                                  </label>
+                                  {hasVariants && (
+                                    <Collapsible
+                                      open={expandedVariants.has(model.id)}
+                                      onOpenChange={(open) => {
+                                        setExpandedVariants((prev) => {
+                                          const newSet = new Set(prev);
+                                          if (open) {
+                                            newSet.add(model.id);
+                                          } else {
+                                            newSet.delete(model.id);
+                                          }
+                                          return newSet;
+                                        });
+                                      }}
+                                    >
+                                      <CollapsibleTrigger className="w-full flex items-center gap-2.5 px-2.5 py-2 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted/30 rounded transition-all">
+                                        <ChevronDown
+                                          className={`h-4 w-4 transition-transform ${
+                                            expandedVariants.has(model.id)
+                                              ? "rotate-180"
+                                              : ""
+                                          }`}
+                                        />
+                                        <span>
+                                          {model.variants?.length || 0} variant
+                                          {(model.variants?.length || 0) !== 1
+                                            ? "s"
+                                            : ""}
+                                        </span>
+                                      </CollapsibleTrigger>
+                                      <CollapsibleContent className="ml-6 space-y-1 mt-1">
+                                        {model.variants?.map((variant) => {
+                                          const isVariantSelected =
+                                            formData.interestedModelId ===
+                                              model.id &&
+                                            formData.interestedVariantId ===
+                                              variant.id;
+                                          return (
+                                            <label
+                                              key={variant.id}
+                                              className="flex items-center gap-3 px-2.5 py-2 rounded hover:bg-muted/30 cursor-pointer transition-colors"
+                                            >
+                                              <div className="relative flex items-center justify-center shrink-0">
+                                                <div
+                                                  className={`flex items-center justify-center w-5 h-5 rounded-full border-2 transition-all ${
+                                                    isVariantSelected
+                                                      ? "bg-primary border-primary"
+                                                      : "bg-background border-border hover:border-primary/50"
+                                                  }`}
+                                                >
+                                                  {isVariantSelected && (
+                                                    <div className="w-2 h-2 rounded-full bg-primary-foreground" />
+                                                  )}
+                                                </div>
+                                                <input
+                                                  type="radio"
+                                                  name="interestedModel"
+                                                  checked={isVariantSelected}
+                                                  onChange={() =>
+                                                    setFormData({
+                                                      ...formData,
+                                                      interestedModelId:
+                                                        model.id,
+                                                      interestedVariantId:
+                                                        variant.id,
+                                                    })
+                                                  }
+                                                  className="absolute opacity-0 cursor-pointer w-5 h-5"
+                                                />
+                                              </div>
+                                              <span className="text-sm text-foreground flex-1">
+                                                {model.name}.{variant.name}
+                                                {model.year && (
+                                                  <span className="text-muted-foreground ml-1">
+                                                    ({model.year})
+                                                  </span>
+                                                )}
+                                              </span>
+                                            </label>
+                                          );
+                                        })}
+                                      </CollapsibleContent>
+                                    </Collapsible>
+                                  )}
+                                </div>
+                              );
+                            })}
+                          </CollapsibleContent>
+                        </Collapsible>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="flex flex-col sm:flex-row justify-end gap-2 pt-4">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => setCreateDialogOpen(false)}
+                className="w-full sm:w-auto"
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                disabled={submitting}
+                className="w-full sm:w-auto"
+              >
+                {submitting ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Creating...
+                  </>
+                ) : (
+                  "Create Inquiry"
+                )}
+              </Button>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Bulk Upload Dialog */}
+      <Dialog open={bulkUploadDialogOpen} onOpenChange={setBulkUploadDialogOpen}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Bulk Upload Digital Enquiries</DialogTitle>
+            <DialogDescription>
+              Upload an Excel file (.xlsx or .xls) with columns: Date, Name, WhatsApp Number, Location, Model, Source
+            </DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleBulkUpload} className="space-y-4 mt-4">
+            {uploadError && (
+              <div className="bg-destructive/10 text-destructive text-xs sm:text-sm p-3 rounded">
+                {uploadError}
+              </div>
+            )}
+
+            {uploadResults && (
+              <div className="space-y-3 p-4 bg-muted/50 rounded-lg">
+                <div className="flex items-center justify-between">
+                  <h3 className="font-semibold text-sm">Upload Results</h3>
+                  <Badge
+                    variant={uploadResults.summary.errors === 0 ? "default" : "secondary"}
+                  >
+                    {uploadResults.summary.success} / {uploadResults.summary.total} successful
+                  </Badge>
+                </div>
+                {uploadResults.summary.errors > 0 && (
+                  <div className="space-y-2 max-h-60 overflow-y-auto">
+                    <p className="text-xs font-medium text-destructive">
+                      Errors ({uploadResults.summary.errors}):
+                    </p>
+                    <div className="space-y-1 text-xs">
+                      {uploadResults.results
+                        .filter((r) => !r.success)
+                        .map((result, idx) => (
+                          <div key={idx} className="p-2 bg-background rounded border-l-2 border-destructive">
+                            <span className="font-medium">Row {result.rowNumber}:</span>{" "}
+                            {result.error}
+                          </div>
+                        ))}
+                    </div>
+                  </div>
+                )}
+                {uploadResults.summary.success > 0 && (
+                  <p className="text-xs text-muted-foreground">
+                    {uploadResults.summary.success} enquiries created successfully. All enquiries
+                    have been set to "Cold" lead scope.
+                  </p>
+                )}
+              </div>
+            )}
+
+            <div className="space-y-2">
+              <Label htmlFor="excelFile" className="text-sm">
+                Excel File *
+              </Label>
+              <div className="flex items-center gap-2">
+                <Input
+                  id="excelFile"
+                  type="file"
+                  accept=".xlsx,.xls"
+                  required
+                  disabled={uploading}
+                  className="cursor-pointer"
+                />
+                <FileSpreadsheet className="h-5 w-5 text-muted-foreground" />
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Required columns: Date, Name, WhatsApp Number, Location, Model, Source
+              </p>
+            </div>
+
+            <div className="flex flex-col sm:flex-row justify-end gap-2 pt-4">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  setBulkUploadDialogOpen(false);
+                  setUploadError("");
+                  setUploadResults(null);
+                }}
+                className="w-full sm:w-auto"
+                disabled={uploading}
+              >
+                {uploadResults ? "Close" : "Cancel"}
+              </Button>
+              {!uploadResults && (
+                <Button type="submit" disabled={uploading} className="w-full sm:w-auto">
+                  {uploading ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Uploading...
+                    </>
+                  ) : (
+                    <>
+                      <Upload className="mr-2 h-4 w-4" />
+                      Upload & Process
+                    </>
+                  )}
+                </Button>
+              )}
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+}

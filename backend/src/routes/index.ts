@@ -1,0 +1,52 @@
+import { Router } from "express";
+import authRoutes from "./auth";
+import categoriesRoutes from "./categories";
+import modelsRoutes from "./models";
+import variantsRoutes from "./variants";
+import dealershipRoutes from "./dealership";
+import leadSourcesRoutes from "./lead-sources";
+import templatesRoutes from "./templates";
+import visitorsRoutes from "./visitors";
+import sessionsRoutes from "./sessions";
+import testDrivesRoutes from "./test-drives";
+import digitalEnquiryRoutes from "./digital-enquiry";
+import fieldInquiryRoutes from "./field-inquiry";
+import deliveryTicketsRoutes from "./delivery-tickets";
+import statisticsRoutes from "./statistics";
+import phoneLookupRoutes from "./phone-lookup";
+import cronRoutes from "./cron";
+import healthRoutes from "./health";
+import debugRoutes from "./debug";
+
+const router = Router();
+
+// Auth routes
+router.use("/auth", authRoutes);
+
+// Data routes
+router.use("/categories", categoriesRoutes);
+router.use("/models", modelsRoutes);
+router.use("/variants", variantsRoutes);
+router.use("/dealership", dealershipRoutes);
+router.use("/lead-sources", leadSourcesRoutes);
+router.use("/templates", templatesRoutes);
+
+// Visitor & Session routes
+router.use("/visitors", visitorsRoutes);
+router.use("/sessions", sessionsRoutes);
+router.use("/test-drives", testDrivesRoutes);
+
+// Business routes
+router.use("/digital-enquiry", digitalEnquiryRoutes);
+router.use("/field-inquiry", fieldInquiryRoutes);
+router.use("/delivery-tickets", deliveryTicketsRoutes);
+
+// System routes
+router.use("/statistics", statisticsRoutes);
+router.use("/phone-lookup", phoneLookupRoutes);
+router.use("/cron", cronRoutes);
+router.use("/health", healthRoutes);
+router.use("/debug", debugRoutes);
+
+export default router;
+
