@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import apiClient from "@/lib/api";
 import Link from "next/link";
@@ -49,19 +49,36 @@ export default function DashboardLayout({
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const fetchingRef = useRef(false);
+  const mountedRef = useRef(true);
 
   useEffect(() => {
+    mountedRef.current = true;
     fetchUser();
+    return () => {
+      mountedRef.current = false;
+    };
   }, []);
 
   const fetchUser = async () => {
+    // Prevent duplicate fetches
+    if (fetchingRef.current) return;
+    fetchingRef.current = true;
+    
     try {
       const response = await apiClient.get("/auth/me");
-      setUser(response.data.user);
+      if (mountedRef.current) {
+        setUser(response.data.user);
+      }
     } catch (error) {
-      router.push("/login");
+      if (mountedRef.current) {
+        router.push("/login");
+      }
     } finally {
-      setLoading(false);
+      fetchingRef.current = false;
+      if (mountedRef.current) {
+        setLoading(false);
+      }
     }
   };
 

@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import apiClient from "@/lib/api";
+import { getCachedData, setCachedData } from "@/lib/cache";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -88,6 +89,8 @@ export default function DigitalEnquiryPage() {
   const [phoneLookups, setPhoneLookups] = useState<Record<string, PhoneLookup>>(
     {}
   );
+  const fetchingRef = useRef(false);
+  const mountedRef = useRef(true);
 
   // Create enquiry dialog state
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
@@ -129,14 +132,45 @@ export default function DigitalEnquiryPage() {
   });
 
   useEffect(() => {
-    fetchData(0, false);
+    mountedRef.current = true;
+    
+    // Try to load from cache first
+    const cached = getCachedData<DigitalEnquiry[]>("cache_digital_enquiry", 30000);
+    if (cached) {
+      setEnquiries(cached);
+      setLoading(false);
+      // Only fetch in background if cache is older than 10 seconds
+      try {
+        const cacheEntry = JSON.parse(sessionStorage.getItem("cache_digital_enquiry") || '{}');
+        const cacheAge = Date.now() - (cacheEntry.timestamp || 0);
+        if (cacheAge > 10000 && mountedRef.current && !fetchingRef.current) {
+          setTimeout(() => {
+            if (mountedRef.current && !fetchingRef.current) {
+              fetchData(0, false, true);
+            }
+          }, 1000);
+        }
+      } catch {
+        // Ignore cache parsing errors
+      }
+    } else {
+      fetchData(0, false);
+    }
+    
+    return () => {
+      mountedRef.current = false;
+    };
   }, []);
 
-  const fetchData = async (skip: number = 0, append: boolean = false) => {
+  const fetchData = async (skip: number = 0, append: boolean = false, background: boolean = false) => {
+    // Prevent duplicate fetches
+    if (fetchingRef.current && !append) return;
+    if (!append) fetchingRef.current = true;
+    
     try {
-      if (!append) {
+      if (!append && !background) {
         setLoading(true);
-      } else {
+      } else if (append) {
         setLoadingMore(true);
       }
 
@@ -148,6 +182,8 @@ export default function DigitalEnquiryPage() {
       } else {
         setEnquiries(response.data.enquiries);
         setDisplayedCount(20);
+        // Cache the data
+        setCachedData("cache_digital_enquiry", response.data.enquiries);
       }
       
       setHasMore(response.data.hasMore || false);
@@ -179,8 +215,11 @@ export default function DigitalEnquiryPage() {
     } catch (error) {
       console.error("Failed to fetch enquiries:", error);
     } finally {
-      setLoading(false);
-      setLoadingMore(false);
+      if (!append) fetchingRef.current = false;
+      if (mountedRef.current) {
+        setLoading(false);
+        setLoadingMore(false);
+      }
     }
   };
 

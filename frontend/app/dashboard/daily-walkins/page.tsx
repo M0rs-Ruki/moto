@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import apiClient from "@/lib/api";
+import { getCachedData, setCachedData } from "@/lib/cache";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -137,6 +138,8 @@ interface PhoneLookup {
 export default function DailyWalkinsPage() {
   const [categories, setCategories] = useState<VehicleCategory[]>([]);
   const [loading, setLoading] = useState(true);
+  const fetchingRef = useRef(false);
+  const mountedRef = useRef(true);
 
   // Visitors state
   const [visitors, setVisitors] = useState<Visitor[]>([]);
@@ -211,7 +214,39 @@ export default function DailyWalkinsPage() {
   });
 
   useEffect(() => {
-    fetchData();
+    mountedRef.current = true;
+    
+    // Try to load from cache first
+    const cachedCategories = getCachedData<VehicleCategory[]>("cache_daily_walkins_categories", 60000);
+    const cachedVisitors = getCachedData<Visitor[]>("cache_daily_walkins_visitors", 30000);
+    const cachedSessions = getCachedData<Session[]>("cache_daily_walkins_sessions", 30000);
+    
+    if (cachedCategories && cachedVisitors && cachedSessions) {
+      setCategories(cachedCategories);
+      setVisitors(cachedVisitors);
+      setAllSessions(cachedSessions);
+      setLoading(false);
+      // Only fetch in background if cache is older than 10 seconds
+      try {
+        const cacheEntry = JSON.parse(sessionStorage.getItem("cache_daily_walkins_visitors") || '{}');
+        const cacheAge = Date.now() - (cacheEntry.timestamp || 0);
+        if (cacheAge > 10000 && mountedRef.current && !fetchingRef.current) {
+          setTimeout(() => {
+            if (mountedRef.current && !fetchingRef.current) {
+              fetchData(0, false, true);
+            }
+          }, 1000);
+        }
+      } catch {
+        // Ignore cache parsing errors
+      }
+    } else {
+      fetchData();
+    }
+    
+    return () => {
+      mountedRef.current = false;
+    };
   }, []);
 
   const applyFilters = useCallback(() => {
@@ -262,11 +297,15 @@ export default function DailyWalkinsPage() {
     applyFilters();
   }, [applyFilters]);
 
-  const fetchData = async (skip: number = 0, append: boolean = false) => {
+  const fetchData = async (skip: number = 0, append: boolean = false, background: boolean = false) => {
+    // Prevent duplicate fetches
+    if (fetchingRef.current && !append) return;
+    if (!append) fetchingRef.current = true;
+    
     try {
-      if (!append) {
+      if (!append && !background) {
         setLoading(true);
-      } else {
+      } else if (append) {
         setLoadingMore(true);
       }
 
@@ -277,6 +316,7 @@ export default function DailyWalkinsPage() {
       ]);
 
       setCategories(categoriesRes.data.categories);
+      setCachedData("cache_daily_walkins_categories", categoriesRes.data.categories);
 
       // Append or replace visitors
       if (append) {
@@ -296,11 +336,17 @@ export default function DailyWalkinsPage() {
         // Don't reload sessions when loading more visitors
       } else {
         setAllSessions(sessionsRes.data.sessions || []);
+        setCachedData("cache_daily_walkins_sessions", sessionsRes.data.sessions || []);
         setSessionsHasMore(sessionsRes.data.hasMore || false);
         setSessionsTotal(
           sessionsRes.data.total || sessionsRes.data.sessions?.length || 0
         );
         setSessionsDisplayedCount(20);
+      }
+      
+      // Cache visitors
+      if (!append) {
+        setCachedData("cache_daily_walkins_visitors", visitorsRes.data.visitors);
       }
 
       // Only fetch phone lookups when loading more data (not on initial load)
@@ -329,8 +375,11 @@ export default function DailyWalkinsPage() {
     } catch (error) {
       console.error("Failed to fetch data:", error);
     } finally {
-      setLoading(false);
-      setLoadingMore(false);
+      if (!append) fetchingRef.current = false;
+      if (mountedRef.current) {
+        setLoading(false);
+        setLoadingMore(false);
+      }
     }
   };
 

@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import apiClient from "@/lib/api";
+import { getCachedData, setCachedData } from "@/lib/cache";
 import {
   Card,
   CardContent,
@@ -145,29 +146,79 @@ function StatCard({
   );
 }
 
+const CACHE_KEY = "cache_dashboard_statistics";
+const CACHE_DURATION = 30000; // 30 seconds
+
 export default function DashboardPage() {
   const [statistics, setStatistics] = useState<Statistics | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const fetchingRef = useRef(false);
+  const mountedRef = useRef(true);
 
   useEffect(() => {
-    fetchStatistics();
-    // Refresh every 30 seconds
-    const interval = setInterval(fetchStatistics, 30000);
-    return () => clearInterval(interval);
+    mountedRef.current = true;
+
+    // Try to load from cache first
+    const cached = getCachedData<Statistics>(CACHE_KEY, CACHE_DURATION);
+    if (cached) {
+      setStatistics(cached);
+      setLoading(false);
+      // Only fetch in background after a delay if cache is fresh
+      const cacheAge =
+        Date.now() -
+        (JSON.parse(sessionStorage.getItem(CACHE_KEY) || "{}").timestamp || 0);
+      if (cacheAge > 10000) {
+        // Only background fetch if cache is older than 10 seconds
+        setTimeout(() => {
+          if (mountedRef.current && !fetchingRef.current) {
+            fetchStatistics(true);
+          }
+        }, 1000);
+      }
+    } else {
+      fetchStatistics();
+    }
+
+    // Refresh every 30 seconds (only if component is still mounted)
+    const interval = setInterval(() => {
+      if (mountedRef.current && !fetchingRef.current) {
+        fetchStatistics(true);
+      }
+    }, CACHE_DURATION);
+
+    return () => {
+      mountedRef.current = false;
+      clearInterval(interval);
+    };
   }, []);
 
-  const fetchStatistics = async () => {
+  const fetchStatistics = async (background: boolean = false) => {
+    // Prevent duplicate fetches
+    if (fetchingRef.current) return;
+    fetchingRef.current = true;
+
     try {
+      if (!background) {
+        setLoading(true);
+      }
       const response = await apiClient.get("/statistics");
-      setStatistics(response.data);
-      setError("");
+      if (mountedRef.current) {
+        setStatistics(response.data);
+        setCachedData(CACHE_KEY, response.data);
+        setError("");
+      }
     } catch (err: unknown) {
-      console.error("Failed to fetch statistics:", err);
-      const error = err as { response?: { data?: { error?: string } } };
-      setError(error.response?.data?.error || "Failed to load statistics");
+      if (mountedRef.current) {
+        console.error("Failed to fetch statistics:", err);
+        const error = err as { response?: { data?: { error?: string } } };
+        setError(error.response?.data?.error || "Failed to load statistics");
+      }
     } finally {
-      setLoading(false);
+      fetchingRef.current = false;
+      if (!background && mountedRef.current) {
+        setLoading(false);
+      }
     }
   };
 

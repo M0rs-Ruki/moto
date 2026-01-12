@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import { useSearchParams } from "next/navigation";
 import apiClient from "@/lib/api";
+import { getCachedData, setCachedData } from "@/lib/cache";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -102,6 +103,8 @@ export default function SessionsPage() {
   const [sessions, setSessions] = useState<Session[]>([]);
   const [categories, setCategories] = useState<VehicleCategory[]>([]);
   const [loading, setLoading] = useState(true);
+  const fetchingRef = useRef(false);
+  const mountedRef = useRef(true);
   const [selectedSession, setSelectedSession] = useState<Session | null>(null);
   const [testDriveDialogOpen, setTestDriveDialogOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -118,7 +121,42 @@ export default function SessionsPage() {
   });
 
   useEffect(() => {
-    fetchData();
+    mountedRef.current = true;
+    
+    // Try to load from cache first
+    const cachedSessions = getCachedData<Session[]>("cache_sessions", 30000);
+    const cachedCategories = getCachedData<VehicleCategory[]>("cache_sessions_categories", 60000);
+    
+    if (cachedSessions && cachedCategories) {
+      setSessions(cachedSessions);
+      setCategories(cachedCategories);
+      // Only expand active (non-exited) sessions by default
+      const activeSessions = cachedSessions
+        .filter((s: Session) => s.status !== "exited")
+        .map((s: Session) => s.id);
+      setExpandedSessions(new Set(activeSessions));
+      setLoading(false);
+      // Only fetch in background if cache is older than 10 seconds
+      try {
+        const cacheEntry = JSON.parse(sessionStorage.getItem("cache_sessions") || '{}');
+        const cacheAge = Date.now() - (cacheEntry.timestamp || 0);
+        if (cacheAge > 10000 && mountedRef.current && !fetchingRef.current) {
+          setTimeout(() => {
+            if (mountedRef.current && !fetchingRef.current) {
+              fetchData(true);
+            }
+          }, 1000);
+        }
+      } catch {
+        // Ignore cache parsing errors
+      }
+    } else {
+      fetchData();
+    }
+    
+    return () => {
+      mountedRef.current = false;
+    };
   }, []);
 
   // Handle auto-expand and scroll when coming from dashboard
@@ -174,24 +212,38 @@ export default function SessionsPage() {
     }
   }, [sessions, loading, searchParams]);
 
-  const fetchData = async () => {
+  const fetchData = async (background: boolean = false) => {
+    // Prevent duplicate fetches
+    if (fetchingRef.current) return;
+    fetchingRef.current = true;
+    
     try {
+      if (!background) {
+        setLoading(true);
+      }
       const [sessionsRes, categoriesRes] = await Promise.all([
         apiClient.get("/sessions"),
         apiClient.get("/categories"),
       ]);
-      setSessions(sessionsRes.data.sessions);
-      setCategories(categoriesRes.data.categories);
+      if (mountedRef.current) {
+        setSessions(sessionsRes.data.sessions);
+        setCategories(categoriesRes.data.categories);
+        setCachedData("cache_sessions", sessionsRes.data.sessions);
+        setCachedData("cache_sessions_categories", categoriesRes.data.categories);
 
-      // Only expand active (non-exited) sessions by default
-      const activeSessions = sessionsRes.data.sessions
-        .filter((s: Session) => s.status !== "exited")
-        .map((s: Session) => s.id);
-      setExpandedSessions(new Set(activeSessions));
+        // Only expand active (non-exited) sessions by default
+        const activeSessions = sessionsRes.data.sessions
+          .filter((s: Session) => s.status !== "exited")
+          .map((s: Session) => s.id);
+        setExpandedSessions(new Set(activeSessions));
+      }
     } catch (error) {
       console.error("Failed to fetch data:", error);
     } finally {
-      setLoading(false);
+      fetchingRef.current = false;
+      if (!background && mountedRef.current) {
+        setLoading(false);
+      }
     }
   };
 

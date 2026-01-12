@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import apiClient from "@/lib/api";
+import { getCachedData, setCachedData } from "@/lib/cache";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -93,6 +94,8 @@ export default function DeliveryUpdatePage() {
     {}
   );
   const [sendingCompletion, setSendingCompletion] = useState<Record<string, boolean>>({});
+  const fetchingRef = useRef(false);
+  const mountedRef = useRef(true);
 
   // Create ticket dialog state
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
@@ -120,7 +123,34 @@ export default function DeliveryUpdatePage() {
   });
 
   useEffect(() => {
-    fetchTickets(0, false);
+    mountedRef.current = true;
+    
+    // Try to load from cache first
+    const cached = getCachedData<DeliveryTicket[]>("cache_delivery_tickets", 30000);
+    if (cached) {
+      setTickets(cached);
+      setLoading(false);
+      // Only fetch in background if cache is older than 10 seconds
+      try {
+        const cacheEntry = JSON.parse(sessionStorage.getItem("cache_delivery_tickets") || '{}');
+        const cacheAge = Date.now() - (cacheEntry.timestamp || 0);
+        if (cacheAge > 10000 && mountedRef.current && !fetchingRef.current) {
+          setTimeout(() => {
+            if (mountedRef.current && !fetchingRef.current) {
+              fetchTickets(0, false, true);
+            }
+          }, 1000);
+        }
+      } catch {
+        // Ignore cache parsing errors
+      }
+    } else {
+      fetchTickets(0, false);
+    }
+    
+    return () => {
+      mountedRef.current = false;
+    };
   }, []);
 
   const fetchCreateFormData = async () => {
@@ -166,11 +196,15 @@ export default function DeliveryUpdatePage() {
     }
   };
 
-  const fetchTickets = async (skip: number = 0, append: boolean = false) => {
+  const fetchTickets = async (skip: number = 0, append: boolean = false, background: boolean = false) => {
+    // Prevent duplicate fetches
+    if (fetchingRef.current && !append) return;
+    if (!append) fetchingRef.current = true;
+    
     try {
-      if (!append) {
+      if (!append && !background) {
         setLoading(true);
-      } else {
+      } else if (append) {
         setLoadingMore(true);
       }
 
@@ -182,6 +216,8 @@ export default function DeliveryUpdatePage() {
       } else {
         setTickets(response.data.tickets);
         setDisplayedCount(20);
+        // Cache the data
+        setCachedData("cache_delivery_tickets", response.data.tickets);
       }
       
       setHasMore(response.data.hasMore || false);
@@ -205,16 +241,19 @@ export default function DeliveryUpdatePage() {
           // Merge batch results into lookups
           Object.assign(lookups, lookupRes.data);
           setPhoneLookups(lookups);
-        } catch (error) {
-          console.error('Failed to batch lookup phones:', error);
-          // Don't break the page if phone lookup fails
-        }
+      } catch (error) {
+        console.error('Failed to batch lookup phones:', error);
+        // Don't break the page if phone lookup fails
       }
+    }
     } catch (error) {
       console.error("Failed to fetch tickets:", error);
     } finally {
-      setLoading(false);
-      setLoadingMore(false);
+      if (!append) fetchingRef.current = false;
+      if (mountedRef.current) {
+        setLoading(false);
+        setLoadingMore(false);
+      }
     }
   };
 

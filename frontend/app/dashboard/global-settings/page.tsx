@@ -1,7 +1,8 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import apiClient from "@/lib/api";
+import { getCachedData, setCachedData } from "@/lib/cache";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -76,6 +77,8 @@ export default function SettingsPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const fetchingRef = useRef(false);
+  const mountedRef = useRef(true);
   
   // User and dealership info
   const [user, setUser] = useState<{
@@ -152,7 +155,39 @@ export default function SettingsPage() {
   const [uploadingPicture, setUploadingPicture] = useState(false);
 
   useEffect(() => {
-    fetchData();
+    mountedRef.current = true;
+    
+    // Try to load from cache first
+    const cachedCategories = getCachedData<any[]>("cache_settings_categories", 60000);
+    const cachedTemplates = getCachedData<any[]>("cache_settings_templates", 60000);
+    const cachedLeadSources = getCachedData<any[]>("cache_settings_lead_sources", 60000);
+    
+    if (cachedCategories && cachedTemplates && cachedLeadSources) {
+      setCategories(cachedCategories);
+      setTemplates(cachedTemplates);
+      setLeadSources(cachedLeadSources);
+      setLoading(false);
+      // Only fetch in background if cache is older than 10 seconds
+      try {
+        const cacheEntry = JSON.parse(sessionStorage.getItem("cache_settings_categories") || '{}');
+        const cacheAge = Date.now() - (cacheEntry.timestamp || 0);
+        if (cacheAge > 10000 && mountedRef.current && !fetchingRef.current) {
+          setTimeout(() => {
+            if (mountedRef.current && !fetchingRef.current) {
+              fetchData(true);
+            }
+          }, 1000);
+        }
+      } catch {
+        // Ignore cache parsing errors
+      }
+    } else {
+      fetchData();
+    }
+    
+    return () => {
+      mountedRef.current = false;
+    };
   }, []);
 
   useEffect(() => {
@@ -161,9 +196,16 @@ export default function SettingsPage() {
     });
   }, [theme]);
 
-  const fetchData = async () => {
+  const fetchData = async (background: boolean = false) => {
+    // Prevent duplicate fetches
+    if (fetchingRef.current) return;
+    fetchingRef.current = true;
+    
     try {
-      setError(null);
+      if (!background) {
+        setError(null);
+        setLoading(true);
+      }
       const [categoriesRes, templatesRes, leadSourcesRes, userRes, dealershipRes] = await Promise.all([
         apiClient.get("/categories"),
         apiClient.get("/templates"),
@@ -184,6 +226,9 @@ export default function SettingsPage() {
       setCategories(categoriesData);
       setTemplates(templatesData);
       setLeadSources(leadSourcesData);
+      setCachedData("cache_settings_categories", categoriesData);
+      setCachedData("cache_settings_templates", templatesData);
+      setCachedData("cache_settings_lead_sources", leadSourcesData);
       
       // Set user and dealership info
       if (userRes.data?.user) {
@@ -210,7 +255,10 @@ export default function SettingsPage() {
       setTemplates([]);
       setLeadSources([]);
     } finally {
-      setLoading(false);
+      fetchingRef.current = false;
+      if (!background && mountedRef.current) {
+        setLoading(false);
+      }
     }
   };
 
