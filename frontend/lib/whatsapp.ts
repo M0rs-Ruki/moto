@@ -24,7 +24,7 @@ class WhatsAppClient {
    */
   private formatPhoneNumber(phone: string): string {
     // Remove any non-digit characters and plus sign
-    let cleaned = phone.replace(/\D/g, "");
+    const cleaned = phone.replace(/\D/g, "");
 
     console.log(`formatPhoneNumber: input="${phone}" cleaned="${cleaned}"`);
 
@@ -74,7 +74,7 @@ class WhatsAppClient {
       try {
         // Try direct contact lookup
         response = await this.client.get(`/contact/${formattedPhone}`);
-      } catch (err) {
+      } catch {
         // If that fails, try search endpoint
         console.log("Direct lookup failed, trying search...");
         response = await this.client.get(`/contact`, {
@@ -203,35 +203,43 @@ class WhatsAppClient {
       // If contact already exists, try to fetch the existing contact
       const errorMessage = axiosError.response?.data?.message || "";
       const errorMessageLower = errorMessage.toLowerCase();
-      
+
       if (
         errorMessageLower.includes("already exist") ||
         errorMessageLower.includes("already exists") ||
         errorMessageLower.includes("contact already") ||
         axiosError.response?.status === 400
       ) {
-        console.log(`Contact already exists, attempting to fetch existing contact...`);
+        console.log(
+          `Contact already exists, attempting to fetch existing contact...`
+        );
         try {
           const existingContact = await this.getContactByPhone(
             data.contact_number
           );
           if (existingContact) {
-            console.log(`Successfully retrieved existing contact ID: ${existingContact.contactId}`);
+            console.log(
+              `Successfully retrieved existing contact ID: ${existingContact.contactId}`
+            );
             return {
               contactId: existingContact.contactId,
               success: true,
             };
           } else {
             // Contact exists but we can't fetch ID - that's okay, we can still send messages with phone number
-            console.log("Contact already exists. Will use phone number for messaging.");
+            console.log(
+              "Contact already exists. Will use phone number for messaging."
+            );
             // Return success with empty contactId - caller can use phone number instead
             return {
               contactId: "",
               success: true,
             };
           }
-        } catch (fetchError) {
-          console.log("Could not fetch existing contact ID, but contact exists. Will use phone number for messaging.");
+        } catch {
+          console.log(
+            "Could not fetch existing contact ID, but contact exists. Will use phone number for messaging."
+          );
           // Contact exists but we can't fetch ID - that's okay, we can still send messages with phone number
           return {
             contactId: "",

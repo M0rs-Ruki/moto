@@ -10,8 +10,8 @@
     "postinstall": "prisma generate || echo 'Warning: prisma generate failed, but continuing...'",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate deploy",
-    "deploy:build": "npm run build",
-    "deploy:start": "npm run start",
+    "deploy:build": "pnpm run build",
+    "deploy:start": "pnpm run start",
     "prepare": "prisma generate"
   },
   "dependencies": {
