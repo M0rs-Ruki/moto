@@ -4,7 +4,8 @@ import { UpdateLeadScopeDto } from "../dto/request/update-lead-scope.dto";
 import { BulkUploadProcessingResult, BulkUploadSummary } from "../dto/request/bulk-upload.dto";
 import { FieldInquiryWithRelations, CreateFieldInquiryResponse, UpdateLeadScopeResponse } from "../dto/response/field-inquiry.response";
 import { whatsappClient } from "../lib/whatsapp";
-import { parseExcelFile, validateExcelFileType, validateRequiredColumns, parseExcelDate, ExcelRow } from "../utils/excel-parser";
+import { validateRequiredColumns, parseExcelDate } from "../utils/excel-parser";
+import { BulkUploadRequest, ExcelRow } from "../dto/request/bulk-upload.dto";
 import { EXCEL, LEAD_SCOPE, PAGINATION } from "../config/constants";
 import prisma from "../lib/db";
 
@@ -155,29 +156,20 @@ export class FieldInquiryService {
   }
 
   /**
-   * Bulk upload field inquiries from Excel
+   * Bulk upload field inquiries from JSON data
    */
   async bulkUpload(
-    file: Express.Multer.File,
+    data: BulkUploadRequest,
     dealershipId: string
   ): Promise<{
     success: boolean;
     summary: BulkUploadSummary;
     results: BulkUploadProcessingResult[];
   }> {
-    // Validate file type
-    if (!validateExcelFileType(file.originalname)) {
-      throw new Error("Invalid file type. Please upload an Excel file (.xlsx or .xls)");
-    }
+    const rows = data.rows;
 
-    // Parse Excel file
-    const { rows, errors: parseErrors } = parseExcelFile(file.buffer);
-    if (parseErrors.length > 0) {
-      throw new Error(parseErrors.join(", "));
-    }
-
-    if (rows.length === 0) {
-      throw new Error("Excel file is empty");
+    if (!rows || rows.length === 0) {
+      throw new Error("No data provided");
     }
 
     // Validate required columns

@@ -1,6 +1,19 @@
 /**
  * Bulk Upload DTO
  */
+export interface ExcelRow {
+  Date?: string | number | Date;
+  Name?: string;
+  "WhatsApp Number"?: string;
+  Location?: string;
+  Model?: string;
+  Source?: string;
+}
+
+export interface BulkUploadRequest {
+  rows: ExcelRow[];
+}
+
 export interface BulkUploadProcessingResult {
   success: boolean;
   rowNumber: number;

@@ -112,22 +112,21 @@ export class FieldInquiryController {
       return;
     }
 
-    const file = req.file;
+    const { rows } = req.body;
 
-    if (!file) {
-      res.status(400).json({ error: "No file uploaded" });
+    if (!rows || !Array.isArray(rows) || rows.length === 0) {
+      res.status(400).json({ error: "No data provided or invalid format" });
       return;
     }
 
     try {
-      const result = await this.service.bulkUpload(file, req.user.dealershipId);
+      const result = await this.service.bulkUpload({ rows }, req.user.dealershipId);
       res.json(result);
     } catch (error) {
       const errorMessage = (error as Error).message;
       if (
-        errorMessage.includes("Invalid file type") ||
         errorMessage.includes("Missing required columns") ||
-        errorMessage.includes("Excel file")
+        errorMessage.includes("No data provided")
       ) {
         res.status(400).json({ error: errorMessage });
       } else {

@@ -30,6 +30,7 @@ import {
 } from "@/components/ui/dialog";
 import { Plus, Loader2, MessageSquare, ChevronDown, Upload, FileSpreadsheet, Edit2 } from "lucide-react";
 import Link from "next/link";
+import * as XLSX from "xlsx";
 
 interface LeadSource {
   id: string;
@@ -293,7 +294,6 @@ export default function DigitalEnquiryPage() {
     setUploadError("");
     setUploadResults(null);
 
-    const formData = new FormData(e.currentTarget);
     const fileInput = e.currentTarget.querySelector('input[type="file"]') as HTMLInputElement;
     const file = fileInput?.files?.[0];
 
@@ -303,14 +303,50 @@ export default function DigitalEnquiryPage() {
       return;
     }
 
-    const uploadFormData = new FormData();
-    uploadFormData.append("file", file);
+    // Validate file type
+    const fileName = file.name.toLowerCase();
+    if (!fileName.endsWith(".xlsx") && !fileName.endsWith(".xls")) {
+      setUploadError("Invalid file type. Please upload an Excel file (.xlsx or .xls)");
+      setUploading(false);
+      return;
+    }
 
     try {
-      const response = await apiClient.post("/digital-enquiry/bulk", uploadFormData, {
-        headers: {
-          "Content-Type": "multipart/form-data",
-        },
+      // Read Excel file and convert to JSON
+      const arrayBuffer = await file.arrayBuffer();
+      const workbook = XLSX.read(arrayBuffer, { type: "array" });
+
+      // Get first sheet
+      const firstSheetName = workbook.SheetNames[0];
+      if (!firstSheetName) {
+        setUploadError("Excel file has no sheets");
+        setUploading(false);
+        return;
+      }
+
+      const worksheet = workbook.Sheets[firstSheetName];
+      const rows: any[] = XLSX.utils.sheet_to_json(worksheet);
+
+      if (rows.length === 0) {
+        setUploadError("Excel file is empty");
+        setUploading(false);
+        return;
+      }
+
+      // Validate required columns
+      const firstRow = rows[0];
+      const requiredColumns = ["Date", "Name", "WhatsApp Number", "Model"];
+      const missingColumns = requiredColumns.filter((col) => !(col in firstRow));
+
+      if (missingColumns.length > 0) {
+        setUploadError(`Missing required columns: ${missingColumns.join(", ")}`);
+        setUploading(false);
+        return;
+      }
+
+      // Send JSON data to backend
+      const response = await apiClient.post("/digital-enquiry/bulk", {
+        rows: rows,
       });
 
       if (response.data.success) {

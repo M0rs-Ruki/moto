@@ -1,8 +1,8 @@
-import { Router, Request, Response } from "express";
+import { Router, Request, Response, type Router as ExpressRouter } from "express";
 import prisma from "../lib/db";
 import { authenticate, asyncHandler } from "../middleware/auth";
 
-const router = Router();
+const router: ExpressRouter = Router();
 
 // Single phone lookup
 router.get(
