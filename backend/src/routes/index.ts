@@ -1,4 +1,5 @@
 import { Router } from "express";
+import type { Router as ExpressRouter } from "express";
 import authRoutes from "./auth";
 import categoriesRoutes from "./categories";
 import modelsRoutes from "./models";
@@ -6,11 +7,11 @@ import variantsRoutes from "./variants";
 import dealershipRoutes from "./dealership";
 import leadSourcesRoutes from "./lead-sources";
 import templatesRoutes from "./templates";
-import visitorsRoutes from "./visitors";
+import visitorsRoutes from "./visitors.routes";
 import sessionsRoutes from "./sessions";
 import testDrivesRoutes from "./test-drives";
-import digitalEnquiryRoutes from "./digital-enquiry";
-import fieldInquiryRoutes from "./field-inquiry";
+import digitalEnquiryRoutes from "./digital-enquiry.routes";
+import fieldInquiryRoutes from "./field-inquiry.routes";
 import deliveryTicketsRoutes from "./delivery-tickets";
 import statisticsRoutes from "./statistics";
 import phoneLookupRoutes from "./phone-lookup";
@@ -18,7 +19,7 @@ import cronRoutes from "./cron";
 import healthRoutes from "./health";
 import debugRoutes from "./debug";
 
-const router = Router();
+const router: ExpressRouter = Router();
 
 // Auth routes
 router.use("/auth", authRoutes);
@@ -49,4 +50,3 @@ router.use("/health", healthRoutes);
 router.use("/debug", debugRoutes);
 
 export default router;
-

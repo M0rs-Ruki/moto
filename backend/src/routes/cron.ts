@@ -71,16 +71,6 @@ router.get(
       pendingMessages.map(async (scheduledMessage) => {
         const ticket = scheduledMessage.deliveryTicket;
 
-        if (!ticket.whatsappContactId) {
-          await prisma.scheduledMessage.update({
-            where: { id: scheduledMessage.id },
-            data: {
-              status: "failed",
-              retryCount: scheduledMessage.retryCount + 1,
-            },
-          });
-          return { success: false, reason: "No WhatsApp contact ID" };
-        }
 
         // Get delivery template
         const template = await prisma.whatsAppTemplate.findFirst({
@@ -137,7 +127,6 @@ router.get(
           const daysBeforeStr = String(diffDays);
 
           await whatsappClient.sendTemplate({
-            contactId: ticket.whatsappContactId,
             contactNumber: ticket.whatsappNumber,
             templateName: template.templateName,
             templateId: template.templateId,

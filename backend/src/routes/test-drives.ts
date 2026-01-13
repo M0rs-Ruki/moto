@@ -79,7 +79,6 @@ router.post(
         const showroomNumber = dealership?.showroomNumber || "999999999";
 
         await whatsappClient.sendTemplate({
-          contactId: session.visitor.whatsappContactId || undefined,
           contactNumber: session.visitor.whatsappNumber,
           templateName: template.templateName,
           templateId: template.templateId,

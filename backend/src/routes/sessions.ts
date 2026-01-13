@@ -138,7 +138,6 @@ router.post(
     if (template && session.visitor.whatsappNumber) {
       try {
         await whatsappClient.sendTemplate({
-          contactId: session.visitor.whatsappContactId || undefined,
           contactNumber: session.visitor.whatsappNumber,
           templateName: template.templateName,
           templateId: template.templateId,

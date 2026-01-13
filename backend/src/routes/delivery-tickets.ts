@@ -39,56 +39,6 @@ router.post(
       return;
     }
 
-    const [existingVisitor, existingEnquiry, existingTicket] = await Promise.all([
-      prisma.visitor.findFirst({
-        where: {
-          dealershipId: req.user.dealershipId,
-          whatsappNumber: whatsappNumber,
-          whatsappContactId: { not: null },
-        },
-        select: { whatsappContactId: true },
-      }),
-      prisma.digitalEnquiry.findFirst({
-        where: {
-          dealershipId: req.user.dealershipId,
-          whatsappNumber: whatsappNumber,
-          whatsappContactId: { not: null },
-        },
-        select: { whatsappContactId: true },
-      }),
-      prisma.deliveryTicket.findFirst({
-        where: {
-          dealershipId: req.user.dealershipId,
-          whatsappNumber: whatsappNumber,
-          whatsappContactId: { not: null },
-        },
-        select: { whatsappContactId: true },
-      }),
-    ]);
-
-    let whatsappContactId =
-      existingTicket?.whatsappContactId ||
-      existingEnquiry?.whatsappContactId ||
-      existingVisitor?.whatsappContactId ||
-      "";
-
-    if (!whatsappContactId) {
-      try {
-        const contactResult = await whatsappClient.createContact({
-          firstName,
-          lastName,
-          contact_number: whatsappNumber,
-          email: email || "",
-          address: address || "",
-        });
-
-        whatsappContactId = contactResult.contactId || "";
-      } catch (error: unknown) {
-        console.error("Failed to create WhatsApp contact:", (error as Error).message);
-        whatsappContactId = "";
-      }
-    }
-
     const ticket = await prisma.deliveryTicket.create({
       data: {
         firstName,
@@ -98,7 +48,7 @@ router.post(
         address: address || null,
         description: description || null,
         deliveryDate: deliveryDateObj,
-        whatsappContactId,
+        whatsappContactId: null,
         dealershipId: req.user.dealershipId,
         modelId,
         variantId: variantId || null,
@@ -130,12 +80,7 @@ router.post(
       orderBy: [{ section: "asc" }],
     });
 
-    if (
-      !template ||
-      (!whatsappContactId && !whatsappNumber) ||
-      !template.templateId ||
-      !template.templateName
-    ) {
+    if (!template || !template.templateId || !template.templateName) {
       // Template not configured or missing
     } else {
       if (scheduleOption === "now") {
@@ -151,7 +96,6 @@ router.post(
           });
 
           await whatsappClient.sendTemplate({
-            contactId: whatsappContactId,
             contactNumber: whatsappNumber,
             templateName: template.templateName,
             templateId: template.templateId,
@@ -197,7 +141,6 @@ router.post(
             const daysBeforeStr = String(daysBefore);
 
             await whatsappClient.sendTemplate({
-              contactId: whatsappContactId,
               contactNumber: whatsappNumber,
               templateName: template.templateName,
               templateId: template.templateId,
@@ -327,38 +270,6 @@ router.post(
       return;
     }
 
-    let whatsappContactId = ticket.whatsappContactId;
-    if (!whatsappContactId) {
-      try {
-        const existingContact = await whatsappClient.getContactByPhone(
-          ticket.whatsappNumber
-        );
-
-        if (existingContact?.contactId) {
-          whatsappContactId = existingContact.contactId;
-        } else {
-          const contactResult = await whatsappClient.createContact({
-            firstName: ticket.firstName,
-            lastName: ticket.lastName,
-            contact_number: ticket.whatsappNumber,
-            email: ticket.email || "",
-            address: ticket.address || "",
-          });
-
-          whatsappContactId = contactResult.contactId || "";
-        }
-
-        if (whatsappContactId) {
-          await prisma.deliveryTicket.update({
-            where: { id: ticket.id },
-            data: { whatsappContactId },
-          });
-        }
-      } catch (error) {
-        console.error("Failed to create/fetch WhatsApp contact:", error);
-      }
-    }
-
     const template = await prisma.whatsAppTemplate.findFirst({
       where: {
         dealershipId: req.user.dealershipId,
@@ -413,7 +324,6 @@ router.post(
       });
 
       await whatsappClient.sendTemplate({
-        contactId: whatsappContactId || undefined,
         contactNumber: ticket.whatsappNumber,
         templateName: template.templateName,
         templateId: template.templateId,
@@ -465,38 +375,6 @@ router.post(
       return;
     }
 
-    let whatsappContactId = ticket.whatsappContactId;
-    if (!whatsappContactId) {
-      try {
-        const existingContact = await whatsappClient.getContactByPhone(
-          ticket.whatsappNumber
-        );
-
-        if (existingContact?.contactId) {
-          whatsappContactId = existingContact.contactId;
-        } else {
-          const contactResult = await whatsappClient.createContact({
-            firstName: ticket.firstName,
-            lastName: ticket.lastName,
-            contact_number: ticket.whatsappNumber,
-            email: ticket.email || "",
-            address: ticket.address || "",
-          });
-
-          whatsappContactId = contactResult.contactId || "";
-        }
-
-        if (whatsappContactId) {
-          await prisma.deliveryTicket.update({
-            where: { id: ticket.id },
-            data: { whatsappContactId },
-          });
-        }
-      } catch (error) {
-        console.error("Failed to create/fetch WhatsApp contact:", error);
-      }
-    }
-
     const template = await prisma.whatsAppTemplate.findFirst({
       where: {
         dealershipId: req.user.dealershipId,
@@ -531,7 +409,6 @@ router.post(
 
     try {
       await whatsappClient.sendTemplate({
-        contactId: whatsappContactId || undefined,
         contactNumber: ticket.whatsappNumber,
         templateName: template.templateName,
         templateId: template.templateId,
