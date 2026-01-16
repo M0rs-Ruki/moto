@@ -51,23 +51,27 @@ async function getUserFromRequest(request) {
  * Set auth cookie in Express response
  */
 function setAuthCookie(res, token) {
+    const isProduction = process.env.NODE_ENV === "production";
     res.cookie("auth-token", token, {
         httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
-        sameSite: "lax",
+        secure: isProduction,
+        sameSite: isProduction ? "none" : "lax", // "none" for cross-origin in production
         maxAge: 60 * 60 * 24 * 7 * 1000, // 7 days in milliseconds
         path: "/",
+        domain: isProduction ? ".utkalautomobiles.co.in" : undefined, // Share cookie across subdomains
     });
 }
 /**
  * Clear auth cookie in Express response
  */
 function clearAuthCookie(res) {
+    const isProduction = process.env.NODE_ENV === "production";
     res.clearCookie("auth-token", {
         httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
-        sameSite: "lax",
+        secure: isProduction,
+        sameSite: isProduction ? "none" : "lax",
         path: "/",
+        domain: isProduction ? ".utkalautomobiles.co.in" : undefined,
     });
 }
 //# sourceMappingURL=auth.js.map
