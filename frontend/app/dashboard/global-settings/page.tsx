@@ -67,10 +67,7 @@ interface LeadSource {
 }
 
 export default function SettingsPage() {
-  const {
-    theme,
-    setTheme,
-  } = useTheme();
+  const { theme, setTheme } = useTheme();
   const [categories, setCategories] = useState<VehicleCategory[]>([]);
   const [templates, setTemplates] = useState<WhatsAppTemplate[]>([]);
   const [leadSources, setLeadSources] = useState<LeadSource[]>([]);
@@ -79,7 +76,7 @@ export default function SettingsPage() {
   const [error, setError] = useState<string | null>(null);
   const fetchingRef = useRef(false);
   const mountedRef = useRef(true);
-  
+
   // User and dealership info
   const [user, setUser] = useState<{
     id: string;
@@ -98,13 +95,15 @@ export default function SettingsPage() {
     showroomNumber: "",
   });
   const [savingDealership, setSavingDealership] = useState(false);
-  
+
   // Lead source form
   const [newLeadSource, setNewLeadSource] = useState("");
   const [leadSourceDialogOpen, setLeadSourceDialogOpen] = useState(false);
-  const [deleteLeadSourceDialogOpen, setDeleteLeadSourceDialogOpen] = useState(false);
-  const [leadSourceToDelete, setLeadSourceToDelete] = useState<string | null>(null);
-
+  const [deleteLeadSourceDialogOpen, setDeleteLeadSourceDialogOpen] =
+    useState(false);
+  const [leadSourceToDelete, setLeadSourceToDelete] = useState<string | null>(
+    null
+  );
 
   // Category form
   const [newCategory, setNewCategory] = useState("");
@@ -150,18 +149,31 @@ export default function SettingsPage() {
   });
 
   // Profile picture state
-  const [profilePictureFile, setProfilePictureFile] = useState<File | null>(null);
-  const [profilePicturePreview, setProfilePicturePreview] = useState<string | null>(null);
+  const [profilePictureFile, setProfilePictureFile] = useState<File | null>(
+    null
+  );
+  const [profilePicturePreview, setProfilePicturePreview] = useState<
+    string | null
+  >(null);
   const [uploadingPicture, setUploadingPicture] = useState(false);
 
   useEffect(() => {
     mountedRef.current = true;
-    
+
     // Try to load from cache first
-    const cachedCategories = getCachedData<any[]>("cache_settings_categories", 60000);
-    const cachedTemplates = getCachedData<any[]>("cache_settings_templates", 60000);
-    const cachedLeadSources = getCachedData<any[]>("cache_settings_lead_sources", 60000);
-    
+    const cachedCategories = getCachedData<any[]>(
+      "cache_settings_categories",
+      60000
+    );
+    const cachedTemplates = getCachedData<any[]>(
+      "cache_settings_templates",
+      60000
+    );
+    const cachedLeadSources = getCachedData<any[]>(
+      "cache_settings_lead_sources",
+      60000
+    );
+
     if (cachedCategories && cachedTemplates && cachedLeadSources) {
       setCategories(cachedCategories);
       setTemplates(cachedTemplates);
@@ -169,7 +181,9 @@ export default function SettingsPage() {
       setLoading(false);
       // Only fetch in background if cache is older than 10 seconds
       try {
-        const cacheEntry = JSON.parse(sessionStorage.getItem("cache_settings_categories") || '{}');
+        const cacheEntry = JSON.parse(
+          sessionStorage.getItem("cache_settings_categories") || "{}"
+        );
         const cacheAge = Date.now() - (cacheEntry.timestamp || 0);
         if (cacheAge > 10000 && mountedRef.current && !fetchingRef.current) {
           setTimeout(() => {
@@ -184,7 +198,7 @@ export default function SettingsPage() {
     } else {
       fetchData();
     }
-    
+
     return () => {
       mountedRef.current = false;
     };
@@ -200,36 +214,42 @@ export default function SettingsPage() {
     // Prevent duplicate fetches
     if (fetchingRef.current) return;
     fetchingRef.current = true;
-    
+
     try {
       if (!background) {
         setError(null);
         setLoading(true);
       }
-      const [categoriesRes, templatesRes, leadSourcesRes, userRes, dealershipRes] = await Promise.all([
+      const [
+        categoriesRes,
+        templatesRes,
+        leadSourcesRes,
+        userRes,
+        dealershipRes,
+      ] = await Promise.all([
         apiClient.get("/categories"),
         apiClient.get("/templates"),
         apiClient.get("/lead-sources"),
         apiClient.get("/auth/me"),
         apiClient.get("/dealership"),
       ]);
-      
+
       // Ensure we have valid data
       const categoriesData = categoriesRes.data?.categories || [];
       const templatesData = templatesRes.data?.templates || [];
       const leadSourcesData = leadSourcesRes.data?.leadSources || [];
-      
+
       console.log("Fetched categories:", categoriesData.length);
       console.log("Fetched templates:", templatesData.length);
       console.log("Fetched lead sources:", leadSourcesData.length);
-      
+
       setCategories(categoriesData);
       setTemplates(templatesData);
       setLeadSources(leadSourcesData);
       setCachedData("cache_settings_categories", categoriesData);
       setCachedData("cache_settings_templates", templatesData);
       setCachedData("cache_settings_lead_sources", leadSourcesData);
-      
+
       // Set user and dealership info
       if (userRes.data?.user) {
         setUser({
@@ -248,7 +268,8 @@ export default function SettingsPage() {
       }
     } catch (error: any) {
       console.error("Failed to fetch data:", error);
-      const errorMessage = error.response?.data?.error || error.message || "Failed to load data";
+      const errorMessage =
+        error.response?.data?.error || error.message || "Failed to load data";
       setError(errorMessage);
       // Set empty arrays on error to prevent undefined issues
       setCategories([]);
@@ -430,7 +451,8 @@ export default function SettingsPage() {
           Settings
         </h1>
         <p className="text-sm sm:text-base text-muted-foreground mt-2">
-          Configure vehicle models, WhatsApp templates, lead sources, and appearance
+          Configure vehicle models, WhatsApp templates, lead sources, and
+          appearance
         </p>
       </div>
 
@@ -442,7 +464,7 @@ export default function SettingsPage() {
           <Button
             variant="outline"
             size="sm"
-            onClick={fetchData}
+            onClick={() => fetchData()}
             className="mt-2"
           >
             Retry
@@ -461,7 +483,9 @@ export default function SettingsPage() {
         <TabsContent value="profile" className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle className="text-lg sm:text-xl">Account Information</CardTitle>
+              <CardTitle className="text-lg sm:text-xl">
+                Account Information
+              </CardTitle>
               <CardDescription className="text-xs sm:text-sm">
                 View and update your account and dealership details
               </CardDescription>
@@ -471,43 +495,49 @@ export default function SettingsPage() {
                 <>
                   <div className="space-y-2">
                     <Label className="text-sm">Email</Label>
-                    <Input
-                      value={user.email}
-                      disabled
-                      className="text-sm"
-                    />
+                    <Input value={user.email} disabled className="text-sm" />
                     <p className="text-xs text-muted-foreground">
                       Email cannot be changed
                     </p>
                   </div>
-                  
+
                   <div className="space-y-2">
                     <Label className="text-sm">Dealership Name *</Label>
                     <Input
                       value={dealershipForm.name}
                       onChange={(e) =>
-                        setDealershipForm({ ...dealershipForm, name: e.target.value })
+                        setDealershipForm({
+                          ...dealershipForm,
+                          name: e.target.value,
+                        })
                       }
                       placeholder="Enter dealership name"
                       className="text-sm"
                     />
                   </div>
-                  
+
                   <div className="space-y-2">
                     <Label className="text-sm">Location *</Label>
                     <Input
                       value={dealershipForm.location}
                       onChange={(e) =>
-                        setDealershipForm({ ...dealershipForm, location: e.target.value })
+                        setDealershipForm({
+                          ...dealershipForm,
+                          location: e.target.value,
+                        })
                       }
                       placeholder="Enter location"
                       className="text-sm"
                     />
                   </div>
-                  
+
                   <Button
                     onClick={handleUpdateDealership}
-                    disabled={savingDealership || !dealershipForm.name || !dealershipForm.location}
+                    disabled={
+                      savingDealership ||
+                      !dealershipForm.name ||
+                      !dealershipForm.location
+                    }
                     className="w-full sm:w-auto"
                   >
                     {savingDealership ? (
@@ -576,17 +606,23 @@ export default function SettingsPage() {
               {/* Profile Picture Section */}
               <div className="space-y-4 pt-6 border-t">
                 <div className="space-y-2">
-                  <Label className="text-sm font-semibold">Profile Picture</Label>
+                  <Label className="text-sm font-semibold">
+                    Profile Picture
+                  </Label>
                   <p className="text-xs text-muted-foreground">
                     Upload a profile picture to display in the sidebar
                   </p>
-                  
+
                   {/* Current Profile Picture */}
                   {user?.profilePicture ? (
                     <div className="flex items-center gap-4">
                       <div className="w-20 h-20 rounded-lg overflow-hidden border-2 border-primary">
                         <img
-                          src={user.profilePicture.startsWith("http") ? user.profilePicture : `/${user.profilePicture}`}
+                          src={
+                            user.profilePicture.startsWith("http")
+                              ? user.profilePicture
+                              : `/${user.profilePicture}`
+                          }
                           alt="Profile"
                           className="w-full h-full object-cover"
                           onError={(e) => {
@@ -594,25 +630,32 @@ export default function SettingsPage() {
                             target.style.display = "none";
                             const parent = target.parentElement;
                             if (parent) {
-                              parent.innerHTML = '<div class="w-full h-full bg-muted flex items-center justify-center text-muted-foreground text-xs">No Image</div>';
+                              parent.innerHTML =
+                                '<div class="w-full h-full bg-muted flex items-center justify-center text-muted-foreground text-xs">No Image</div>';
                             }
                           }}
                         />
                       </div>
                       <div className="flex-1">
-                        <p className="text-xs text-muted-foreground mb-2">Current profile picture</p>
+                        <p className="text-xs text-muted-foreground mb-2">
+                          Current profile picture
+                        </p>
                       </div>
                     </div>
                   ) : (
                     <div className="w-20 h-20 rounded-lg bg-muted flex items-center justify-center border-2 border-dashed">
-                      <span className="text-xs text-muted-foreground">No picture</span>
+                      <span className="text-xs text-muted-foreground">
+                        No picture
+                      </span>
                     </div>
                   )}
 
                   {/* Preview of new picture */}
                   {profilePicturePreview && (
                     <div className="mt-2">
-                      <p className="text-xs text-muted-foreground mb-2">New picture preview:</p>
+                      <p className="text-xs text-muted-foreground mb-2">
+                        New picture preview:
+                      </p>
                       <div className="w-20 h-20 rounded-lg overflow-hidden border-2 border-primary">
                         <img
                           src={profilePicturePreview}
@@ -638,9 +681,17 @@ export default function SettingsPage() {
                             return;
                           }
                           // Validate file type
-                          const allowedTypes = ["image/jpeg", "image/jpg", "image/png", "image/webp", "image/gif"];
+                          const allowedTypes = [
+                            "image/jpeg",
+                            "image/jpg",
+                            "image/png",
+                            "image/webp",
+                            "image/gif",
+                          ];
                           if (!allowedTypes.includes(file.type)) {
-                            setError("Please upload a valid image file (JPEG, PNG, WebP, or GIF)");
+                            setError(
+                              "Please upload a valid image file (JPEG, PNG, WebP, or GIF)"
+                            );
                             return;
                           }
                           setProfilePictureFile(file);
@@ -1263,13 +1314,17 @@ export default function SettingsPage() {
                   <Input
                     value={dealershipForm.showroomNumber}
                     onChange={(e) =>
-                      setDealershipForm({ ...dealershipForm, showroomNumber: e.target.value })
+                      setDealershipForm({
+                        ...dealershipForm,
+                        showroomNumber: e.target.value,
+                      })
                     }
                     placeholder="e.g., +1234567890"
                     className="text-xs sm:text-sm"
                   />
                   <p className="text-xs text-muted-foreground">
-                    This number will be used in template parameters when sending messages
+                    This number will be used in template parameters when sending
+                    messages
                   </p>
                 </div>
                 <Button
@@ -1286,76 +1341,76 @@ export default function SettingsPage() {
                   Save Number
                 </Button>
               </div>
-              
+
               <div className="border-t pt-4">
-              {templates.length === 0 ? (
-                <p className="text-xs sm:text-sm text-muted-foreground text-center py-8">
-                  Loading templates...
-                </p>
-              ) : (
-                templates.map((template) => (
-                  <div
-                    key={template.id}
-                    className="border rounded-lg p-3 sm:p-4 space-y-3"
-                  >
-                    <div className="flex items-center justify-between gap-2">
-                      <h3 className="font-semibold text-sm sm:text-base truncate">
-                        {template.name}
-                      </h3>
-                      <span className="text-xs text-muted-foreground uppercase whitespace-nowrap">
-                        {template.type}
-                      </span>
-                    </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      <div className="space-y-1">
-                        <Label className="text-xs">Template ID</Label>
-                        <Input
-                          value={template.templateId || ""}
-                          onChange={(e) => {
-                            const updated = templates.map((t) =>
-                              t.id === template.id
-                                ? { ...t, templateId: e.target.value }
-                                : t
-                            );
-                            setTemplates(updated);
-                          }}
-                          placeholder="e.g., 728805729727726"
-                          className="text-xs sm:text-sm"
-                        />
-                      </div>
-                      <div className="space-y-1">
-                        <Label className="text-xs">Template Name</Label>
-                        <Input
-                          value={template.templateName || ""}
-                          onChange={(e) => {
-                            const updated = templates.map((t) =>
-                              t.id === template.id
-                                ? { ...t, templateName: e.target.value }
-                                : t
-                            );
-                            setTemplates(updated);
-                          }}
-                          placeholder="e.g., welcome_msg"
-                          className="text-xs sm:text-sm"
-                        />
-                      </div>
-                    </div>
-                    <Button
-                      size="sm"
-                      onClick={() => handleUpdateTemplate(template)}
-                      disabled={saving}
-                      className="w-full sm:w-auto text-xs sm:text-sm"
+                {templates.length === 0 ? (
+                  <p className="text-xs sm:text-sm text-muted-foreground text-center py-8">
+                    Loading templates...
+                  </p>
+                ) : (
+                  templates.map((template) => (
+                    <div
+                      key={template.id}
+                      className="border rounded-lg p-3 sm:p-4 space-y-3"
                     >
-                      {saving ? (
-                        <Loader2 className="mr-2 h-3 w-3 sm:h-4 sm:w-4 animate-spin" />
-                      ) : (
-                        <Save className="mr-2 h-3 w-3 sm:h-4 sm:w-4" />
-                      )}
-                      Save
-                    </Button>
-                  </div>
-                ))
-              )}
+                      <div className="flex items-center justify-between gap-2">
+                        <h3 className="font-semibold text-sm sm:text-base truncate">
+                          {template.name}
+                        </h3>
+                        <span className="text-xs text-muted-foreground uppercase whitespace-nowrap">
+                          {template.type}
+                        </span>
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div className="space-y-1">
+                          <Label className="text-xs">Template ID</Label>
+                          <Input
+                            value={template.templateId || ""}
+                            onChange={(e) => {
+                              const updated = templates.map((t) =>
+                                t.id === template.id
+                                  ? { ...t, templateId: e.target.value }
+                                  : t
+                              );
+                              setTemplates(updated);
+                            }}
+                            placeholder="e.g., 728805729727726"
+                            className="text-xs sm:text-sm"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <Label className="text-xs">Template Name</Label>
+                          <Input
+                            value={template.templateName || ""}
+                            onChange={(e) => {
+                              const updated = templates.map((t) =>
+                                t.id === template.id
+                                  ? { ...t, templateName: e.target.value }
+                                  : t
+                              );
+                              setTemplates(updated);
+                            }}
+                            placeholder="e.g., welcome_msg"
+                            className="text-xs sm:text-sm"
+                          />
+                        </div>
+                      </div>
+                      <Button
+                        size="sm"
+                        onClick={() => handleUpdateTemplate(template)}
+                        disabled={saving}
+                        className="w-full sm:w-auto text-xs sm:text-sm"
+                      >
+                        {saving ? (
+                          <Loader2 className="mr-2 h-3 w-3 sm:h-4 sm:w-4 animate-spin" />
+                        ) : (
+                          <Save className="mr-2 h-3 w-3 sm:h-4 sm:w-4" />
+                        )}
+                        Save
+                      </Button>
+                    </div>
+                  ))
+                )}
               </div>
             </CardContent>
           </Card>
@@ -1388,7 +1443,9 @@ export default function SettingsPage() {
                   </DialogTrigger>
                   <DialogContent className="max-w-md p-4 sm:p-6">
                     <DialogHeader>
-                      <DialogTitle className="text-lg">Add Lead Source</DialogTitle>
+                      <DialogTitle className="text-lg">
+                        Add Lead Source
+                      </DialogTitle>
                       <DialogDescription className="text-xs sm:text-sm">
                         Create a new lead source option
                       </DialogDescription>
@@ -1500,7 +1557,8 @@ export default function SettingsPage() {
                 <DialogTitle>Delete Lead Source</DialogTitle>
                 <DialogDescription>
                   Are you sure you want to delete this lead source? This action
-                  cannot be undone. If this lead source is being used by any digital enquiries, it cannot be deleted.
+                  cannot be undone. If this lead source is being used by any
+                  digital enquiries, it cannot be deleted.
                 </DialogDescription>
               </DialogHeader>
               <div className="flex flex-col sm:flex-row justify-end gap-2 mt-4">
@@ -1547,7 +1605,6 @@ export default function SettingsPage() {
             </DialogContent>
           </Dialog>
         </TabsContent>
-
       </Tabs>
     </div>
   );

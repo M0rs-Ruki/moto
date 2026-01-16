@@ -215,12 +215,21 @@ export default function DailyWalkinsPage() {
 
   useEffect(() => {
     mountedRef.current = true;
-    
+
     // Try to load from cache first
-    const cachedCategories = getCachedData<VehicleCategory[]>("cache_daily_walkins_categories", 60000);
-    const cachedVisitors = getCachedData<Visitor[]>("cache_daily_walkins_visitors", 30000);
-    const cachedSessions = getCachedData<Session[]>("cache_daily_walkins_sessions", 30000);
-    
+    const cachedCategories = getCachedData<VehicleCategory[]>(
+      "cache_daily_walkins_categories",
+      60000
+    );
+    const cachedVisitors = getCachedData<Visitor[]>(
+      "cache_daily_walkins_visitors",
+      30000
+    );
+    const cachedSessions = getCachedData<Session[]>(
+      "cache_daily_walkins_sessions",
+      30000
+    );
+
     if (cachedCategories && cachedVisitors && cachedSessions) {
       setCategories(cachedCategories);
       setVisitors(cachedVisitors);
@@ -228,7 +237,9 @@ export default function DailyWalkinsPage() {
       setLoading(false);
       // Only fetch in background if cache is older than 10 seconds
       try {
-        const cacheEntry = JSON.parse(sessionStorage.getItem("cache_daily_walkins_visitors") || '{}');
+        const cacheEntry = JSON.parse(
+          sessionStorage.getItem("cache_daily_walkins_visitors") || "{}"
+        );
         const cacheAge = Date.now() - (cacheEntry.timestamp || 0);
         if (cacheAge > 10000 && mountedRef.current && !fetchingRef.current) {
           setTimeout(() => {
@@ -243,7 +254,7 @@ export default function DailyWalkinsPage() {
     } else {
       fetchData();
     }
-    
+
     return () => {
       mountedRef.current = false;
     };
@@ -297,11 +308,15 @@ export default function DailyWalkinsPage() {
     applyFilters();
   }, [applyFilters]);
 
-  const fetchData = async (skip: number = 0, append: boolean = false, background: boolean = false) => {
+  const fetchData = async (
+    skip: number = 0,
+    append: boolean = false,
+    background: boolean = false
+  ) => {
     // Prevent duplicate fetches
     if (fetchingRef.current && !append) return;
     if (!append) fetchingRef.current = true;
-    
+
     try {
       if (!append && !background) {
         setLoading(true);
@@ -316,7 +331,10 @@ export default function DailyWalkinsPage() {
       ]);
 
       setCategories(categoriesRes.data.categories);
-      setCachedData("cache_daily_walkins_categories", categoriesRes.data.categories);
+      setCachedData(
+        "cache_daily_walkins_categories",
+        categoriesRes.data.categories
+      );
 
       // Append or replace visitors
       if (append) {
@@ -336,17 +354,23 @@ export default function DailyWalkinsPage() {
         // Don't reload sessions when loading more visitors
       } else {
         setAllSessions(sessionsRes.data.sessions || []);
-        setCachedData("cache_daily_walkins_sessions", sessionsRes.data.sessions || []);
+        setCachedData(
+          "cache_daily_walkins_sessions",
+          sessionsRes.data.sessions || []
+        );
         setSessionsHasMore(sessionsRes.data.hasMore || false);
         setSessionsTotal(
           sessionsRes.data.total || sessionsRes.data.sessions?.length || 0
         );
         setSessionsDisplayedCount(20);
       }
-      
+
       // Cache visitors
       if (!append) {
-        setCachedData("cache_daily_walkins_visitors", visitorsRes.data.visitors);
+        setCachedData(
+          "cache_daily_walkins_visitors",
+          visitorsRes.data.visitors
+        );
       }
 
       // Only fetch phone lookups when loading more data (not on initial load)
@@ -354,21 +378,23 @@ export default function DailyWalkinsPage() {
       if (append && visitorsRes.data.visitors.length > 0) {
         const newVisitors = visitorsRes.data.visitors;
         const lookups: Record<string, PhoneLookup> = { ...phoneLookups };
-        
+
         try {
           // Extract unique phone numbers
-          const phoneNumbers = [...new Set(newVisitors.map((v: Visitor) => v.whatsappNumber))];
-          
+          const phoneNumbers = [
+            ...new Set(newVisitors.map((v: Visitor) => v.whatsappNumber)),
+          ];
+
           // Batch lookup all phones in one request
-          const lookupRes = await apiClient.post('/phone-lookup', {
-            phones: phoneNumbers
+          const lookupRes = await apiClient.post("/phone-lookup", {
+            phones: phoneNumbers,
           });
-          
+
           // Merge batch results into lookups
           Object.assign(lookups, lookupRes.data);
           setPhoneLookups(lookups);
         } catch (error) {
-          console.error('Failed to batch lookup phones:', error);
+          console.error("Failed to batch lookup phones:", error);
           // Don't break the page if phone lookup fails
         }
       }
@@ -411,8 +437,8 @@ export default function DailyWalkinsPage() {
       const visitorIdParam = selectedVisitorId
         ? `&visitorId=${selectedVisitorId}`
         : "";
-      const response = await axios.get(
-        `/api/sessions?limit=20&skip=${skip}${visitorIdParam}`
+      const response = await apiClient.get(
+        `/sessions?limit=20&skip=${skip}${visitorIdParam}`
       );
 
       if (append) {
@@ -1351,7 +1377,9 @@ export default function DailyWalkinsPage() {
                       </>
                     ) : (
                       `See More (${
-                        hasMore ? totalVisitors - displayedCount : filteredVisitors.length - displayedCount
+                        hasMore
+                          ? totalVisitors - displayedCount
+                          : filteredVisitors.length - displayedCount
                       } remaining)`
                     )}
                   </Button>
@@ -1616,7 +1644,10 @@ export default function DailyWalkinsPage() {
                           </>
                         ) : (
                           `See More (${
-                            sessionsHasMore ? sessionsTotal - sessionsDisplayedCount : displayedSessions.length - sessionsDisplayedCount
+                            sessionsHasMore
+                              ? sessionsTotal - sessionsDisplayedCount
+                              : displayedSessions.length -
+                                sessionsDisplayedCount
                           } remaining)`
                         )}
                       </Button>

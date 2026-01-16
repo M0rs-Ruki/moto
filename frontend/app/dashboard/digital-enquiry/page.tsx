@@ -28,7 +28,15 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Plus, Loader2, MessageSquare, ChevronDown, Upload, FileSpreadsheet, Edit2 } from "lucide-react";
+import {
+  Plus,
+  Loader2,
+  MessageSquare,
+  ChevronDown,
+  Upload,
+  FileSpreadsheet,
+  Edit2,
+} from "lucide-react";
 import Link from "next/link";
 import * as XLSX from "xlsx";
 
@@ -104,7 +112,12 @@ export default function DigitalEnquiryPage() {
   const [uploadError, setUploadError] = useState("");
   const [uploadResults, setUploadResults] = useState<{
     summary: { total: number; success: number; errors: number };
-    results: Array<{ success: boolean; rowNumber: number; enquiryId?: string; error?: string }>;
+    results: Array<{
+      success: boolean;
+      rowNumber: number;
+      enquiryId?: string;
+      error?: string;
+    }>;
   } | null>(null);
 
   // Edit lead scope state
@@ -134,15 +147,20 @@ export default function DigitalEnquiryPage() {
 
   useEffect(() => {
     mountedRef.current = true;
-    
+
     // Try to load from cache first
-    const cached = getCachedData<DigitalEnquiry[]>("cache_digital_enquiry", 30000);
+    const cached = getCachedData<DigitalEnquiry[]>(
+      "cache_digital_enquiry",
+      30000
+    );
     if (cached) {
       setEnquiries(cached);
       setLoading(false);
       // Only fetch in background if cache is older than 10 seconds
       try {
-        const cacheEntry = JSON.parse(sessionStorage.getItem("cache_digital_enquiry") || '{}');
+        const cacheEntry = JSON.parse(
+          sessionStorage.getItem("cache_digital_enquiry") || "{}"
+        );
         const cacheAge = Date.now() - (cacheEntry.timestamp || 0);
         if (cacheAge > 10000 && mountedRef.current && !fetchingRef.current) {
           setTimeout(() => {
@@ -157,17 +175,21 @@ export default function DigitalEnquiryPage() {
     } else {
       fetchData(0, false);
     }
-    
+
     return () => {
       mountedRef.current = false;
     };
   }, []);
 
-  const fetchData = async (skip: number = 0, append: boolean = false, background: boolean = false) => {
+  const fetchData = async (
+    skip: number = 0,
+    append: boolean = false,
+    background: boolean = false
+  ) => {
     // Prevent duplicate fetches
     if (fetchingRef.current && !append) return;
     if (!append) fetchingRef.current = true;
-    
+
     try {
       if (!append && !background) {
         setLoading(true);
@@ -175,8 +197,10 @@ export default function DigitalEnquiryPage() {
         setLoadingMore(true);
       }
 
-      const response = await apiClient.get(`/digital-enquiry?limit=20&skip=${skip}`);
-      
+      const response = await apiClient.get(
+        `/digital-enquiry?limit=20&skip=${skip}`
+      );
+
       // Append or replace enquiries
       if (append) {
         setEnquiries([...enquiries, ...response.data.enquiries]);
@@ -186,7 +210,7 @@ export default function DigitalEnquiryPage() {
         // Cache the data
         setCachedData("cache_digital_enquiry", response.data.enquiries);
       }
-      
+
       setHasMore(response.data.hasMore || false);
       setTotalEnquiries(response.data.total || response.data.enquiries.length);
 
@@ -195,21 +219,25 @@ export default function DigitalEnquiryPage() {
       if (append && response.data.enquiries.length > 0) {
         const newEnquiries = response.data.enquiries;
         const lookups: Record<string, PhoneLookup> = { ...phoneLookups };
-        
+
         try {
           // Extract unique phone numbers
-          const phoneNumbers = [...new Set(newEnquiries.map((e: DigitalEnquiry) => e.whatsappNumber))];
-          
+          const phoneNumbers = [
+            ...new Set(
+              newEnquiries.map((e: DigitalEnquiry) => e.whatsappNumber)
+            ),
+          ];
+
           // Batch lookup all phones in one request
-          const lookupRes = await apiClient.post('/phone-lookup', {
-            phones: phoneNumbers
+          const lookupRes = await apiClient.post("/phone-lookup", {
+            phones: phoneNumbers,
           });
-          
+
           // Merge batch results into lookups
           Object.assign(lookups, lookupRes.data);
           setPhoneLookups(lookups);
         } catch (error) {
-          console.error('Failed to batch lookup phones:', error);
+          console.error("Failed to batch lookup phones:", error);
           // Don't break the page if phone lookup fails
         }
       }
@@ -228,7 +256,7 @@ export default function DigitalEnquiryPage() {
     // If we have more enquiries than displayed, just show more from what we already have
     if (enquiries.length > displayedCount) {
       setDisplayedCount(Math.min(displayedCount + 20, enquiries.length));
-    } 
+    }
     // Otherwise, fetch more from backend if available
     else if (hasMore) {
       const currentSkip = enquiries.length;
@@ -294,7 +322,9 @@ export default function DigitalEnquiryPage() {
     setUploadError("");
     setUploadResults(null);
 
-    const fileInput = e.currentTarget.querySelector('input[type="file"]') as HTMLInputElement;
+    const fileInput = e.currentTarget.querySelector(
+      'input[type="file"]'
+    ) as HTMLInputElement;
     const file = fileInput?.files?.[0];
 
     if (!file) {
@@ -306,7 +336,9 @@ export default function DigitalEnquiryPage() {
     // Validate file type
     const fileName = file.name.toLowerCase();
     if (!fileName.endsWith(".xlsx") && !fileName.endsWith(".xls")) {
-      setUploadError("Invalid file type. Please upload an Excel file (.xlsx or .xls)");
+      setUploadError(
+        "Invalid file type. Please upload an Excel file (.xlsx or .xls)"
+      );
       setUploading(false);
       return;
     }
@@ -336,10 +368,14 @@ export default function DigitalEnquiryPage() {
       // Validate required columns
       const firstRow = rows[0];
       const requiredColumns = ["Date", "Name", "WhatsApp Number", "Model"];
-      const missingColumns = requiredColumns.filter((col) => !(col in firstRow));
+      const missingColumns = requiredColumns.filter(
+        (col) => !(col in firstRow)
+      );
 
       if (missingColumns.length > 0) {
-        setUploadError(`Missing required columns: ${missingColumns.join(", ")}`);
+        setUploadError(
+          `Missing required columns: ${missingColumns.join(", ")}`
+        );
         setUploading(false);
         return;
       }
@@ -355,9 +391,13 @@ export default function DigitalEnquiryPage() {
         await fetchData(0, false); // Reset pagination after bulk upload
       }
     } catch (err: unknown) {
-      const error = err as { response?: { data?: { error?: string; details?: string } } };
+      const error = err as {
+        response?: { data?: { error?: string; details?: string } };
+      };
       setUploadError(
-        error.response?.data?.error || error.response?.data?.details || "Failed to upload file"
+        error.response?.data?.error ||
+          error.response?.data?.details ||
+          "Failed to upload file"
       );
     } finally {
       setUploading(false);
@@ -381,12 +421,15 @@ export default function DigitalEnquiryPage() {
     return new Date(dateString).toLocaleDateString();
   };
 
-  const handleUpdateLeadScope = async (enquiryId: string, newLeadScope: string) => {
+  const handleUpdateLeadScope = async (
+    enquiryId: string,
+    newLeadScope: string
+  ) => {
     if (updatingLeadScope) return;
-    
+
     setUpdatingLeadScope(true);
     try {
-      const response = await axios.patch(`/api/digital-enquiry/${enquiryId}`, {
+      const response = await apiClient.patch(`/digital-enquiry/${enquiryId}`, {
         leadScope: newLeadScope,
       });
 
@@ -496,8 +539,10 @@ export default function DigitalEnquiryPage() {
                   </thead>
                   <tbody>
                     {enquiries.slice(0, displayedCount).map((enquiry) => {
-                      const initials = `${enquiry.firstName.charAt(0)}${enquiry.lastName.charAt(0)}`.toUpperCase();
-                      
+                      const initials = `${enquiry.firstName.charAt(
+                        0
+                      )}${enquiry.lastName.charAt(0)}`.toUpperCase();
+
                       return (
                         <tr
                           key={enquiry.id}
@@ -559,7 +604,9 @@ export default function DigitalEnquiryPage() {
                               ) : (
                                 <>
                                   <Badge
-                                    className={getLeadScopeColor(enquiry.leadScope)}
+                                    className={getLeadScopeColor(
+                                      enquiry.leadScope
+                                    )}
                                     variant="secondary"
                                   >
                                     {enquiry.leadScope.toUpperCase()}
@@ -578,9 +625,10 @@ export default function DigitalEnquiryPage() {
                                   </Button>
                                 </>
                               )}
-                              {updatingLeadScope && editingLeadScope === enquiry.id && (
-                                <Loader2 className="h-3 w-3 animate-spin" />
-                              )}
+                              {updatingLeadScope &&
+                                editingLeadScope === enquiry.id && (
+                                  <Loader2 className="h-3 w-3 animate-spin" />
+                                )}
                             </div>
                           </td>
 
@@ -591,7 +639,9 @@ export default function DigitalEnquiryPage() {
                                 {enquiry.leadSource.name}
                               </Badge>
                             ) : (
-                              <span className="text-xs text-muted-foreground">None</span>
+                              <span className="text-xs text-muted-foreground">
+                                None
+                              </span>
                             )}
                           </td>
 
@@ -607,19 +657,24 @@ export default function DigitalEnquiryPage() {
                                 </p>
                               </div>
                             ) : (
-                              <span className="text-xs text-muted-foreground">None</span>
+                              <span className="text-xs text-muted-foreground">
+                                None
+                              </span>
                             )}
                           </td>
 
                           {/* Created Column */}
                           <td className="py-3 px-4">
-                            <p className="text-sm">{formatDate(enquiry.createdAt)}</p>
+                            <p className="text-sm">
+                              {formatDate(enquiry.createdAt)}
+                            </p>
                           </td>
 
                           {/* Actions Column */}
                           <td className="py-3 px-4">
                             <div className="flex items-center gap-2">
-                              {phoneLookups[enquiry.whatsappNumber]?.dailyWalkins && (
+                              {phoneLookups[enquiry.whatsappNumber]
+                                ?.dailyWalkins && (
                                 <Link
                                   href="/dashboard/daily-walkins"
                                   onClick={(e) => e.stopPropagation()}
@@ -632,7 +687,8 @@ export default function DigitalEnquiryPage() {
                                   </Badge>
                                 </Link>
                               )}
-                              {phoneLookups[enquiry.whatsappNumber]?.deliveryUpdate && (
+                              {phoneLookups[enquiry.whatsappNumber]
+                                ?.deliveryUpdate && (
                                 <Link
                                   href="/dashboard/delivery-update"
                                   onClick={(e) => e.stopPropagation()}
@@ -655,7 +711,7 @@ export default function DigitalEnquiryPage() {
               </div>
             </CardContent>
           </Card>
-          {(hasMore || enquiries.length > displayedCount) ? (
+          {hasMore || enquiries.length > displayedCount ? (
             <div className="flex justify-center pt-4">
               <Button
                 variant="outline"
@@ -669,7 +725,11 @@ export default function DigitalEnquiryPage() {
                     Loading...
                   </>
                 ) : (
-                  `See More (${hasMore ? totalEnquiries - displayedCount : enquiries.length - displayedCount} remaining)`
+                  `See More (${
+                    hasMore
+                      ? totalEnquiries - displayedCount
+                      : enquiries.length - displayedCount
+                  } remaining)`
                 )}
               </Button>
             </div>
@@ -1042,12 +1102,16 @@ export default function DigitalEnquiryPage() {
       </Dialog>
 
       {/* Bulk Upload Dialog */}
-      <Dialog open={bulkUploadDialogOpen} onOpenChange={setBulkUploadDialogOpen}>
+      <Dialog
+        open={bulkUploadDialogOpen}
+        onOpenChange={setBulkUploadDialogOpen}
+      >
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Bulk Upload Digital Enquiries</DialogTitle>
             <DialogDescription>
-              Upload an Excel file (.xlsx or .xls) with columns: Date, Name, WhatsApp Number, Location, Model, Source
+              Upload an Excel file (.xlsx or .xls) with columns: Date, Name,
+              WhatsApp Number, Location, Model, Source
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleBulkUpload} className="space-y-4 mt-4">
@@ -1062,9 +1126,14 @@ export default function DigitalEnquiryPage() {
                 <div className="flex items-center justify-between">
                   <h3 className="font-semibold text-sm">Upload Results</h3>
                   <Badge
-                    variant={uploadResults.summary.errors === 0 ? "default" : "secondary"}
+                    variant={
+                      uploadResults.summary.errors === 0
+                        ? "default"
+                        : "secondary"
+                    }
                   >
-                    {uploadResults.summary.success} / {uploadResults.summary.total} successful
+                    {uploadResults.summary.success} /{" "}
+                    {uploadResults.summary.total} successful
                   </Badge>
                 </div>
                 {uploadResults.summary.errors > 0 && (
@@ -1076,8 +1145,13 @@ export default function DigitalEnquiryPage() {
                       {uploadResults.results
                         .filter((r) => !r.success)
                         .map((result, idx) => (
-                          <div key={idx} className="p-2 bg-background rounded border-l-2 border-destructive">
-                            <span className="font-medium">Row {result.rowNumber}:</span>{" "}
+                          <div
+                            key={idx}
+                            className="p-2 bg-background rounded border-l-2 border-destructive"
+                          >
+                            <span className="font-medium">
+                              Row {result.rowNumber}:
+                            </span>{" "}
                             {result.error}
                           </div>
                         ))}
@@ -1086,8 +1160,9 @@ export default function DigitalEnquiryPage() {
                 )}
                 {uploadResults.summary.success > 0 && (
                   <p className="text-xs text-muted-foreground">
-                    {uploadResults.summary.success} enquiries created successfully. All enquiries
-                    have been set to "Cold" lead scope.
+                    {uploadResults.summary.success} enquiries created
+                    successfully. All enquiries have been set to "Cold" lead
+                    scope.
                   </p>
                 )}
               </div>
@@ -1109,7 +1184,8 @@ export default function DigitalEnquiryPage() {
                 <FileSpreadsheet className="h-5 w-5 text-muted-foreground" />
               </div>
               <p className="text-xs text-muted-foreground">
-                Required columns: Date, Name, WhatsApp Number, Location, Model, Source
+                Required columns: Date, Name, WhatsApp Number, Location, Model,
+                Source
               </p>
             </div>
 
@@ -1128,7 +1204,11 @@ export default function DigitalEnquiryPage() {
                 {uploadResults ? "Close" : "Cancel"}
               </Button>
               {!uploadResults && (
-                <Button type="submit" disabled={uploading} className="w-full sm:w-auto">
+                <Button
+                  type="submit"
+                  disabled={uploading}
+                  className="w-full sm:w-auto"
+                >
                   {uploading ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
