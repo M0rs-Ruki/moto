@@ -2,7 +2,7 @@ import { Router, Request, Response } from "express";
 import prisma from "../lib/db";
 import { authenticate, asyncHandler } from "../middleware/auth";
 
-const router = Router();
+const router: Router = Router();
 
 const DEFAULT_LEAD_SOURCES = [
   "Ads",

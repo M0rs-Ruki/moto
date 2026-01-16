@@ -102,7 +102,7 @@ export class FieldInquiryRepository extends BaseRepository<FieldInquiryWithRelat
     id: string,
     data: Prisma.FieldInquiryUpdateInput
   ): Promise<FieldInquiryWithRelations> {
-    return this.update(
+    return super.update(
       this.prisma.fieldInquiry,
       { id },
       data,

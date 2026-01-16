@@ -73,7 +73,7 @@ export function validateRequiredColumns(
 /**
  * Parse Excel date value
  */
-export function parseExcelDate(dateValue: string | number | Date): Date | undefined {
+export function parseExcelDate(dateValue?: string | number | Date): Date | undefined {
   if (!dateValue) {
     return undefined;
   }

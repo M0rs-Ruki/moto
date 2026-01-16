@@ -195,7 +195,7 @@ export class VisitorRepository extends BaseRepository<VisitorWithRelations> {
     id: string,
     data: Prisma.VisitorUpdateInput
   ): Promise<VisitorWithRelations> {
-    return this.update(
+    return super.update(
       this.prisma.visitor,
       { id },
       data,

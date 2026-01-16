@@ -2,7 +2,7 @@ import { Router } from "express";
 import { DigitalEnquiryController } from "../controllers/digital-enquiry.controller";
 import { authenticate, asyncHandler } from "../middleware/auth";
 
-const router = Router();
+const router: Router = Router();
 const controller = new DigitalEnquiryController();
 
 // Create digital enquiry

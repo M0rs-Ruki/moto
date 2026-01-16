@@ -2,7 +2,7 @@ import { Router, Request, Response } from "express";
 import prisma from "../lib/db";
 import { asyncHandler } from "../middleware/auth";
 
-const router = Router();
+const router: Router = Router();
 
 // Database test endpoint
 router.get(

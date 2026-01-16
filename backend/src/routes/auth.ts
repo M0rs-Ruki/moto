@@ -1,4 +1,4 @@
-import { Router, Request, Response } from "express";
+import { Router, Request, Response, Express } from "express";
 import bcrypt from "bcryptjs";
 import multer from "multer";
 import { put, del } from "@vercel/blob";
@@ -9,7 +9,7 @@ import prisma from "../lib/db";
 import { generateToken, setAuthCookie, clearAuthCookie } from "../lib/auth";
 import { authenticate, asyncHandler } from "../middleware/auth";
 
-const router = Router();
+const router: Router = Router();
 const upload = multer({ storage: multer.memoryStorage() });
 
 // Login

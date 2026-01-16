@@ -3,7 +3,7 @@ import prisma from "../lib/db";
 import { whatsappClient } from "../lib/whatsapp";
 import { authenticate, asyncHandler } from "../middleware/auth";
 
-const router = Router();
+const router: Router = Router();
 
 // Create delivery ticket
 router.post(

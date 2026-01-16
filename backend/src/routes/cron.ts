@@ -3,7 +3,7 @@ import prisma from "../lib/db";
 import { whatsappClient } from "../lib/whatsapp";
 import { asyncHandler } from "../middleware/auth";
 
-const router = Router();
+const router: Router = Router();
 
 const BATCH_SIZE = 100;
 

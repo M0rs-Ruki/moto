@@ -2,7 +2,7 @@ import { Router } from "express";
 import { FieldInquiryController } from "../controllers/field-inquiry.controller";
 import { authenticate, asyncHandler } from "../middleware/auth";
 
-const router = Router();
+const router: Router = Router();
 const controller = new FieldInquiryController();
 
 // Create field inquiry

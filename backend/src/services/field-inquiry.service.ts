@@ -176,7 +176,7 @@ export class FieldInquiryService {
     const firstRow = rows[0];
     const columnValidation = validateRequiredColumns(
       firstRow,
-      EXCEL.REQUIRED_COLUMNS.FIELD_INQUIRY
+      Array.from(EXCEL.REQUIRED_COLUMNS.FIELD_INQUIRY)
     );
 
     if (!columnValidation.valid) {

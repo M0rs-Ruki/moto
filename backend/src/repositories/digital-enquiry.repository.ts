@@ -102,7 +102,7 @@ export class DigitalEnquiryRepository extends BaseRepository<DigitalEnquiryWithR
     id: string,
     data: Prisma.DigitalEnquiryUpdateInput
   ): Promise<DigitalEnquiryWithRelations> {
-    return this.update(
+    return super.update(
       this.prisma.digitalEnquiry,
       { id },
       data,

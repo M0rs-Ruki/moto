@@ -177,7 +177,7 @@ export class DigitalEnquiryService {
     const firstRow = rows[0];
     const columnValidation = validateRequiredColumns(
       firstRow,
-      EXCEL.REQUIRED_COLUMNS.DIGITAL_ENQUIRY
+      Array.from(EXCEL.REQUIRED_COLUMNS.DIGITAL_ENQUIRY)
     );
 
     if (!columnValidation.valid) {
