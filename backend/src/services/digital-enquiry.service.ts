@@ -1,8 +1,15 @@
 import { DigitalEnquiryRepository } from "../repositories/digital-enquiry.repository";
 import { CreateDigitalEnquiryDto } from "../dto/request/create-digital-enquiry.dto";
 import { UpdateLeadScopeDto } from "../dto/request/update-lead-scope.dto";
-import { BulkUploadProcessingResult, BulkUploadSummary } from "../dto/request/bulk-upload.dto";
-import { DigitalEnquiryWithRelations, CreateDigitalEnquiryResponse, UpdateLeadScopeResponse } from "../dto/response/digital-enquiry.response";
+import {
+  BulkUploadProcessingResult,
+  BulkUploadSummary,
+} from "../dto/request/bulk-upload.dto";
+import {
+  DigitalEnquiryWithRelations,
+  CreateDigitalEnquiryResponse,
+  UpdateLeadScopeResponse,
+} from "../dto/response/digital-enquiry.response";
 import { whatsappClient } from "../lib/whatsapp";
 import { formatPhoneNumber } from "../utils/phone-formatter";
 import { validateRequiredColumns, parseExcelDate } from "../utils/excel-parser";
@@ -25,10 +32,11 @@ export class DigitalEnquiryService {
     dealershipId: string
   ): Promise<CreateDigitalEnquiryResponse> {
     // Check if enquiry already exists
-    const existingEnquiry = await this.repository.findByWhatsAppNumberAndDealership(
-      data.whatsappNumber,
-      dealershipId
-    );
+    const existingEnquiry =
+      await this.repository.findByWhatsAppNumberAndDealership(
+        data.whatsappNumber,
+        dealershipId
+      );
 
     // Create digital enquiry
     const enquiry = await this.repository.createEnquiry({
@@ -43,9 +51,15 @@ export class DigitalEnquiryService {
       dealership: {
         connect: { id: dealershipId },
       },
-      leadSource: data.leadSourceId ? { connect: { id: data.leadSourceId } } : undefined,
-      model: data.interestedModelId ? { connect: { id: data.interestedModelId } } : undefined,
-      variant: data.interestedVariantId ? { connect: { id: data.interestedVariantId } } : undefined,
+      leadSource: data.leadSourceId
+        ? { connect: { id: data.leadSourceId } }
+        : undefined,
+      model: data.interestedModelId
+        ? { connect: { id: data.interestedModelId } }
+        : undefined,
+      variant: data.interestedVariantId
+        ? { connect: { id: data.interestedVariantId } }
+        : undefined,
     });
 
     // Get WhatsApp template
@@ -57,7 +71,8 @@ export class DigitalEnquiryService {
       },
     });
 
-    let messageStatus: "sent" | "failed" | "not_sent" | "not_configured" = "not_sent";
+    let messageStatus: "sent" | "failed" | "not_sent" | "not_configured" =
+      "not_sent";
     let messageError: string | null = null;
 
     if (template && template.templateId && template.templateName) {
@@ -73,7 +88,8 @@ export class DigitalEnquiryService {
       } catch (error: unknown) {
         console.error("Failed to send digital enquiry message:", error);
         messageStatus = "failed";
-        messageError = (error as Error).message || "Failed to send digital enquiry message";
+        messageError =
+          (error as Error).message || "Failed to send digital enquiry message";
       }
     } else if (template && (!template.templateId || !template.templateName)) {
       messageStatus = "not_configured";
@@ -112,7 +128,10 @@ export class DigitalEnquiryService {
     const offset = skip || PAGINATION.DEFAULT_SKIP;
 
     const [enquiries, total] = await Promise.all([
-      this.repository.findByDealership(dealershipId, { limit: take, skip: offset }),
+      this.repository.findByDealership(dealershipId, {
+        limit: take,
+        skip: offset,
+      }),
       this.repository.countByDealership(dealershipId),
     ]);
 
@@ -136,7 +155,10 @@ export class DigitalEnquiryService {
     dealershipId: string
   ): Promise<UpdateLeadScopeResponse> {
     // Verify enquiry exists and belongs to dealership
-    const enquiry = await this.repository.findByIdAndDealership(id, dealershipId);
+    const enquiry = await this.repository.findByIdAndDealership(
+      id,
+      dealershipId
+    );
     if (!enquiry) {
       throw new Error("Enquiry not found");
     }
@@ -182,41 +204,44 @@ export class DigitalEnquiryService {
 
     if (!columnValidation.valid) {
       throw new Error(
-        `Missing required columns: ${columnValidation.missingColumns.join(", ")}`
+        `Missing required columns: ${columnValidation.missingColumns.join(
+          ", "
+        )}`
       );
     }
 
     // Get default lead source and models
-    const [defaultLeadSource, allModels, allLeadSources, template] = await Promise.all([
-      prisma.leadSource.findFirst({
-        where: {
-          dealershipId,
-          isDefault: true,
-        },
-      }),
-      prisma.vehicleModel.findMany({
-        where: {
-          category: {
+    const [defaultLeadSource, allModels, allLeadSources, template] =
+      await Promise.all([
+        prisma.leadSource.findFirst({
+          where: {
+            dealershipId,
+            isDefault: true,
+          },
+        }),
+        prisma.vehicleModel.findMany({
+          where: {
+            category: {
+              dealershipId,
+            },
+          },
+          include: {
+            category: true,
+          },
+        }),
+        prisma.leadSource.findMany({
+          where: {
             dealershipId,
           },
-        },
-        include: {
-          category: true,
-        },
-      }),
-      prisma.leadSource.findMany({
-        where: {
-          dealershipId,
-        },
-      }),
-      prisma.whatsAppTemplate.findFirst({
-        where: {
-          dealershipId,
-          type: "digital_enquiry",
-          section: "digital_enquiry",
-        },
-      }),
-    ]);
+        }),
+        prisma.whatsAppTemplate.findFirst({
+          where: {
+            dealershipId,
+            type: "digital_enquiry",
+            section: "digital_enquiry",
+          },
+        }),
+      ]);
 
     const results: BulkUploadProcessingResult[] = [];
     let successCount = 0;
@@ -281,10 +306,11 @@ export class DigitalEnquiryService {
         const address = row.Location ? String(row.Location).trim() : undefined;
 
         // Check if enquiry already exists
-        const existingEnquiry = await this.repository.findByWhatsAppNumberAndDealership(
-          whatsappNumber,
-          dealershipId
-        );
+        const existingEnquiry =
+          await this.repository.findByWhatsAppNumberAndDealership(
+            whatsappNumber,
+            dealershipId
+          );
 
         // Create digital enquiry
         const enquiry = await this.repository.createEnquiry({
@@ -301,8 +327,12 @@ export class DigitalEnquiryService {
           dealership: {
             connect: { id: dealershipId },
           },
-          leadSource: leadSourceId ? { connect: { id: leadSourceId } } : undefined,
-          model: matchedModel ? { connect: { id: matchedModel.id } } : undefined,
+          leadSource: leadSourceId
+            ? { connect: { id: leadSourceId } }
+            : undefined,
+          model: matchedModel
+            ? { connect: { id: matchedModel.id } }
+            : undefined,
           variant: undefined,
         });
 
@@ -317,7 +347,10 @@ export class DigitalEnquiryService {
               parameters: [],
             });
           } catch (error: unknown) {
-            console.error(`Failed to send WhatsApp message for row ${rowNumber}:`, error);
+            console.error(
+              `Failed to send WhatsApp message for row ${rowNumber}:`,
+              error
+            );
             // Don't fail the row if message sending fails
           }
         }

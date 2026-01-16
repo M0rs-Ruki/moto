@@ -36,13 +36,10 @@ export class DigitalEnquiryRepository extends BaseRepository<DigitalEnquiryWithR
     whatsappNumber: string,
     dealershipId: string
   ): Promise<DigitalEnquiryWithRelations | null> {
-    return this.findOne(
-      this.prisma.digitalEnquiry,
-      {
-        whatsappNumber,
-        dealershipId,
-      }
-    );
+    return this.findOne(this.prisma.digitalEnquiry, {
+      whatsappNumber,
+      dealershipId,
+    });
   }
 
   /**
@@ -102,20 +99,15 @@ export class DigitalEnquiryRepository extends BaseRepository<DigitalEnquiryWithR
     id: string,
     data: Prisma.DigitalEnquiryUpdateInput
   ): Promise<DigitalEnquiryWithRelations> {
-    return super.update(
-      this.prisma.digitalEnquiry,
-      { id },
-      data,
-      {
-        include: {
-          leadSource: true,
-          model: {
-            include: {
-              category: true,
-            },
+    return super.update(this.prisma.digitalEnquiry, { id }, data, {
+      include: {
+        leadSource: true,
+        model: {
+          include: {
+            category: true,
           },
         },
-      }
-    ) as Promise<DigitalEnquiryWithRelations>;
+      },
+    }) as Promise<DigitalEnquiryWithRelations>;
   }
 }

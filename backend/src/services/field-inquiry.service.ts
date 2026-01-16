@@ -1,8 +1,15 @@
 import { FieldInquiryRepository } from "../repositories/field-inquiry.repository";
 import { CreateFieldInquiryDto } from "../dto/request/create-field-inquiry.dto";
 import { UpdateLeadScopeDto } from "../dto/request/update-lead-scope.dto";
-import { BulkUploadProcessingResult, BulkUploadSummary } from "../dto/request/bulk-upload.dto";
-import { FieldInquiryWithRelations, CreateFieldInquiryResponse, UpdateLeadScopeResponse } from "../dto/response/field-inquiry.response";
+import {
+  BulkUploadProcessingResult,
+  BulkUploadSummary,
+} from "../dto/request/bulk-upload.dto";
+import {
+  FieldInquiryWithRelations,
+  CreateFieldInquiryResponse,
+  UpdateLeadScopeResponse,
+} from "../dto/response/field-inquiry.response";
 import { whatsappClient } from "../lib/whatsapp";
 import { validateRequiredColumns, parseExcelDate } from "../utils/excel-parser";
 import { BulkUploadRequest, ExcelRow } from "../dto/request/bulk-upload.dto";
@@ -24,10 +31,11 @@ export class FieldInquiryService {
     dealershipId: string
   ): Promise<CreateFieldInquiryResponse> {
     // Check if enquiry already exists
-    const existingInquiry = await this.repository.findByWhatsAppNumberAndDealership(
-      data.whatsappNumber,
-      dealershipId
-    );
+    const existingInquiry =
+      await this.repository.findByWhatsAppNumberAndDealership(
+        data.whatsappNumber,
+        dealershipId
+      );
 
     // Create field inquiry
     const enquiry = await this.repository.createInquiry({
@@ -42,9 +50,15 @@ export class FieldInquiryService {
       dealership: {
         connect: { id: dealershipId },
       },
-      leadSource: data.leadSourceId ? { connect: { id: data.leadSourceId } } : undefined,
-      model: data.interestedModelId ? { connect: { id: data.interestedModelId } } : undefined,
-      variant: data.interestedVariantId ? { connect: { id: data.interestedVariantId } } : undefined,
+      leadSource: data.leadSourceId
+        ? { connect: { id: data.leadSourceId } }
+        : undefined,
+      model: data.interestedModelId
+        ? { connect: { id: data.interestedModelId } }
+        : undefined,
+      variant: data.interestedVariantId
+        ? { connect: { id: data.interestedVariantId } }
+        : undefined,
     });
 
     // Get WhatsApp template
@@ -56,7 +70,8 @@ export class FieldInquiryService {
       },
     });
 
-    let messageStatus: "sent" | "failed" | "not_sent" | "not_configured" = "not_sent";
+    let messageStatus: "sent" | "failed" | "not_sent" | "not_configured" =
+      "not_sent";
     let messageError: string | null = null;
 
     if (template && template.templateId && template.templateName) {
@@ -72,7 +87,8 @@ export class FieldInquiryService {
       } catch (error: unknown) {
         console.error("Failed to send field inquiry message:", error);
         messageStatus = "failed";
-        messageError = (error as Error).message || "Failed to send field inquiry message";
+        messageError =
+          (error as Error).message || "Failed to send field inquiry message";
       }
     } else if (template && (!template.templateId || !template.templateName)) {
       messageStatus = "not_configured";
@@ -111,7 +127,10 @@ export class FieldInquiryService {
     const offset = skip || PAGINATION.DEFAULT_SKIP;
 
     const [enquiries, total] = await Promise.all([
-      this.repository.findByDealership(dealershipId, { limit: take, skip: offset }),
+      this.repository.findByDealership(dealershipId, {
+        limit: take,
+        skip: offset,
+      }),
       this.repository.countByDealership(dealershipId),
     ]);
 
@@ -135,7 +154,10 @@ export class FieldInquiryService {
     dealershipId: string
   ): Promise<UpdateLeadScopeResponse> {
     // Verify enquiry exists and belongs to dealership
-    const enquiry = await this.repository.findByIdAndDealership(id, dealershipId);
+    const enquiry = await this.repository.findByIdAndDealership(
+      id,
+      dealershipId
+    );
     if (!enquiry) {
       throw new Error("Inquiry not found");
     }
@@ -181,41 +203,44 @@ export class FieldInquiryService {
 
     if (!columnValidation.valid) {
       throw new Error(
-        `Missing required columns: ${columnValidation.missingColumns.join(", ")}`
+        `Missing required columns: ${columnValidation.missingColumns.join(
+          ", "
+        )}`
       );
     }
 
     // Get default lead source and models
-    const [defaultLeadSource, allModels, allLeadSources, template] = await Promise.all([
-      prisma.leadSource.findFirst({
-        where: {
-          dealershipId,
-          isDefault: true,
-        },
-      }),
-      prisma.vehicleModel.findMany({
-        where: {
-          category: {
+    const [defaultLeadSource, allModels, allLeadSources, template] =
+      await Promise.all([
+        prisma.leadSource.findFirst({
+          where: {
+            dealershipId,
+            isDefault: true,
+          },
+        }),
+        prisma.vehicleModel.findMany({
+          where: {
+            category: {
+              dealershipId,
+            },
+          },
+          include: {
+            category: true,
+          },
+        }),
+        prisma.leadSource.findMany({
+          where: {
             dealershipId,
           },
-        },
-        include: {
-          category: true,
-        },
-      }),
-      prisma.leadSource.findMany({
-        where: {
-          dealershipId,
-        },
-      }),
-      prisma.whatsAppTemplate.findFirst({
-        where: {
-          dealershipId,
-          type: "field_inquiry",
-          section: "field_inquiry",
-        },
-      }),
-    ]);
+        }),
+        prisma.whatsAppTemplate.findFirst({
+          where: {
+            dealershipId,
+            type: "field_inquiry",
+            section: "field_inquiry",
+          },
+        }),
+      ]);
 
     const results: BulkUploadProcessingResult[] = [];
     let successCount = 0;
@@ -280,10 +305,11 @@ export class FieldInquiryService {
         const address = row.Location ? String(row.Location).trim() : undefined;
 
         // Check if enquiry already exists
-        const existingInquiry = await this.repository.findByWhatsAppNumberAndDealership(
-          whatsappNumber,
-          dealershipId
-        );
+        const existingInquiry =
+          await this.repository.findByWhatsAppNumberAndDealership(
+            whatsappNumber,
+            dealershipId
+          );
 
         // Create field inquiry
         const enquiry = await this.repository.createInquiry({
@@ -300,8 +326,12 @@ export class FieldInquiryService {
           dealership: {
             connect: { id: dealershipId },
           },
-          leadSource: leadSourceId ? { connect: { id: leadSourceId } } : undefined,
-          model: matchedModel ? { connect: { id: matchedModel.id } } : undefined,
+          leadSource: leadSourceId
+            ? { connect: { id: leadSourceId } }
+            : undefined,
+          model: matchedModel
+            ? { connect: { id: matchedModel.id } }
+            : undefined,
           variant: undefined,
         });
 
@@ -316,7 +346,10 @@ export class FieldInquiryService {
               parameters: [],
             });
           } catch (error: unknown) {
-            console.error(`Failed to send WhatsApp message for row ${rowNumber}:`, error);
+            console.error(
+              `Failed to send WhatsApp message for row ${rowNumber}:`,
+              error
+            );
             // Don't fail the row if message sending fails
           }
         }

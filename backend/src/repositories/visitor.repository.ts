@@ -65,9 +65,11 @@ export class VisitorRepository extends BaseRepository<VisitorWithRelations> {
       }
     );
 
-    return allVisitors.find(
-      (v) => normalizePhoneNumber(v.whatsappNumber) === normalizedPhone
-    ) || null;
+    return (
+      allVisitors.find(
+        (v) => normalizePhoneNumber(v.whatsappNumber) === normalizedPhone
+      ) || null
+    );
   }
 
   /**
@@ -195,26 +197,21 @@ export class VisitorRepository extends BaseRepository<VisitorWithRelations> {
     id: string,
     data: Prisma.VisitorUpdateInput
   ): Promise<VisitorWithRelations> {
-    return super.update(
-      this.prisma.visitor,
-      { id },
-      data,
-      {
-        include: {
-          sessions: {
-            orderBy: { createdAt: "desc" },
-          },
-          interests: {
-            include: {
-              model: {
-                include: {
-                  category: true,
-                },
+    return super.update(this.prisma.visitor, { id }, data, {
+      include: {
+        sessions: {
+          orderBy: { createdAt: "desc" },
+        },
+        interests: {
+          include: {
+            model: {
+              include: {
+                category: true,
               },
             },
           },
         },
-      }
-    ) as Promise<VisitorWithRelations>;
+      },
+    }) as Promise<VisitorWithRelations>;
   }
 }

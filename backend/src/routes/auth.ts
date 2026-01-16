@@ -53,7 +53,9 @@ router.post(
     } catch (error) {
       console.error("Token generation error:", error);
       throw new Error(
-        `Failed to generate token: ${error instanceof Error ? error.message : String(error)}`
+        `Failed to generate token: ${
+          error instanceof Error ? error.message : String(error)
+        }`
       );
     }
 
@@ -78,7 +80,8 @@ router.post(
   "/register",
   upload.single("profilePicture"),
   asyncHandler(async (req: Request, res: Response) => {
-    const { email, password, dealershipName, dealershipLocation, theme } = req.body;
+    const { email, password, dealershipName, dealershipLocation, theme } =
+      req.body;
     const profilePictureFile = req.file;
 
     // Validation
@@ -121,7 +124,8 @@ router.post(
       ];
       if (!allowedTypes.includes(profilePictureFile.mimetype)) {
         res.status(400).json({
-          error: "Invalid file type. Please upload a JPEG, PNG, WebP, or GIF image.",
+          error:
+            "Invalid file type. Please upload a JPEG, PNG, WebP, or GIF image.",
         });
         return;
       }
@@ -139,7 +143,8 @@ router.post(
       const isVercel = process.env.VERCEL === "1";
       const blobToken = process.env.BLOB_READ_WRITE_TOKEN;
       const fileExtension =
-        profilePictureFile.originalname.split(".").pop()?.toLowerCase() || "jpg";
+        profilePictureFile.originalname.split(".").pop()?.toLowerCase() ||
+        "jpg";
 
       // On Vercel, we MUST use Blob Storage (filesystem is read-only)
       if (isVercel) {
@@ -178,7 +183,12 @@ router.post(
         // Local development without token - use local filesystem
         const tempId = `temp-${Date.now()}`;
         const filename = `${tempId}.${fileExtension}`;
-        const filepath = join(process.cwd(), "public", "profile-pictures", filename);
+        const filepath = join(
+          process.cwd(),
+          "public",
+          "profile-pictures",
+          filename
+        );
 
         // Ensure directory exists
         const dirPath = join(process.cwd(), "public", "profile-pictures");
@@ -209,13 +219,18 @@ router.post(
       const isVercel = process.env.VERCEL === "1";
       const blobToken = process.env.BLOB_READ_WRITE_TOKEN;
 
-      if ((isVercel || blobToken) && profilePicturePath.startsWith("https://")) {
+      if (
+        (isVercel || blobToken) &&
+        profilePicturePath.startsWith("https://")
+      ) {
         // Vercel Blob: Re-upload with new filename
         if (profilePictureFile && profilePictureFile.size > 0) {
           const urlParts = profilePicturePath.split(".");
           const fileExtension =
             urlParts[urlParts.length - 1]?.split("?")[0] || "jpg";
-          const newFilename = `profile-pictures/${user.id}-${Date.now()}.${fileExtension}`;
+          const newFilename = `profile-pictures/${
+            user.id
+          }-${Date.now()}.${fileExtension}`;
 
           const blob = await put(newFilename, profilePictureFile.buffer, {
             access: "public",
@@ -421,7 +436,8 @@ router.post(
     ];
     if (!allowedTypes.includes(file.mimetype)) {
       res.status(400).json({
-        error: "Invalid file type. Please upload a JPEG, PNG, WebP, or GIF image.",
+        error:
+          "Invalid file type. Please upload a JPEG, PNG, WebP, or GIF image.",
       });
       return;
     }
@@ -436,7 +452,8 @@ router.post(
     }
 
     // Get file extension
-    const fileExtension = file.originalname.split(".").pop()?.toLowerCase() || "jpg";
+    const fileExtension =
+      file.originalname.split(".").pop()?.toLowerCase() || "jpg";
 
     // Generate unique filename
     const timestamp = Date.now();
@@ -550,4 +567,3 @@ router.post(
 );
 
 export default router;
-

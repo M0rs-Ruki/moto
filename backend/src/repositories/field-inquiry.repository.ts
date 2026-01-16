@@ -36,13 +36,10 @@ export class FieldInquiryRepository extends BaseRepository<FieldInquiryWithRelat
     whatsappNumber: string,
     dealershipId: string
   ): Promise<FieldInquiryWithRelations | null> {
-    return this.findOne(
-      this.prisma.fieldInquiry,
-      {
-        whatsappNumber,
-        dealershipId,
-      }
-    );
+    return this.findOne(this.prisma.fieldInquiry, {
+      whatsappNumber,
+      dealershipId,
+    });
   }
 
   /**
@@ -102,20 +99,15 @@ export class FieldInquiryRepository extends BaseRepository<FieldInquiryWithRelat
     id: string,
     data: Prisma.FieldInquiryUpdateInput
   ): Promise<FieldInquiryWithRelations> {
-    return super.update(
-      this.prisma.fieldInquiry,
-      { id },
-      data,
-      {
-        include: {
-          leadSource: true,
-          model: {
-            include: {
-              category: true,
-            },
+    return super.update(this.prisma.fieldInquiry, { id }, data, {
+      include: {
+        leadSource: true,
+        model: {
+          include: {
+            category: true,
           },
         },
-      }
-    ) as Promise<FieldInquiryWithRelations>;
+      },
+    }) as Promise<FieldInquiryWithRelations>;
   }
 }
