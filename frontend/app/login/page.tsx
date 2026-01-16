@@ -54,8 +54,8 @@ function LoginContent() {
       if (response.data.success) {
         // Apply theme immediately
         localStorage.setItem("theme", response.data.user.theme);
-        router.push(redirect);
-        router.refresh();
+        // Full page reload to ensure cookie is available to middleware
+        window.location.href = redirect;
       }
     } catch (err: any) {
       setError(err.response?.data?.error || "Login failed");
@@ -103,8 +103,8 @@ function LoginContent() {
       if (response.data.success) {
         // Apply theme immediately
         localStorage.setItem("theme", response.data.user.theme);
-        router.push("/dashboard");
-        router.refresh();
+        // Full page reload to ensure cookie is available to middleware
+        window.location.href = "/dashboard";
       }
     } catch (err: any) {
       setError(err.response?.data?.error || "Registration failed");

@@ -40,7 +40,8 @@ async function verifyToken(token) {
  * Get user from Express request (for API routes)
  */
 async function getUserFromRequest(request) {
-    const token = request.cookies?.["auth-token"] || request.headers.authorization?.replace("Bearer ", "");
+    const token = request.cookies?.["auth-token"] ||
+        request.headers.authorization?.replace("Bearer ", "");
     if (!token) {
         return null;
     }
