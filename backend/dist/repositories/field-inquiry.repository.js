@@ -1,5 +1,8 @@
-import { BaseRepository } from "./base.repository";
-export class FieldInquiryRepository extends BaseRepository {
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.FieldInquiryRepository = void 0;
+const base_repository_1 = require("./base.repository");
+class FieldInquiryRepository extends base_repository_1.BaseRepository {
     /**
      * Find field inquiry by ID and dealership
      */
@@ -75,4 +78,5 @@ export class FieldInquiryRepository extends BaseRepository {
         });
     }
 }
+exports.FieldInquiryRepository = FieldInquiryRepository;
 //# sourceMappingURL=field-inquiry.repository.js.map

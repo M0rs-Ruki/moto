@@ -1,11 +1,16 @@
-import { getUserFromRequest } from "../lib/auth";
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.asyncHandler = void 0;
+exports.authenticate = authenticate;
+exports.optionalAuthenticate = optionalAuthenticate;
+const auth_1 = require("../lib/auth");
 /**
  * Authentication middleware
  * Verifies JWT token and attaches user to request
  */
-export async function authenticate(req, res, next) {
+async function authenticate(req, res, next) {
     try {
-        const user = await getUserFromRequest(req);
+        const user = await (0, auth_1.getUserFromRequest)(req);
         if (!user) {
             res.status(401).json({ error: "Not authenticated" });
             return;
@@ -22,9 +27,9 @@ export async function authenticate(req, res, next) {
  * Optional authentication middleware
  * Attaches user if token is present, but doesn't require it
  */
-export async function optionalAuthenticate(req, res, next) {
+async function optionalAuthenticate(req, res, next) {
     try {
-        const user = await getUserFromRequest(req);
+        const user = await (0, auth_1.getUserFromRequest)(req);
         if (user) {
             req.user = user;
         }
@@ -39,5 +44,6 @@ export async function optionalAuthenticate(req, res, next) {
  * Async error wrapper
  * Re-exported from errorHandler for convenience
  */
-export { asyncHandler } from "./errorHandler";
+var errorHandler_1 = require("./errorHandler");
+Object.defineProperty(exports, "asyncHandler", { enumerable: true, get: function () { return errorHandler_1.asyncHandler; } });
 //# sourceMappingURL=auth.js.map

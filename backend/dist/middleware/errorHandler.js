@@ -1,7 +1,11 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.errorHandler = errorHandler;
+exports.asyncHandler = asyncHandler;
 /**
  * Error handling middleware
  */
-export function errorHandler(err, req, res, next) {
+function errorHandler(err, req, res, next) {
     console.error("Error:", err);
     const statusCode = err.statusCode || err.status || 500;
     const message = err.message || "Internal server error";
@@ -14,7 +18,7 @@ export function errorHandler(err, req, res, next) {
  * Async error wrapper
  * Wraps async route handlers to catch errors
  */
-export function asyncHandler(fn) {
+function asyncHandler(fn) {
     return (req, res, next) => {
         Promise.resolve(fn(req, res, next)).catch(next);
     };

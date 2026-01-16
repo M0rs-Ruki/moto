@@ -1,9 +1,14 @@
-import { Router } from "express";
-import prisma from "../lib/db";
-import { asyncHandler } from "../middleware/auth";
-const router = Router();
+"use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+const express_1 = require("express");
+const db_1 = __importDefault(require("../lib/db"));
+const auth_1 = require("../middleware/auth");
+const router = (0, express_1.Router)();
 // Health check endpoint
-router.get("/", asyncHandler(async (req, res) => {
+router.get("/", (0, auth_1.asyncHandler)(async (req, res) => {
     try {
         // Check if DATABASE_URL is set
         const hasDatabaseUrl = !!process.env.DATABASE_URL;
@@ -17,7 +22,7 @@ router.get("/", asyncHandler(async (req, res) => {
             return;
         }
         // Check database connection
-        await prisma.$queryRaw `SELECT 1`;
+        await db_1.default.$queryRaw `SELECT 1`;
         res.json({
             status: "healthy",
             timestamp: new Date().toISOString(),
@@ -38,5 +43,5 @@ router.get("/", asyncHandler(async (req, res) => {
         });
     }
 }));
-export default router;
+exports.default = router;
 //# sourceMappingURL=health.js.map

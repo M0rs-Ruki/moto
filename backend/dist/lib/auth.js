@@ -1,23 +1,35 @@
-import { SignJWT, jwtVerify } from "jose";
-const secret = new TextEncoder().encode(process.env.JWT_SECRET ||
-    "your-super-secret-jwt-key-change-this-in-production");
+"use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.generateToken = generateToken;
+exports.verifyToken = verifyToken;
+exports.getUserFromRequest = getUserFromRequest;
+exports.setAuthCookie = setAuthCookie;
+exports.clearAuthCookie = clearAuthCookie;
+const jsonwebtoken_1 = __importDefault(require("jsonwebtoken"));
+const secret = process.env.JWT_SECRET ||
+    "your-super-secret-jwt-key-change-this-in-production";
 /**
  * Generate JWT token
  */
-export async function generateToken(payload) {
-    const token = await new SignJWT({ ...payload })
-        .setProtectedHeader({ alg: "HS256" })
-        .setIssuedAt()
-        .setExpirationTime("7d")
-        .sign(secret);
-    return token;
+async function generateToken(payload) {
+    return new Promise((resolve, reject) => {
+        jsonwebtoken_1.default.sign(payload, secret, { expiresIn: "7d" }, (err, token) => {
+            if (err)
+                reject(err);
+            else
+                resolve(token);
+        });
+    });
 }
 /**
  * Verify JWT token
  */
-export async function verifyToken(token) {
+async function verifyToken(token) {
     try {
-        const { payload } = await jwtVerify(token, secret);
+        const payload = jsonwebtoken_1.default.verify(token, secret);
         return payload;
     }
     catch (error) {
@@ -27,7 +39,7 @@ export async function verifyToken(token) {
 /**
  * Get user from Express request (for API routes)
  */
-export async function getUserFromRequest(request) {
+async function getUserFromRequest(request) {
     const token = request.cookies?.["auth-token"] || request.headers.authorization?.replace("Bearer ", "");
     if (!token) {
         return null;
@@ -37,7 +49,7 @@ export async function getUserFromRequest(request) {
 /**
  * Set auth cookie in Express response
  */
-export function setAuthCookie(res, token) {
+function setAuthCookie(res, token) {
     res.cookie("auth-token", token, {
         httpOnly: true,
         secure: process.env.NODE_ENV === "production",
@@ -49,7 +61,7 @@ export function setAuthCookie(res, token) {
 /**
  * Clear auth cookie in Express response
  */
-export function clearAuthCookie(res) {
+function clearAuthCookie(res) {
     res.clearCookie("auth-token", {
         httpOnly: true,
         secure: process.env.NODE_ENV === "production",

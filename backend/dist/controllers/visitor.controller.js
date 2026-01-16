@@ -1,6 +1,9 @@
-import { VisitorService } from "../services/visitor.service";
-import { PAGINATION } from "../config/constants";
-export class VisitorController {
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.VisitorController = void 0;
+const visitor_service_1 = require("../services/visitor.service");
+const constants_1 = require("../config/constants");
+class VisitorController {
     constructor() {
         /**
          * Create a visitor
@@ -48,8 +51,8 @@ export class VisitorController {
                 }
             }
             // Otherwise, get paginated list
-            const limit = parseInt(req.query.limit || String(PAGINATION.DEFAULT_LIMIT), 10);
-            const skip = parseInt(req.query.skip || String(PAGINATION.DEFAULT_SKIP), 10);
+            const limit = parseInt(req.query.limit || String(constants_1.PAGINATION.DEFAULT_LIMIT), 10);
+            const skip = parseInt(req.query.skip || String(constants_1.PAGINATION.DEFAULT_SKIP), 10);
             try {
                 const result = await this.service.getVisitors(req.user.dealershipId, limit, skip);
                 res.json(result);
@@ -87,7 +90,8 @@ export class VisitorController {
                 }
             }
         };
-        this.service = new VisitorService();
+        this.service = new visitor_service_1.VisitorService();
     }
 }
+exports.VisitorController = VisitorController;
 //# sourceMappingURL=visitor.controller.js.map

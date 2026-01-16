@@ -1,9 +1,14 @@
-import { Router } from "express";
-import prisma from "../lib/db";
-import { asyncHandler } from "../middleware/auth";
-const router = Router();
+"use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+const express_1 = require("express");
+const db_1 = __importDefault(require("../lib/db"));
+const auth_1 = require("../middleware/auth");
+const router = (0, express_1.Router)();
 // Database test endpoint
-router.get("/db-test", asyncHandler(async (req, res) => {
+router.get("/db-test", (0, auth_1.asyncHandler)(async (req, res) => {
     try {
         const hasDatabaseUrl = !!process.env.DATABASE_URL;
         const databaseUrlPreview = process.env.DATABASE_URL
@@ -29,7 +34,7 @@ router.get("/db-test", asyncHandler(async (req, res) => {
         let isConnected = false;
         let connectionError = null;
         try {
-            await prisma.$connect();
+            await db_1.default.$connect();
             isConnected = true;
         }
         catch (error) {
@@ -40,7 +45,7 @@ router.get("/db-test", asyncHandler(async (req, res) => {
         let queryWorks = false;
         let queryError = null;
         try {
-            const result = await prisma.$queryRaw `SELECT 1 as test`;
+            const result = await db_1.default.$queryRaw `SELECT 1 as test`;
             queryWorks = !!result;
         }
         catch (error) {
@@ -51,7 +56,7 @@ router.get("/db-test", asyncHandler(async (req, res) => {
         let tableQueryWorks = false;
         let tableQueryError = null;
         try {
-            await prisma.user.count();
+            await db_1.default.user.count();
             tableQueryWorks = true;
         }
         catch (error) {
@@ -92,13 +97,13 @@ router.get("/db-test", asyncHandler(async (req, res) => {
         });
     }
     finally {
-        await prisma.$disconnect().catch(() => {
+        await db_1.default.$disconnect().catch(() => {
             // Ignore disconnect errors
         });
     }
 }));
 // Environment test endpoint
-router.get("/env-test", asyncHandler(async (req, res) => {
+router.get("/env-test", (0, auth_1.asyncHandler)(async (req, res) => {
     try {
         res.json({
             success: true,
@@ -125,5 +130,5 @@ router.get("/env-test", asyncHandler(async (req, res) => {
         });
     }
 }));
-export default router;
+exports.default = router;
 //# sourceMappingURL=debug.js.map

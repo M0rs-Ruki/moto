@@ -1,10 +1,14 @@
+"use strict";
 /**
  * Phone number formatting utilities
  */
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.formatPhoneNumber = formatPhoneNumber;
+exports.normalizePhoneNumber = normalizePhoneNumber;
 /**
  * Format phone number to include country code if missing
  */
-export function formatPhoneNumber(phone) {
+function formatPhoneNumber(phone) {
     // Remove any non-digit characters and plus sign
     let cleaned = phone.replace(/\D/g, "");
     // If already has country code and is 12 digits, use as-is
@@ -23,7 +27,7 @@ export function formatPhoneNumber(phone) {
 /**
  * Normalize phone number for comparison (remove +, spaces, etc.)
  */
-export function normalizePhoneNumber(phone) {
+function normalizePhoneNumber(phone) {
     // Remove all non-digit characters
     let cleaned = phone.replace(/\D/g, "");
     // If it starts with 91 and is 12 digits, remove the 91 prefix for comparison

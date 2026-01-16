@@ -1,11 +1,17 @@
-import { FieldInquiryRepository } from "../repositories/field-inquiry.repository";
-import { whatsappClient } from "../lib/whatsapp";
-import { validateRequiredColumns, parseExcelDate } from "../utils/excel-parser";
-import { EXCEL, LEAD_SCOPE, PAGINATION } from "../config/constants";
-import prisma from "../lib/db";
-export class FieldInquiryService {
+"use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.FieldInquiryService = void 0;
+const field_inquiry_repository_1 = require("../repositories/field-inquiry.repository");
+const whatsapp_1 = require("../lib/whatsapp");
+const excel_parser_1 = require("../utils/excel-parser");
+const constants_1 = require("../config/constants");
+const db_1 = __importDefault(require("../lib/db"));
+class FieldInquiryService {
     constructor() {
-        this.repository = new FieldInquiryRepository();
+        this.repository = new field_inquiry_repository_1.FieldInquiryRepository();
     }
     /**
      * Create a field inquiry
@@ -21,7 +27,7 @@ export class FieldInquiryService {
             email: data.email || null,
             address: data.address || null,
             reason: data.reason,
-            leadScope: data.leadScope || LEAD_SCOPE.WARM,
+            leadScope: data.leadScope || constants_1.LEAD_SCOPE.WARM,
             whatsappContactId: null,
             dealership: {
                 connect: { id: dealershipId },
@@ -37,7 +43,7 @@ export class FieldInquiryService {
                 : undefined,
         });
         // Get WhatsApp template
-        const template = await prisma.whatsAppTemplate.findFirst({
+        const template = await db_1.default.whatsAppTemplate.findFirst({
             where: {
                 dealershipId,
                 type: "field_inquiry",
@@ -48,7 +54,7 @@ export class FieldInquiryService {
         let messageError = null;
         if (template && template.templateId && template.templateName) {
             try {
-                await whatsappClient.sendTemplate({
+                await whatsapp_1.whatsappClient.sendTemplate({
                     contactNumber: data.whatsappNumber,
                     templateName: template.templateName,
                     templateId: template.templateId,
@@ -85,8 +91,8 @@ export class FieldInquiryService {
      * Get field inquiries with pagination
      */
     async getInquiries(dealershipId, limit, skip) {
-        const take = limit || PAGINATION.DEFAULT_LIMIT;
-        const offset = skip || PAGINATION.DEFAULT_SKIP;
+        const take = limit || constants_1.PAGINATION.DEFAULT_LIMIT;
+        const offset = skip || constants_1.PAGINATION.DEFAULT_SKIP;
         const [enquiries, total] = await Promise.all([
             this.repository.findByDealership(dealershipId, {
                 limit: take,
@@ -113,7 +119,7 @@ export class FieldInquiryService {
             throw new Error("Inquiry not found");
         }
         // Validate lead scope
-        if (!Object.values(LEAD_SCOPE).includes(data.leadScope)) {
+        if (!Object.values(constants_1.LEAD_SCOPE).includes(data.leadScope)) {
             throw new Error("Invalid leadScope. Must be 'hot', 'warm', or 'cold'");
         }
         const updatedEnquiry = await this.repository.update(id, {
@@ -134,19 +140,19 @@ export class FieldInquiryService {
         }
         // Validate required columns
         const firstRow = rows[0];
-        const columnValidation = validateRequiredColumns(firstRow, Array.from(EXCEL.REQUIRED_COLUMNS.FIELD_INQUIRY));
+        const columnValidation = (0, excel_parser_1.validateRequiredColumns)(firstRow, Array.from(constants_1.EXCEL.REQUIRED_COLUMNS.FIELD_INQUIRY));
         if (!columnValidation.valid) {
             throw new Error(`Missing required columns: ${columnValidation.missingColumns.join(", ")}`);
         }
         // Get default lead source and models
         const [defaultLeadSource, allModels, allLeadSources, template] = await Promise.all([
-            prisma.leadSource.findFirst({
+            db_1.default.leadSource.findFirst({
                 where: {
                     dealershipId,
                     isDefault: true,
                 },
             }),
-            prisma.vehicleModel.findMany({
+            db_1.default.vehicleModel.findMany({
                 where: {
                     category: {
                         dealershipId,
@@ -156,12 +162,12 @@ export class FieldInquiryService {
                     category: true,
                 },
             }),
-            prisma.leadSource.findMany({
+            db_1.default.leadSource.findMany({
                 where: {
                     dealershipId,
                 },
             }),
-            prisma.whatsAppTemplate.findFirst({
+            db_1.default.whatsAppTemplate.findFirst({
                 where: {
                     dealershipId,
                     type: "field_inquiry",
@@ -201,7 +207,7 @@ export class FieldInquiryService {
                 const firstName = nameParts[0];
                 const lastName = nameParts.slice(1).join(" ") || "";
                 // Parse date
-                const date = parseExcelDate(row.Date);
+                const date = (0, excel_parser_1.parseExcelDate)(row.Date);
                 // Match model (optional - no error if not found)
                 const modelName = String(row.Model).trim();
                 const matchedModel = allModels.find((m) => m.name.toLowerCase() === modelName.toLowerCase());
@@ -229,7 +235,7 @@ export class FieldInquiryService {
                     reason: date
                         ? `Inquiry from ${date.toLocaleDateString()}`
                         : "Bulk imported inquiry",
-                    leadScope: LEAD_SCOPE.COLD,
+                    leadScope: constants_1.LEAD_SCOPE.COLD,
                     whatsappContactId: null,
                     dealership: {
                         connect: { id: dealershipId },
@@ -245,7 +251,7 @@ export class FieldInquiryService {
                 // Send WhatsApp message if template is configured
                 if (template && template.templateId && template.templateName) {
                     try {
-                        await whatsappClient.sendTemplate({
+                        await whatsapp_1.whatsappClient.sendTemplate({
                             contactNumber: whatsappNumber,
                             templateName: template.templateName,
                             templateId: template.templateId,
@@ -285,4 +291,5 @@ export class FieldInquiryService {
         };
     }
 }
+exports.FieldInquiryService = FieldInquiryService;
 //# sourceMappingURL=field-inquiry.service.js.map

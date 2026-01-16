@@ -1,10 +1,16 @@
-import axios from "axios";
+"use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.whatsappClient = void 0;
+const axios_1 = __importDefault(require("axios"));
 /**
  * Reusable axios client for WhatsApp API
  */
 class WhatsAppClient {
     constructor() {
-        this.client = axios.create({
+        this.client = axios_1.default.create({
             baseURL: process.env.WHATSAPP_API_URL || "https://api.chati.ai/v1/public/api",
             headers: {
                 Authorization: `Bearer ${process.env.WHATSAPP_API_TOKEN}`,
@@ -208,5 +214,5 @@ class WhatsAppClient {
     }
 }
 // Export singleton instance
-export const whatsappClient = new WhatsAppClient();
+exports.whatsappClient = new WhatsAppClient();
 //# sourceMappingURL=whatsapp.js.map

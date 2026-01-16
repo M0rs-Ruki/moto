@@ -1,10 +1,15 @@
-import { Router } from "express";
-import prisma from "../lib/db";
-import { whatsappClient } from "../lib/whatsapp";
-import { authenticate, asyncHandler } from "../middleware/auth";
-const router = Router();
+"use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+const express_1 = require("express");
+const db_1 = __importDefault(require("../lib/db"));
+const whatsapp_1 = require("../lib/whatsapp");
+const auth_1 = require("../middleware/auth");
+const router = (0, express_1.Router)();
 // Create test drive
-router.post("/", authenticate, asyncHandler(async (req, res) => {
+router.post("/", auth_1.authenticate, (0, auth_1.asyncHandler)(async (req, res) => {
     if (!req.user || !req.user.dealershipId) {
         res.status(401).json({ error: "Not authenticated" });
         return;
@@ -15,7 +20,7 @@ router.post("/", authenticate, asyncHandler(async (req, res) => {
         return;
     }
     // Verify session belongs to user's dealership
-    const session = await prisma.visitorSession.findFirst({
+    const session = await db_1.default.visitorSession.findFirst({
         where: {
             id: sessionId,
             visitor: {
@@ -31,7 +36,7 @@ router.post("/", authenticate, asyncHandler(async (req, res) => {
         return;
     }
     // Create test drive record
-    const testDrive = await prisma.testDrive.create({
+    const testDrive = await db_1.default.testDrive.create({
         data: {
             sessionId,
             modelId,
@@ -43,12 +48,12 @@ router.post("/", authenticate, asyncHandler(async (req, res) => {
         },
     });
     // Update session status
-    await prisma.visitorSession.update({
+    await db_1.default.visitorSession.update({
         where: { id: sessionId },
         data: { status: "test_drive" },
     });
     // Send test drive message
-    const template = await prisma.whatsAppTemplate.findFirst({
+    const template = await db_1.default.whatsAppTemplate.findFirst({
         where: {
             dealershipId: req.user.dealershipId,
             type: "test_drive",
@@ -58,12 +63,12 @@ router.post("/", authenticate, asyncHandler(async (req, res) => {
     let messageError = null;
     if (template && session.visitor.whatsappNumber) {
         try {
-            const dealership = await prisma.dealership.findUnique({
+            const dealership = await db_1.default.dealership.findUnique({
                 where: { id: req.user.dealershipId },
                 select: { showroomNumber: true },
             });
             const showroomNumber = dealership?.showroomNumber || "999999999";
-            await whatsappClient.sendTemplate({
+            await whatsapp_1.whatsappClient.sendTemplate({
                 contactNumber: session.visitor.whatsappNumber,
                 templateName: template.templateName,
                 templateId: template.templateId,
@@ -90,12 +95,12 @@ router.post("/", authenticate, asyncHandler(async (req, res) => {
     });
 }));
 // Get test drives
-router.get("/", authenticate, asyncHandler(async (req, res) => {
+router.get("/", auth_1.authenticate, (0, auth_1.asyncHandler)(async (req, res) => {
     if (!req.user || !req.user.dealershipId) {
         res.status(401).json({ error: "Not authenticated" });
         return;
     }
-    const testDrives = await prisma.testDrive.findMany({
+    const testDrives = await db_1.default.testDrive.findMany({
         where: {
             session: {
                 visitor: {
@@ -121,5 +126,5 @@ router.get("/", authenticate, asyncHandler(async (req, res) => {
     });
     res.json({ testDrives });
 }));
-export default router;
+exports.default = router;
 //# sourceMappingURL=test-drives.js.map

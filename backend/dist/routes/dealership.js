@@ -1,14 +1,19 @@
-import { Router } from "express";
-import prisma from "../lib/db";
-import { authenticate, asyncHandler } from "../middleware/auth";
-const router = Router();
+"use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+const express_1 = require("express");
+const db_1 = __importDefault(require("../lib/db"));
+const auth_1 = require("../middleware/auth");
+const router = (0, express_1.Router)();
 // Get dealership
-router.get("/", authenticate, asyncHandler(async (req, res) => {
+router.get("/", auth_1.authenticate, (0, auth_1.asyncHandler)(async (req, res) => {
     if (!req.user || !req.user.dealershipId) {
         res.status(401).json({ error: "Not authenticated" });
         return;
     }
-    const dealership = await prisma.dealership.findUnique({
+    const dealership = await db_1.default.dealership.findUnique({
         where: { id: req.user.dealershipId },
         select: {
             id: true,
@@ -24,7 +29,7 @@ router.get("/", authenticate, asyncHandler(async (req, res) => {
     res.json({ dealership });
 }));
 // Update dealership
-router.put("/", authenticate, asyncHandler(async (req, res) => {
+router.put("/", auth_1.authenticate, (0, auth_1.asyncHandler)(async (req, res) => {
     if (!req.user || !req.user.dealershipId) {
         res.status(401).json({ error: "Not authenticated" });
         return;
@@ -34,7 +39,7 @@ router.put("/", authenticate, asyncHandler(async (req, res) => {
         res.status(400).json({ error: "Name and location are required" });
         return;
     }
-    const dealership = await prisma.dealership.update({
+    const dealership = await db_1.default.dealership.update({
         where: { id: req.user.dealershipId },
         data: {
             name,
@@ -50,5 +55,5 @@ router.put("/", authenticate, asyncHandler(async (req, res) => {
     });
     res.json({ success: true, dealership });
 }));
-export default router;
+exports.default = router;
 //# sourceMappingURL=dealership.js.map

@@ -1,6 +1,9 @@
-import { BaseRepository } from "./base.repository";
-import { normalizePhoneNumber } from "../utils/phone-formatter";
-export class VisitorRepository extends BaseRepository {
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.VisitorRepository = void 0;
+const base_repository_1 = require("./base.repository");
+const phone_formatter_1 = require("../utils/phone-formatter");
+class VisitorRepository extends base_repository_1.BaseRepository {
     /**
      * Find visitor by ID and dealership
      */
@@ -29,7 +32,7 @@ export class VisitorRepository extends BaseRepository {
      * Find visitor by normalized phone number and dealership
      */
     async findByPhoneAndDealership(phoneNumber, dealershipId) {
-        const normalizedPhone = normalizePhoneNumber(phoneNumber);
+        const normalizedPhone = (0, phone_formatter_1.normalizePhoneNumber)(phoneNumber);
         const allVisitors = await this.findMany(this.prisma.visitor, { dealershipId }, {
             include: {
                 sessions: {
@@ -46,7 +49,7 @@ export class VisitorRepository extends BaseRepository {
                 },
             },
         });
-        return (allVisitors.find((v) => normalizePhoneNumber(v.whatsappNumber) === normalizedPhone) || null);
+        return (allVisitors.find((v) => (0, phone_formatter_1.normalizePhoneNumber)(v.whatsappNumber) === normalizedPhone) || null);
     }
     /**
      * Find all visitors for a dealership with deduplication
@@ -74,7 +77,7 @@ export class VisitorRepository extends BaseRepository {
         // Deduplicate by phone number
         const visitorMap = new Map();
         for (const visitor of allVisitors) {
-            const normalizedPhone = normalizePhoneNumber(visitor.whatsappNumber);
+            const normalizedPhone = (0, phone_formatter_1.normalizePhoneNumber)(visitor.whatsappNumber);
             const existing = visitorMap.get(normalizedPhone);
             if (!existing) {
                 visitorMap.set(normalizedPhone, visitor);
@@ -151,4 +154,5 @@ export class VisitorRepository extends BaseRepository {
         });
     }
 }
+exports.VisitorRepository = VisitorRepository;
 //# sourceMappingURL=visitor.repository.js.map

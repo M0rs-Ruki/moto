@@ -1,10 +1,16 @@
-import prisma from "../lib/db";
+"use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.BaseRepository = void 0;
+const db_1 = __importDefault(require("../lib/db"));
 /**
  * Base repository class providing common database operations
  */
-export class BaseRepository {
+class BaseRepository {
     constructor() {
-        this.prisma = prisma;
+        this.prisma = db_1.default;
     }
     /**
      * Find many records with pagination
@@ -59,4 +65,5 @@ export class BaseRepository {
         });
     }
 }
+exports.BaseRepository = BaseRepository;
 //# sourceMappingURL=base.repository.js.map

@@ -1,10 +1,15 @@
-import { Router } from "express";
-import prisma from "../lib/db";
-import { whatsappClient } from "../lib/whatsapp";
-import { authenticate, asyncHandler } from "../middleware/auth";
-const router = Router();
+"use strict";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+const express_1 = require("express");
+const db_1 = __importDefault(require("../lib/db"));
+const whatsapp_1 = require("../lib/whatsapp");
+const auth_1 = require("../middleware/auth");
+const router = (0, express_1.Router)();
 // Create delivery ticket
-router.post("/", authenticate, asyncHandler(async (req, res) => {
+router.post("/", auth_1.authenticate, (0, auth_1.asyncHandler)(async (req, res) => {
     if (!req.user || !req.user.dealershipId) {
         res.status(401).json({ error: "Not authenticated" });
         return;
@@ -19,7 +24,7 @@ router.post("/", authenticate, asyncHandler(async (req, res) => {
         res.status(400).json({ error: "Invalid delivery date" });
         return;
     }
-    const ticket = await prisma.deliveryTicket.create({
+    const ticket = await db_1.default.deliveryTicket.create({
         data: {
             firstName,
             lastName,
@@ -45,7 +50,7 @@ router.post("/", authenticate, asyncHandler(async (req, res) => {
     let scheduledMessageId = null;
     let messageStatus = "not_sent";
     let messageError = null;
-    const template = await prisma.whatsAppTemplate.findFirst({
+    const template = await db_1.default.whatsAppTemplate.findFirst({
         where: {
             dealershipId: req.user.dealershipId,
             type: "delivery_reminder",
@@ -71,7 +76,7 @@ router.post("/", authenticate, asyncHandler(async (req, res) => {
                     day: "numeric",
                     year: "numeric",
                 });
-                await whatsappClient.sendTemplate({
+                await whatsapp_1.whatsappClient.sendTemplate({
                     contactNumber: whatsappNumber,
                     templateName: template.templateName,
                     templateId: template.templateId,
@@ -79,7 +84,7 @@ router.post("/", authenticate, asyncHandler(async (req, res) => {
                     parameters: [modelName, deliveryDateFormatted],
                 });
                 messageStatus = "sent";
-                await prisma.deliveryTicket.update({
+                await db_1.default.deliveryTicket.update({
                     where: { id: ticket.id },
                     data: { messageSent: true },
                 });
@@ -99,7 +104,7 @@ router.post("/", authenticate, asyncHandler(async (req, res) => {
             const scheduledDateNormalized = new Date(scheduledFor);
             scheduledDateNormalized.setHours(0, 0, 0, 0);
             if (scheduledDateNormalized > today) {
-                const scheduledMessage = await prisma.scheduledMessage.create({
+                const scheduledMessage = await db_1.default.scheduledMessage.create({
                     data: {
                         deliveryTicketId: ticket.id,
                         scheduledFor,
@@ -114,7 +119,7 @@ router.post("/", authenticate, asyncHandler(async (req, res) => {
                         ? `${ticket.model.category.name} - ${ticket.model.name}`
                         : "N/A";
                     const daysBeforeStr = String(daysBefore);
-                    await whatsappClient.sendTemplate({
+                    await whatsapp_1.whatsappClient.sendTemplate({
                         contactNumber: whatsappNumber,
                         templateName: template.templateName,
                         templateId: template.templateId,
@@ -122,7 +127,7 @@ router.post("/", authenticate, asyncHandler(async (req, res) => {
                         parameters: [modelName, daysBeforeStr],
                     });
                     messageStatus = "sent";
-                    await prisma.deliveryTicket.update({
+                    await db_1.default.deliveryTicket.update({
                         where: { id: ticket.id },
                         data: { messageSent: true },
                     });
@@ -150,19 +155,19 @@ router.post("/", authenticate, asyncHandler(async (req, res) => {
     });
 }));
 // Get delivery tickets
-router.get("/", authenticate, asyncHandler(async (req, res) => {
+router.get("/", auth_1.authenticate, (0, auth_1.asyncHandler)(async (req, res) => {
     if (!req.user || !req.user.dealershipId) {
         res.status(401).json({ error: "Not authenticated" });
         return;
     }
     const limit = parseInt(req.query.limit || "50", 10);
     const skip = parseInt(req.query.skip || "0", 10);
-    const total = await prisma.deliveryTicket.count({
+    const total = await db_1.default.deliveryTicket.count({
         where: {
             dealershipId: req.user.dealershipId,
         },
     });
-    const tickets = await prisma.deliveryTicket.findMany({
+    const tickets = await db_1.default.deliveryTicket.findMany({
         where: {
             dealershipId: req.user.dealershipId,
         },
@@ -196,13 +201,13 @@ router.get("/", authenticate, asyncHandler(async (req, res) => {
     });
 }));
 // Send now
-router.post("/:id/send-now", authenticate, asyncHandler(async (req, res) => {
+router.post("/:id/send-now", auth_1.authenticate, (0, auth_1.asyncHandler)(async (req, res) => {
     if (!req.user || !req.user.dealershipId) {
         res.status(401).json({ error: "Not authenticated" });
         return;
     }
     const { id: ticketId } = req.params;
-    const ticket = await prisma.deliveryTicket.findFirst({
+    const ticket = await db_1.default.deliveryTicket.findFirst({
         where: {
             id: ticketId,
             dealershipId: req.user.dealershipId,
@@ -224,7 +229,7 @@ router.post("/:id/send-now", authenticate, asyncHandler(async (req, res) => {
         res.status(404).json({ error: "Ticket not found" });
         return;
     }
-    const template = await prisma.whatsAppTemplate.findFirst({
+    const template = await db_1.default.whatsAppTemplate.findFirst({
         where: {
             dealershipId: req.user.dealershipId,
             type: "delivery_reminder",
@@ -249,7 +254,7 @@ router.post("/:id/send-now", authenticate, asyncHandler(async (req, res) => {
         return;
     }
     if (ticket.scheduledMessages.length > 0) {
-        await prisma.scheduledMessage.updateMany({
+        await db_1.default.scheduledMessage.updateMany({
             where: {
                 id: { in: ticket.scheduledMessages.map((m) => m.id) },
                 status: "pending",
@@ -270,14 +275,14 @@ router.post("/:id/send-now", authenticate, asyncHandler(async (req, res) => {
             day: "numeric",
             year: "numeric",
         });
-        await whatsappClient.sendTemplate({
+        await whatsapp_1.whatsappClient.sendTemplate({
             contactNumber: ticket.whatsappNumber,
             templateName: template.templateName,
             templateId: template.templateId,
             templateLanguage: template.language,
             parameters: [modelName, deliveryDateFormatted],
         });
-        await prisma.deliveryTicket.update({
+        await db_1.default.deliveryTicket.update({
             where: { id: ticket.id },
             data: { messageSent: true },
         });
@@ -296,13 +301,13 @@ router.post("/:id/send-now", authenticate, asyncHandler(async (req, res) => {
     });
 }));
 // Send completion
-router.post("/:id/send-completion", authenticate, asyncHandler(async (req, res) => {
+router.post("/:id/send-completion", auth_1.authenticate, (0, auth_1.asyncHandler)(async (req, res) => {
     if (!req.user || !req.user.dealershipId) {
         res.status(401).json({ error: "Not authenticated" });
         return;
     }
     const { id: ticketId } = req.params;
-    const ticket = await prisma.deliveryTicket.findFirst({
+    const ticket = await db_1.default.deliveryTicket.findFirst({
         where: {
             id: ticketId,
             dealershipId: req.user.dealershipId,
@@ -312,7 +317,7 @@ router.post("/:id/send-completion", authenticate, asyncHandler(async (req, res) 
         res.status(404).json({ error: "Ticket not found" });
         return;
     }
-    const template = await prisma.whatsAppTemplate.findFirst({
+    const template = await db_1.default.whatsAppTemplate.findFirst({
         where: {
             dealershipId: req.user.dealershipId,
             type: "delivery_completion",
@@ -340,14 +345,14 @@ router.post("/:id/send-completion", authenticate, asyncHandler(async (req, res) 
     let messageStatus = "sent";
     let messageError = null;
     try {
-        await whatsappClient.sendTemplate({
+        await whatsapp_1.whatsappClient.sendTemplate({
             contactNumber: ticket.whatsappNumber,
             templateName: template.templateName,
             templateId: template.templateId,
             templateLanguage: template.language,
             parameters: [],
         });
-        await prisma.deliveryTicket.update({
+        await db_1.default.deliveryTicket.update({
             where: { id: ticket.id },
             data: {
                 completionSent: true,
@@ -369,5 +374,5 @@ router.post("/:id/send-completion", authenticate, asyncHandler(async (req, res) 
         },
     });
 }));
-export default router;
+exports.default = router;
 //# sourceMappingURL=delivery-tickets.js.map

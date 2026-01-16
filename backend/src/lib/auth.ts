@@ -1,10 +1,8 @@
-import { SignJWT, jwtVerify } from "jose";
+import jwt from "jsonwebtoken";
 import { Request, Response } from "express";
 
-const secret = new TextEncoder().encode(
-  process.env.JWT_SECRET ||
-    "your-super-secret-jwt-key-change-this-in-production"
-);
+const secret = process.env.JWT_SECRET ||
+    "your-super-secret-jwt-key-change-this-in-production";
 
 export interface JWTPayload {
   userId: string;
@@ -16,13 +14,12 @@ export interface JWTPayload {
  * Generate JWT token
  */
 export async function generateToken(payload: JWTPayload): Promise<string> {
-  const token = await new SignJWT({ ...payload })
-    .setProtectedHeader({ alg: "HS256" })
-    .setIssuedAt()
-    .setExpirationTime("7d")
-    .sign(secret);
-
-  return token;
+  return new Promise((resolve, reject) => {
+    jwt.sign(payload, secret, { expiresIn: "7d" }, (err, token) => {
+      if (err) reject(err);
+      else resolve(token!);
+    });
+  });
 }
 
 /**
@@ -30,8 +27,8 @@ export async function generateToken(payload: JWTPayload): Promise<string> {
  */
 export async function verifyToken(token: string): Promise<JWTPayload | null> {
   try {
-    const { payload } = await jwtVerify(token, secret);
-    return payload as unknown as JWTPayload;
+    const payload = jwt.verify(token, secret) as JWTPayload;
+    return payload;
   } catch (error) {
     return null;
   }

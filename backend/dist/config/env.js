@@ -1,6 +1,9 @@
+"use strict";
 /**
  * Environment variable validation and configuration
  */
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.env = void 0;
 function getEnvVar(key, defaultValue) {
     const value = process.env[key] || defaultValue;
     if (!value) {
@@ -19,7 +22,7 @@ function getEnvNumber(key, defaultValue) {
     }
     return parsed;
 }
-export const env = {
+exports.env = {
     DATABASE_URL: getEnvVar("DATABASE_URL"),
     JWT_SECRET: getEnvVar("JWT_SECRET"),
     WHATSAPP_API_URL: getEnvVar("WHATSAPP_API_URL", "https://api.chati.ai/v1/public/api"),
