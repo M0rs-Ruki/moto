@@ -1,8 +1,9 @@
 import jwt from "jsonwebtoken";
 import { Request, Response } from "express";
 
-const secret = process.env.JWT_SECRET ||
-    "your-super-secret-jwt-key-change-this-in-production";
+const secret =
+  process.env.JWT_SECRET ||
+  "your-super-secret-jwt-key-change-this-in-production";
 
 export interface JWTPayload {
   userId: string;
@@ -40,7 +41,9 @@ export async function verifyToken(token: string): Promise<JWTPayload | null> {
 export async function getUserFromRequest(
   request: Request
 ): Promise<JWTPayload | null> {
-  const token = request.cookies?.["auth-token"] || request.headers.authorization?.replace("Bearer ", "");
+  const token =
+    request.cookies?.["auth-token"] ||
+    request.headers.authorization?.replace("Bearer ", "");
 
   if (!token) {
     return null;
@@ -73,4 +76,3 @@ export function clearAuthCookie(res: Response): void {
     path: "/",
   });
 }
-
