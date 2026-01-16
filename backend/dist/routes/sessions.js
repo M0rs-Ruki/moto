@@ -1,15 +1,10 @@
-"use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
-Object.defineProperty(exports, "__esModule", { value: true });
-const express_1 = require("express");
-const db_1 = __importDefault(require("../lib/db"));
-const whatsapp_1 = require("../lib/whatsapp");
-const auth_1 = require("../middleware/auth");
-const router = (0, express_1.Router)();
+import { Router } from "express";
+import prisma from "../lib/db";
+import { whatsappClient } from "../lib/whatsapp";
+import { authenticate, asyncHandler } from "../middleware/auth";
+const router = Router();
 // Get sessions
-router.get("/", auth_1.authenticate, (0, auth_1.asyncHandler)(async (req, res) => {
+router.get("/", authenticate, asyncHandler(async (req, res) => {
     if (!req.user || !req.user.dealershipId) {
         res.status(401).json({ error: "Not authenticated" });
         return;
@@ -18,7 +13,7 @@ router.get("/", auth_1.authenticate, (0, auth_1.asyncHandler)(async (req, res) =
     const limit = parseInt(req.query.limit || "30", 10);
     const skip = parseInt(req.query.skip || "0", 10);
     // Get total count
-    const totalCount = await db_1.default.visitorSession.count({
+    const totalCount = await prisma.visitorSession.count({
         where: {
             visitor: {
                 dealershipId: req.user.dealershipId,
@@ -26,7 +21,7 @@ router.get("/", auth_1.authenticate, (0, auth_1.asyncHandler)(async (req, res) =
             },
         },
     });
-    const sessions = await db_1.default.visitorSession.findMany({
+    const sessions = await prisma.visitorSession.findMany({
         where: {
             visitor: {
                 dealershipId: req.user.dealershipId,
@@ -75,7 +70,7 @@ router.get("/", auth_1.authenticate, (0, auth_1.asyncHandler)(async (req, res) =
     });
 }));
 // Exit session
-router.post("/exit", auth_1.authenticate, (0, auth_1.asyncHandler)(async (req, res) => {
+router.post("/exit", authenticate, asyncHandler(async (req, res) => {
     if (!req.user || !req.user.dealershipId) {
         res.status(401).json({ error: "Not authenticated" });
         return;
@@ -86,7 +81,7 @@ router.post("/exit", auth_1.authenticate, (0, auth_1.asyncHandler)(async (req, r
         return;
     }
     // Verify session belongs to user's dealership
-    const session = await db_1.default.visitorSession.findFirst({
+    const session = await prisma.visitorSession.findFirst({
         where: {
             id: sessionId,
             visitor: {
@@ -102,14 +97,14 @@ router.post("/exit", auth_1.authenticate, (0, auth_1.asyncHandler)(async (req, r
         return;
     }
     // Update session status
-    await db_1.default.visitorSession.update({
+    await prisma.visitorSession.update({
         where: { id: sessionId },
         data: {
             status: "exited",
         },
     });
     // Send exit message
-    const template = await db_1.default.whatsAppTemplate.findFirst({
+    const template = await prisma.whatsAppTemplate.findFirst({
         where: {
             dealershipId: req.user.dealershipId,
             type: "exit",
@@ -119,7 +114,7 @@ router.post("/exit", auth_1.authenticate, (0, auth_1.asyncHandler)(async (req, r
     let messageError = null;
     if (template && session.visitor.whatsappNumber) {
         try {
-            await whatsapp_1.whatsappClient.sendTemplate({
+            await whatsappClient.sendTemplate({
                 contactNumber: session.visitor.whatsappNumber,
                 templateName: template.templateName,
                 templateId: template.templateId,
@@ -142,5 +137,5 @@ router.post("/exit", auth_1.authenticate, (0, auth_1.asyncHandler)(async (req, r
         },
     });
 }));
-exports.default = router;
+export default router;
 //# sourceMappingURL=sessions.js.map

@@ -1,62 +1,24 @@
-"use strict";
-var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    var desc = Object.getOwnPropertyDescriptor(m, k);
-    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
-      desc = { enumerable: true, get: function() { return m[k]; } };
-    }
-    Object.defineProperty(o, k2, desc);
-}) : (function(o, m, k, k2) {
-    if (k2 === undefined) k2 = k;
-    o[k2] = m[k];
-}));
-var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
-    Object.defineProperty(o, "default", { enumerable: true, value: v });
-}) : function(o, v) {
-    o["default"] = v;
-});
-var __importStar = (this && this.__importStar) || (function () {
-    var ownKeys = function(o) {
-        ownKeys = Object.getOwnPropertyNames || function (o) {
-            var ar = [];
-            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
-            return ar;
-        };
-        return ownKeys(o);
-    };
-    return function (mod) {
-        if (mod && mod.__esModule) return mod;
-        var result = {};
-        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
-        __setModuleDefault(result, mod);
-        return result;
-    };
-})();
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
-Object.defineProperty(exports, "__esModule", { value: true });
-const express_1 = require("express");
-const bcryptjs_1 = __importDefault(require("bcryptjs"));
-const multer_1 = __importDefault(require("multer"));
-const blob_1 = require("@vercel/blob");
-const promises_1 = require("fs/promises");
-const path_1 = require("path");
-const fs_1 = require("fs");
-const db_1 = __importDefault(require("../lib/db"));
-const auth_1 = require("../lib/auth");
-const auth_2 = require("../middleware/auth");
-const router = (0, express_1.Router)();
-const upload = (0, multer_1.default)({ storage: multer_1.default.memoryStorage() });
+import { Router } from "express";
+import bcrypt from "bcryptjs";
+import multer from "multer";
+import { put, del } from "@vercel/blob";
+import { writeFile, mkdir, unlink } from "fs/promises";
+import { join } from "path";
+import { existsSync } from "fs";
+import prisma from "../lib/db";
+import { generateToken, setAuthCookie, clearAuthCookie } from "../lib/auth";
+import { authenticate, asyncHandler } from "../middleware/auth";
+const router = Router();
+const upload = multer({ storage: multer.memoryStorage() });
 // Login
-router.post("/login", (0, auth_2.asyncHandler)(async (req, res) => {
+router.post("/login", asyncHandler(async (req, res) => {
     const { email, password } = req.body;
     if (!email || !password) {
         res.status(400).json({ error: "Email and password are required" });
         return;
     }
     // Find user
-    const user = await db_1.default.user.findUnique({
+    const user = await prisma.user.findUnique({
         where: { email },
         include: { dealership: true },
     });
@@ -65,7 +27,7 @@ router.post("/login", (0, auth_2.asyncHandler)(async (req, res) => {
         return;
     }
     // Verify password
-    const isValid = await bcryptjs_1.default.compare(password, user.password);
+    const isValid = await bcrypt.compare(password, user.password);
     if (!isValid) {
         res.status(401).json({ error: "Invalid credentials" });
         return;
@@ -73,7 +35,7 @@ router.post("/login", (0, auth_2.asyncHandler)(async (req, res) => {
     // Generate token
     let token;
     try {
-        token = await (0, auth_1.generateToken)({
+        token = await generateToken({
             userId: user.id,
             email: user.email,
             dealershipId: user.dealershipId || undefined,
@@ -84,7 +46,7 @@ router.post("/login", (0, auth_2.asyncHandler)(async (req, res) => {
         throw new Error(`Failed to generate token: ${error instanceof Error ? error.message : String(error)}`);
     }
     // Set cookie
-    (0, auth_1.setAuthCookie)(res, token);
+    setAuthCookie(res, token);
     res.json({
         success: true,
         user: {
@@ -97,7 +59,7 @@ router.post("/login", (0, auth_2.asyncHandler)(async (req, res) => {
     });
 }));
 // Register
-router.post("/register", upload.single("profilePicture"), (0, auth_2.asyncHandler)(async (req, res) => {
+router.post("/register", upload.single("profilePicture"), asyncHandler(async (req, res) => {
     const { email, password, dealershipName, dealershipLocation, theme } = req.body;
     const profilePictureFile = req.file;
     // Validation
@@ -106,7 +68,7 @@ router.post("/register", upload.single("profilePicture"), (0, auth_2.asyncHandle
         return;
     }
     // Check if user already exists
-    const existingUser = await db_1.default.user.findUnique({
+    const existingUser = await prisma.user.findUnique({
         where: { email },
     });
     if (existingUser) {
@@ -114,9 +76,9 @@ router.post("/register", upload.single("profilePicture"), (0, auth_2.asyncHandle
         return;
     }
     // Hash password
-    const hashedPassword = await bcryptjs_1.default.hash(password, 10);
+    const hashedPassword = await bcrypt.hash(password, 10);
     // Create dealership and user
-    const dealership = await db_1.default.dealership.create({
+    const dealership = await prisma.dealership.create({
         data: {
             name: dealershipName,
             location: dealershipLocation,
@@ -150,7 +112,8 @@ router.post("/register", upload.single("profilePicture"), (0, auth_2.asyncHandle
         // Check if we're on Vercel
         const isVercel = process.env.VERCEL === "1";
         const blobToken = process.env.BLOB_READ_WRITE_TOKEN;
-        const fileExtension = profilePictureFile.originalname.split(".").pop()?.toLowerCase() || "jpg";
+        const fileExtension = profilePictureFile.originalname.split(".").pop()?.toLowerCase() ||
+            "jpg";
         // On Vercel, we MUST use Blob Storage (filesystem is read-only)
         if (isVercel) {
             if (!blobToken) {
@@ -163,7 +126,7 @@ router.post("/register", upload.single("profilePicture"), (0, auth_2.asyncHandle
             const tempId = `temp-${Date.now()}`;
             const filename = `profile-pictures/${tempId}.${fileExtension}`;
             // Upload to Vercel Blob Storage
-            const blob = await (0, blob_1.put)(filename, profilePictureFile.buffer, {
+            const blob = await put(filename, profilePictureFile.buffer, {
                 access: "public",
                 contentType: profilePictureFile.mimetype,
             });
@@ -174,7 +137,7 @@ router.post("/register", upload.single("profilePicture"), (0, auth_2.asyncHandle
             const tempId = `temp-${Date.now()}`;
             const filename = `profile-pictures/${tempId}.${fileExtension}`;
             // Upload to Vercel Blob Storage
-            const blob = await (0, blob_1.put)(filename, profilePictureFile.buffer, {
+            const blob = await put(filename, profilePictureFile.buffer, {
                 access: "public",
                 contentType: profilePictureFile.mimetype,
             });
@@ -184,18 +147,18 @@ router.post("/register", upload.single("profilePicture"), (0, auth_2.asyncHandle
             // Local development without token - use local filesystem
             const tempId = `temp-${Date.now()}`;
             const filename = `${tempId}.${fileExtension}`;
-            const filepath = (0, path_1.join)(process.cwd(), "public", "profile-pictures", filename);
+            const filepath = join(process.cwd(), "public", "profile-pictures", filename);
             // Ensure directory exists
-            const dirPath = (0, path_1.join)(process.cwd(), "public", "profile-pictures");
-            if (!(0, fs_1.existsSync)(dirPath)) {
-                await (0, promises_1.mkdir)(dirPath, { recursive: true });
+            const dirPath = join(process.cwd(), "public", "profile-pictures");
+            if (!existsSync(dirPath)) {
+                await mkdir(dirPath, { recursive: true });
             }
             // Save file
-            await (0, promises_1.writeFile)(filepath, profilePictureFile.buffer);
+            await writeFile(filepath, profilePictureFile.buffer);
             profilePicturePath = `profile-pictures/${filename}`;
         }
     }
-    const user = await db_1.default.user.create({
+    const user = await prisma.user.create({
         data: {
             email,
             password: hashedPassword,
@@ -209,25 +172,26 @@ router.post("/register", upload.single("profilePicture"), (0, auth_2.asyncHandle
     if (profilePicturePath && user.id) {
         const isVercel = process.env.VERCEL === "1";
         const blobToken = process.env.BLOB_READ_WRITE_TOKEN;
-        if ((isVercel || blobToken) && profilePicturePath.startsWith("https://")) {
+        if ((isVercel || blobToken) &&
+            profilePicturePath.startsWith("https://")) {
             // Vercel Blob: Re-upload with new filename
             if (profilePictureFile && profilePictureFile.size > 0) {
                 const urlParts = profilePicturePath.split(".");
                 const fileExtension = urlParts[urlParts.length - 1]?.split("?")[0] || "jpg";
                 const newFilename = `profile-pictures/${user.id}-${Date.now()}.${fileExtension}`;
-                const blob = await (0, blob_1.put)(newFilename, profilePictureFile.buffer, {
+                const blob = await put(newFilename, profilePictureFile.buffer, {
                     access: "public",
                     contentType: profilePictureFile.mimetype,
                 });
                 // Delete old temp file
                 try {
-                    await (0, blob_1.del)(profilePicturePath);
+                    await del(profilePicturePath);
                 }
                 catch (error) {
                     console.warn("Failed to delete temp profile picture:", error);
                 }
                 // Update user record
-                await db_1.default.user.update({
+                await prisma.user.update({
                     where: { id: user.id },
                     data: { profilePicture: blob.url },
                 });
@@ -236,16 +200,16 @@ router.post("/register", upload.single("profilePicture"), (0, auth_2.asyncHandle
         }
         else if (!blobToken && !profilePicturePath.startsWith("https://")) {
             // Local filesystem: Rename file
-            const oldPath = (0, path_1.join)(process.cwd(), "public", profilePicturePath);
+            const oldPath = join(process.cwd(), "public", profilePicturePath);
             const fileExtension = profilePicturePath.split(".").pop() || "jpg";
             const newFilename = `${user.id}-${Date.now()}.${fileExtension}`;
-            const newPath = (0, path_1.join)(process.cwd(), "public", "profile-pictures", newFilename);
+            const newPath = join(process.cwd(), "public", "profile-pictures", newFilename);
             // Rename file
-            const { rename } = await Promise.resolve().then(() => __importStar(require("fs/promises")));
+            const { rename } = await import("fs/promises");
             await rename(oldPath, newPath);
             // Update user record
             const correctPath = `profile-pictures/${newFilename}`;
-            await db_1.default.user.update({
+            await prisma.user.update({
                 where: { id: user.id },
                 data: { profilePicture: correctPath },
             });
@@ -253,7 +217,7 @@ router.post("/register", upload.single("profilePicture"), (0, auth_2.asyncHandle
         }
     }
     // Create default WhatsApp templates
-    await db_1.default.whatsAppTemplate.createMany({
+    await prisma.whatsAppTemplate.createMany({
         data: [
             {
                 name: "Welcome Message",
@@ -312,13 +276,13 @@ router.post("/register", upload.single("profilePicture"), (0, auth_2.asyncHandle
         ],
     });
     // Generate token
-    const token = await (0, auth_1.generateToken)({
+    const token = await generateToken({
         userId: user.id,
         email: user.email,
         dealershipId: dealership.id,
     });
     // Set cookie
-    (0, auth_1.setAuthCookie)(res, token);
+    setAuthCookie(res, token);
     res.json({
         success: true,
         user: {
@@ -331,13 +295,13 @@ router.post("/register", upload.single("profilePicture"), (0, auth_2.asyncHandle
     });
 }));
 // Get current user
-router.get("/me", auth_2.authenticate, (0, auth_2.asyncHandler)(async (req, res) => {
+router.get("/me", authenticate, asyncHandler(async (req, res) => {
     if (!req.user) {
         res.status(401).json({ error: "Not authenticated" });
         return;
     }
     // Get full user details
-    const fullUser = await db_1.default.user.findUnique({
+    const fullUser = await prisma.user.findUnique({
         where: { id: req.user.userId },
         select: {
             id: true,
@@ -360,12 +324,12 @@ router.get("/me", auth_2.authenticate, (0, auth_2.asyncHandler)(async (req, res)
     res.json({ user: fullUser });
 }));
 // Logout
-router.post("/logout", (0, auth_2.asyncHandler)(async (req, res) => {
-    (0, auth_1.clearAuthCookie)(res);
+router.post("/logout", asyncHandler(async (req, res) => {
+    clearAuthCookie(res);
     res.json({ success: true });
 }));
 // Upload profile picture
-router.post("/profile-picture", auth_2.authenticate, upload.single("file"), (0, auth_2.asyncHandler)(async (req, res) => {
+router.post("/profile-picture", authenticate, upload.single("file"), asyncHandler(async (req, res) => {
     if (!req.user || !req.user.userId) {
         res.status(401).json({ error: "Not authenticated" });
         return;
@@ -403,7 +367,7 @@ router.post("/profile-picture", auth_2.authenticate, upload.single("file"), (0, 
     const timestamp = Date.now();
     const filename = `profile-pictures/${req.user.userId}-${timestamp}.${fileExtension}`;
     // Get existing user to check for old profile picture
-    const existingUser = await db_1.default.user.findUnique({
+    const existingUser = await prisma.user.findUnique({
         where: { id: req.user.userId },
         select: { profilePicture: true },
     });
@@ -423,14 +387,14 @@ router.post("/profile-picture", auth_2.authenticate, upload.single("file"), (0, 
         if (existingUser?.profilePicture &&
             existingUser.profilePicture.startsWith("https://")) {
             try {
-                await (0, blob_1.del)(existingUser.profilePicture);
+                await del(existingUser.profilePicture);
             }
             catch (error) {
                 console.warn("Failed to delete old profile picture:", error);
             }
         }
         // Upload to Vercel Blob Storage
-        const blob = await (0, blob_1.put)(filename, file.buffer, {
+        const blob = await put(filename, file.buffer, {
             access: "public",
             contentType: file.mimetype,
         });
@@ -441,13 +405,13 @@ router.post("/profile-picture", auth_2.authenticate, upload.single("file"), (0, 
         if (existingUser?.profilePicture &&
             existingUser.profilePicture.startsWith("https://")) {
             try {
-                await (0, blob_1.del)(existingUser.profilePicture);
+                await del(existingUser.profilePicture);
             }
             catch (error) {
                 console.warn("Failed to delete old profile picture:", error);
             }
         }
-        const blob = await (0, blob_1.put)(filename, file.buffer, {
+        const blob = await put(filename, file.buffer, {
             access: "public",
             contentType: file.mimetype,
         });
@@ -455,19 +419,19 @@ router.post("/profile-picture", auth_2.authenticate, upload.single("file"), (0, 
     }
     else {
         // Local development without token - use local filesystem
-        const filepath = (0, path_1.join)(process.cwd(), "public", filename);
+        const filepath = join(process.cwd(), "public", filename);
         // Ensure directory exists
-        const dirPath = (0, path_1.join)(process.cwd(), "public", "profile-pictures");
-        if (!(0, fs_1.existsSync)(dirPath)) {
-            await (0, promises_1.mkdir)(dirPath, { recursive: true });
+        const dirPath = join(process.cwd(), "public", "profile-pictures");
+        if (!existsSync(dirPath)) {
+            await mkdir(dirPath, { recursive: true });
         }
         // Delete old profile picture if it exists (local filesystem)
         if (existingUser?.profilePicture &&
             !existingUser.profilePicture.startsWith("https://")) {
-            const oldFilePath = (0, path_1.join)(process.cwd(), "public", existingUser.profilePicture);
-            if ((0, fs_1.existsSync)(oldFilePath)) {
+            const oldFilePath = join(process.cwd(), "public", existingUser.profilePicture);
+            if (existsSync(oldFilePath)) {
                 try {
-                    await (0, promises_1.unlink)(oldFilePath);
+                    await unlink(oldFilePath);
                 }
                 catch (error) {
                     console.warn("Failed to delete old profile picture:", error);
@@ -475,11 +439,11 @@ router.post("/profile-picture", auth_2.authenticate, upload.single("file"), (0, 
             }
         }
         // Save file
-        await (0, promises_1.writeFile)(filepath, file.buffer);
+        await writeFile(filepath, file.buffer);
         profilePictureUrl = filename;
     }
     // Update user record
-    await db_1.default.user.update({
+    await prisma.user.update({
         where: { id: req.user.userId },
         data: { profilePicture: profilePictureUrl },
     });
@@ -488,5 +452,5 @@ router.post("/profile-picture", auth_2.authenticate, upload.single("file"), (0, 
         profilePicture: profilePictureUrl,
     });
 }));
-exports.default = router;
+export default router;
 //# sourceMappingURL=auth.js.map

@@ -1,17 +1,15 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-const express_1 = require("express");
-const digital_enquiry_controller_1 = require("../controllers/digital-enquiry.controller");
-const auth_1 = require("../middleware/auth");
-const router = (0, express_1.Router)();
-const controller = new digital_enquiry_controller_1.DigitalEnquiryController();
+import { Router } from "express";
+import { DigitalEnquiryController } from "../controllers/digital-enquiry.controller";
+import { authenticate, asyncHandler } from "../middleware/auth";
+const router = Router();
+const controller = new DigitalEnquiryController();
 // Create digital enquiry
-router.post("/", auth_1.authenticate, (0, auth_1.asyncHandler)(controller.create));
+router.post("/", authenticate, asyncHandler(controller.create));
 // Get digital enquiries
-router.get("/", auth_1.authenticate, (0, auth_1.asyncHandler)(controller.getAll));
+router.get("/", authenticate, asyncHandler(controller.getAll));
 // Update lead scope
-router.patch("/:id", auth_1.authenticate, (0, auth_1.asyncHandler)(controller.updateLeadScope));
+router.patch("/:id", authenticate, asyncHandler(controller.updateLeadScope));
 // Bulk upload
-router.post("/bulk", auth_1.authenticate, (0, auth_1.asyncHandler)(controller.bulkUpload));
-exports.default = router;
+router.post("/bulk", authenticate, asyncHandler(controller.bulkUpload));
+export default router;
 //# sourceMappingURL=digital-enquiry.routes.js.map

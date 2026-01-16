@@ -1,23 +1,17 @@
-"use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.VisitorService = void 0;
-const visitor_repository_1 = require("../repositories/visitor.repository");
-const whatsapp_1 = require("../lib/whatsapp");
-const phone_formatter_1 = require("../utils/phone-formatter");
-const constants_1 = require("../config/constants");
-const db_1 = __importDefault(require("../lib/db"));
-class VisitorService {
+import { VisitorRepository } from "../repositories/visitor.repository";
+import { whatsappClient } from "../lib/whatsapp";
+import { normalizePhoneNumber } from "../utils/phone-formatter";
+import { PAGINATION } from "../config/constants";
+import prisma from "../lib/db";
+export class VisitorService {
     constructor() {
-        this.repository = new visitor_repository_1.VisitorRepository();
+        this.repository = new VisitorRepository();
     }
     /**
      * Create a visitor (or update existing) and create a session
      */
     async createVisitor(data, dealershipId) {
-        const normalizedPhone = (0, phone_formatter_1.normalizePhoneNumber)(data.whatsappNumber);
+        const normalizedPhone = normalizePhoneNumber(data.whatsappNumber);
         // Find existing visitor by normalized phone
         let visitor = await this.repository.findByPhoneAndDealership(data.whatsappNumber, dealershipId);
         const isNewVisitor = !visitor;
@@ -57,7 +51,7 @@ class VisitorService {
         const sessionCount = visitor.sessions.length;
         const visitNumber = sessionCount + 1;
         // Create session
-        const session = await db_1.default.visitorSession.create({
+        const session = await prisma.visitorSession.create({
             data: {
                 reason: data.reason,
                 visitorId: visitorId,
@@ -66,7 +60,7 @@ class VisitorService {
         });
         // Create interests if provided
         if (data.modelIds && data.modelIds.length > 0) {
-            await db_1.default.visitorInterest.createMany({
+            await prisma.visitorInterest.createMany({
                 data: data.modelIds.map((item) => {
                     if (typeof item === "string") {
                         return {
@@ -92,7 +86,7 @@ class VisitorService {
         const name = `${data.firstName} ${data.lastName}`;
         if (isNewVisitor && sessionCount === 0) {
             // Send welcome message for new visitor
-            const welcomeTemplate = await db_1.default.whatsAppTemplate.findFirst({
+            const welcomeTemplate = await prisma.whatsAppTemplate.findFirst({
                 where: {
                     dealershipId,
                     type: "welcome",
@@ -100,7 +94,7 @@ class VisitorService {
             });
             if (welcomeTemplate) {
                 try {
-                    await whatsapp_1.whatsappClient.sendTemplate({
+                    await whatsappClient.sendTemplate({
                         contactNumber: data.whatsappNumber,
                         templateName: welcomeTemplate.templateName,
                         templateId: welcomeTemplate.templateId,
@@ -118,7 +112,7 @@ class VisitorService {
         }
         else {
             // Send return visit message
-            const returnVisitTemplate = await db_1.default.whatsAppTemplate.findFirst({
+            const returnVisitTemplate = await prisma.whatsAppTemplate.findFirst({
                 where: {
                     dealershipId,
                     type: "return_visit",
@@ -133,7 +127,7 @@ class VisitorService {
                             : visitNumber === 3
                                 ? "3rd"
                                 : `${visitNumber}th`;
-                    await whatsapp_1.whatsappClient.sendTemplate({
+                    await whatsappClient.sendTemplate({
                         contactNumber: data.whatsappNumber,
                         templateName: returnVisitTemplate.templateName,
                         templateId: returnVisitTemplate.templateId,
@@ -150,7 +144,7 @@ class VisitorService {
             }
             else {
                 // Fallback to welcome template
-                const welcomeTemplate = await db_1.default.whatsAppTemplate.findFirst({
+                const welcomeTemplate = await prisma.whatsAppTemplate.findFirst({
                     where: {
                         dealershipId,
                         type: "welcome",
@@ -158,7 +152,7 @@ class VisitorService {
                 });
                 if (welcomeTemplate) {
                     try {
-                        await whatsapp_1.whatsappClient.sendTemplate({
+                        await whatsappClient.sendTemplate({
                             contactNumber: data.whatsappNumber,
                             templateName: welcomeTemplate.templateName,
                             templateId: welcomeTemplate.templateId,
@@ -196,8 +190,8 @@ class VisitorService {
      * Get visitors with pagination and deduplication
      */
     async getVisitors(dealershipId, limit, skip) {
-        const take = limit || constants_1.PAGINATION.DEFAULT_LIMIT;
-        const offset = skip || constants_1.PAGINATION.DEFAULT_SKIP;
+        const take = limit || PAGINATION.DEFAULT_LIMIT;
+        const offset = skip || PAGINATION.DEFAULT_SKIP;
         const { visitors, total } = await this.repository.findByDealershipWithDeduplication(dealershipId, { limit: take, skip: offset });
         const hasMore = offset + take < total;
         return {
@@ -245,7 +239,7 @@ class VisitorService {
         const sessionCount = visitor.sessions.length;
         const visitNumber = sessionCount + 1;
         // Create session
-        const session = await db_1.default.visitorSession.create({
+        const session = await prisma.visitorSession.create({
             data: {
                 reason: data.reason,
                 visitorId: visitor.id,
@@ -254,7 +248,7 @@ class VisitorService {
         });
         // Handle model interests
         if (data.modelIds && data.modelIds.length > 0) {
-            const existingInterests = await db_1.default.visitorInterest.findMany({
+            const existingInterests = await prisma.visitorInterest.findMany({
                 where: {
                     visitorId: visitor.id,
                 },
@@ -281,7 +275,7 @@ class VisitorService {
             })
                 .filter((item) => item !== null);
             if (interestsToCreate.length > 0) {
-                await db_1.default.visitorInterest.createMany({
+                await prisma.visitorInterest.createMany({
                     data: interestsToCreate,
                 });
             }
@@ -296,7 +290,7 @@ class VisitorService {
                 for (const item of selectedItems) {
                     const modelId = typeof item === "string" ? item : item.modelId;
                     const variantId = typeof item === "object" ? item.variantId : undefined;
-                    await db_1.default.visitorInterest.updateMany({
+                    await prisma.visitorInterest.updateMany({
                         where: {
                             visitorId: visitor.id,
                             modelId,
@@ -311,13 +305,13 @@ class VisitorService {
             }
         }
         // Send WhatsApp message
-        const returnVisitTemplate = await db_1.default.whatsAppTemplate.findFirst({
+        const returnVisitTemplate = await prisma.whatsAppTemplate.findFirst({
             where: {
                 dealershipId,
                 type: "return_visit",
             },
         });
-        const welcomeTemplate = await db_1.default.whatsAppTemplate.findFirst({
+        const welcomeTemplate = await prisma.whatsAppTemplate.findFirst({
             where: {
                 dealershipId,
                 type: "welcome",
@@ -338,7 +332,7 @@ class VisitorService {
                 const parameters = templateToUse.type === "return_visit"
                     ? [visitor.firstName, visitLabel]
                     : [visitor.firstName, new Date().toLocaleDateString()];
-                await whatsapp_1.whatsappClient.sendTemplate({
+                await whatsappClient.sendTemplate({
                     contactNumber: visitor.whatsappNumber,
                     templateName: templateToUse.templateName,
                     templateId: templateToUse.templateId,
@@ -372,5 +366,4 @@ class VisitorService {
         };
     }
 }
-exports.VisitorService = VisitorService;
 //# sourceMappingURL=visitor.service.js.map

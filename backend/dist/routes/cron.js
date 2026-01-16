@@ -1,16 +1,11 @@
-"use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
-Object.defineProperty(exports, "__esModule", { value: true });
-const express_1 = require("express");
-const db_1 = __importDefault(require("../lib/db"));
-const whatsapp_1 = require("../lib/whatsapp");
-const auth_1 = require("../middleware/auth");
-const router = (0, express_1.Router)();
+import { Router } from "express";
+import prisma from "../lib/db";
+import { whatsappClient } from "../lib/whatsapp";
+import { asyncHandler } from "../middleware/auth";
+const router = Router();
 const BATCH_SIZE = 100;
 // Send scheduled messages
-router.get("/send-scheduled-messages", (0, auth_1.asyncHandler)(async (req, res) => {
+router.get("/send-scheduled-messages", asyncHandler(async (req, res) => {
     // Vercel cron authentication
     const authHeader = req.headers.authorization;
     const vercelCronHeader = req.headers["x-vercel-cron"];
@@ -26,7 +21,7 @@ router.get("/send-scheduled-messages", (0, auth_1.asyncHandler)(async (req, res)
     }
     const now = new Date();
     // Find all pending messages that should be sent now
-    const pendingMessages = await db_1.default.scheduledMessage.findMany({
+    const pendingMessages = await prisma.scheduledMessage.findMany({
         where: {
             status: "pending",
             scheduledFor: {
@@ -63,7 +58,7 @@ router.get("/send-scheduled-messages", (0, auth_1.asyncHandler)(async (req, res)
     const results = await Promise.allSettled(pendingMessages.map(async (scheduledMessage) => {
         const ticket = scheduledMessage.deliveryTicket;
         // Get delivery template
-        const template = await db_1.default.whatsAppTemplate.findFirst({
+        const template = await prisma.whatsAppTemplate.findFirst({
             where: {
                 dealershipId: ticket.dealershipId,
                 type: "delivery_reminder",
@@ -76,7 +71,7 @@ router.get("/send-scheduled-messages", (0, auth_1.asyncHandler)(async (req, res)
             orderBy: [{ section: "asc" }],
         });
         if (!template) {
-            await db_1.default.scheduledMessage.update({
+            await prisma.scheduledMessage.update({
                 where: { id: scheduledMessage.id },
                 data: {
                     status: "failed",
@@ -86,7 +81,7 @@ router.get("/send-scheduled-messages", (0, auth_1.asyncHandler)(async (req, res)
             return { success: false, reason: "Template not found" };
         }
         if (!template.templateId || !template.templateName) {
-            await db_1.default.scheduledMessage.update({
+            await prisma.scheduledMessage.update({
                 where: { id: scheduledMessage.id },
                 data: {
                     status: "failed",
@@ -109,21 +104,21 @@ router.get("/send-scheduled-messages", (0, auth_1.asyncHandler)(async (req, res)
             const diffTime = deliveryDate.getTime() - scheduledDate.getTime();
             const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
             const daysBeforeStr = String(diffDays);
-            await whatsapp_1.whatsappClient.sendTemplate({
+            await whatsappClient.sendTemplate({
                 contactNumber: ticket.whatsappNumber,
                 templateName: template.templateName,
                 templateId: template.templateId,
                 templateLanguage: template.language,
                 parameters: [modelName, daysBeforeStr],
             });
-            await db_1.default.scheduledMessage.update({
+            await prisma.scheduledMessage.update({
                 where: { id: scheduledMessage.id },
                 data: {
                     status: "sent",
                     sentAt: new Date(),
                 },
             });
-            await db_1.default.deliveryTicket.update({
+            await prisma.deliveryTicket.update({
                 where: { id: ticket.id },
                 data: { messageSent: true },
             });
@@ -133,7 +128,7 @@ router.get("/send-scheduled-messages", (0, auth_1.asyncHandler)(async (req, res)
             const retryCount = scheduledMessage.retryCount + 1;
             const maxRetries = 3;
             if (retryCount >= maxRetries) {
-                await db_1.default.scheduledMessage.update({
+                await prisma.scheduledMessage.update({
                     where: { id: scheduledMessage.id },
                     data: {
                         status: "failed",
@@ -146,7 +141,7 @@ router.get("/send-scheduled-messages", (0, auth_1.asyncHandler)(async (req, res)
                 };
             }
             else {
-                await db_1.default.scheduledMessage.update({
+                await prisma.scheduledMessage.update({
                     where: { id: scheduledMessage.id },
                     data: {
                         retryCount,
@@ -181,5 +176,5 @@ router.get("/send-scheduled-messages", (0, auth_1.asyncHandler)(async (req, res)
         failed: failedCount,
     });
 }));
-exports.default = router;
+export default router;
 //# sourceMappingURL=cron.js.map

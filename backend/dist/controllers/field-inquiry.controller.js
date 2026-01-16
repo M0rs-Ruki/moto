@@ -1,9 +1,6 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.FieldInquiryController = void 0;
-const field_inquiry_service_1 = require("../services/field-inquiry.service");
-const constants_1 = require("../config/constants");
-class FieldInquiryController {
+import { FieldInquiryService } from "../services/field-inquiry.service";
+import { PAGINATION } from "../config/constants";
+export class FieldInquiryController {
     constructor() {
         /**
          * Create a field inquiry
@@ -46,8 +43,8 @@ class FieldInquiryController {
                 res.status(401).json({ error: "Not authenticated" });
                 return;
             }
-            const limit = parseInt(req.query.limit || String(constants_1.PAGINATION.DEFAULT_LIMIT), 10);
-            const skip = parseInt(req.query.skip || String(constants_1.PAGINATION.DEFAULT_SKIP), 10);
+            const limit = parseInt(req.query.limit || String(PAGINATION.DEFAULT_LIMIT), 10);
+            const skip = parseInt(req.query.skip || String(PAGINATION.DEFAULT_SKIP), 10);
             try {
                 const result = await this.service.getInquiries(req.user.dealershipId, limit, skip);
                 res.json(result);
@@ -113,8 +110,7 @@ class FieldInquiryController {
                 }
             }
         };
-        this.service = new field_inquiry_service_1.FieldInquiryService();
+        this.service = new FieldInquiryService();
     }
 }
-exports.FieldInquiryController = FieldInquiryController;
 //# sourceMappingURL=field-inquiry.controller.js.map

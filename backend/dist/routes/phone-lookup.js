@@ -1,14 +1,9 @@
-"use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
-Object.defineProperty(exports, "__esModule", { value: true });
-const express_1 = require("express");
-const db_1 = __importDefault(require("../lib/db"));
-const auth_1 = require("../middleware/auth");
-const router = (0, express_1.Router)();
+import { Router } from "express";
+import prisma from "../lib/db";
+import { authenticate, asyncHandler } from "../middleware/auth";
+const router = Router();
 // Single phone lookup
-router.get("/", auth_1.authenticate, (0, auth_1.asyncHandler)(async (req, res) => {
+router.get("/", authenticate, asyncHandler(async (req, res) => {
     if (!req.user || !req.user.dealershipId) {
         res.status(401).json({ error: "Not authenticated" });
         return;
@@ -19,7 +14,7 @@ router.get("/", auth_1.authenticate, (0, auth_1.asyncHandler)(async (req, res) =
         return;
     }
     const [visitors, digitalEnquiries, fieldInquiries, deliveryTickets] = await Promise.all([
-        db_1.default.visitor.findMany({
+        prisma.visitor.findMany({
             where: {
                 dealershipId: req.user.dealershipId,
                 whatsappNumber: phoneNumber,
@@ -31,7 +26,7 @@ router.get("/", auth_1.authenticate, (0, auth_1.asyncHandler)(async (req, res) =
             },
             take: 1,
         }),
-        db_1.default.digitalEnquiry.findMany({
+        prisma.digitalEnquiry.findMany({
             where: {
                 dealershipId: req.user.dealershipId,
                 whatsappNumber: phoneNumber,
@@ -43,7 +38,7 @@ router.get("/", auth_1.authenticate, (0, auth_1.asyncHandler)(async (req, res) =
             },
             take: 1,
         }),
-        db_1.default.fieldInquiry.findMany({
+        prisma.fieldInquiry.findMany({
             where: {
                 dealershipId: req.user.dealershipId,
                 whatsappNumber: phoneNumber,
@@ -55,7 +50,7 @@ router.get("/", auth_1.authenticate, (0, auth_1.asyncHandler)(async (req, res) =
             },
             take: 1,
         }),
-        db_1.default.deliveryTicket.findMany({
+        prisma.deliveryTicket.findMany({
             where: {
                 dealershipId: req.user.dealershipId,
                 whatsappNumber: phoneNumber,
@@ -81,7 +76,7 @@ router.get("/", auth_1.authenticate, (0, auth_1.asyncHandler)(async (req, res) =
     res.json(results);
 }));
 // Batch phone lookup
-router.post("/", auth_1.authenticate, (0, auth_1.asyncHandler)(async (req, res) => {
+router.post("/", authenticate, asyncHandler(async (req, res) => {
     if (!req.user || !req.user.dealershipId) {
         res.status(401).json({ error: "Not authenticated" });
         return;
@@ -94,7 +89,7 @@ router.post("/", auth_1.authenticate, (0, auth_1.asyncHandler)(async (req, res) 
     const phoneNumbers = phones.slice(0, 1000);
     const uniquePhones = [...new Set(phoneNumbers)];
     const [visitors, digitalEnquiries, fieldInquiries, deliveryTickets] = await Promise.all([
-        db_1.default.visitor.findMany({
+        prisma.visitor.findMany({
             where: {
                 dealershipId: req.user.dealershipId,
                 whatsappNumber: { in: uniquePhones },
@@ -106,7 +101,7 @@ router.post("/", auth_1.authenticate, (0, auth_1.asyncHandler)(async (req, res) 
                 lastName: true,
             },
         }),
-        db_1.default.digitalEnquiry.findMany({
+        prisma.digitalEnquiry.findMany({
             where: {
                 dealershipId: req.user.dealershipId,
                 whatsappNumber: { in: uniquePhones },
@@ -118,7 +113,7 @@ router.post("/", auth_1.authenticate, (0, auth_1.asyncHandler)(async (req, res) 
                 lastName: true,
             },
         }),
-        db_1.default.fieldInquiry.findMany({
+        prisma.fieldInquiry.findMany({
             where: {
                 dealershipId: req.user.dealershipId,
                 whatsappNumber: { in: uniquePhones },
@@ -130,7 +125,7 @@ router.post("/", auth_1.authenticate, (0, auth_1.asyncHandler)(async (req, res) 
                 lastName: true,
             },
         }),
-        db_1.default.deliveryTicket.findMany({
+        prisma.deliveryTicket.findMany({
             where: {
                 dealershipId: req.user.dealershipId,
                 whatsappNumber: { in: uniquePhones },
@@ -166,5 +161,5 @@ router.post("/", auth_1.authenticate, (0, auth_1.asyncHandler)(async (req, res) 
     });
     res.json(results);
 }));
-exports.default = router;
+export default router;
 //# sourceMappingURL=phone-lookup.js.map

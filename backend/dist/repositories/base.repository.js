@@ -1,16 +1,10 @@
-"use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.BaseRepository = void 0;
-const db_1 = __importDefault(require("../lib/db"));
+import prisma from "../lib/db";
 /**
  * Base repository class providing common database operations
  */
-class BaseRepository {
+export class BaseRepository {
     constructor() {
-        this.prisma = db_1.default;
+        this.prisma = prisma;
     }
     /**
      * Find many records with pagination
@@ -65,5 +59,4 @@ class BaseRepository {
         });
     }
 }
-exports.BaseRepository = BaseRepository;
 //# sourceMappingURL=base.repository.js.map

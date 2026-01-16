@@ -1,6 +1,7 @@
 {
   "name": "moter-backend",
   "version": "1.0.0",
+  "type": "module",
   "description": "Express.js backend for Moter application",
   "main": "dist/server.js",
   "scripts": {
@@ -40,4 +41,3 @@
     "typescript": "^5"
   }
 }
-

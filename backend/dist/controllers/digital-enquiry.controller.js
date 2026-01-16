@@ -1,9 +1,6 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.DigitalEnquiryController = void 0;
-const digital_enquiry_service_1 = require("../services/digital-enquiry.service");
-const constants_1 = require("../config/constants");
-class DigitalEnquiryController {
+import { DigitalEnquiryService } from "../services/digital-enquiry.service";
+import { PAGINATION } from "../config/constants";
+export class DigitalEnquiryController {
     constructor() {
         /**
          * Create a digital enquiry
@@ -46,8 +43,8 @@ class DigitalEnquiryController {
                 res.status(401).json({ error: "Not authenticated" });
                 return;
             }
-            const limit = parseInt(req.query.limit || String(constants_1.PAGINATION.DEFAULT_LIMIT), 10);
-            const skip = parseInt(req.query.skip || String(constants_1.PAGINATION.DEFAULT_SKIP), 10);
+            const limit = parseInt(req.query.limit || String(PAGINATION.DEFAULT_LIMIT), 10);
+            const skip = parseInt(req.query.skip || String(PAGINATION.DEFAULT_SKIP), 10);
             try {
                 const result = await this.service.getEnquiries(req.user.dealershipId, limit, skip);
                 res.json(result);
@@ -113,8 +110,7 @@ class DigitalEnquiryController {
                 }
             }
         };
-        this.service = new digital_enquiry_service_1.DigitalEnquiryService();
+        this.service = new DigitalEnquiryService();
     }
 }
-exports.DigitalEnquiryController = DigitalEnquiryController;
 //# sourceMappingURL=digital-enquiry.controller.js.map

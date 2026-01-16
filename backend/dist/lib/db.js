@@ -1,6 +1,4 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-const client_1 = require("@prisma/client");
+import { PrismaClient } from "@prisma/client";
 // Check if DATABASE_URL is set
 const DATABASE_URL = process.env.DATABASE_URL;
 if (!DATABASE_URL) {
@@ -25,7 +23,7 @@ const prismaClientSingleton = () => {
             console.warn("⚠️ Could not parse DATABASE_URL for logging");
         }
     }
-    return new client_1.PrismaClient({
+    return new PrismaClient({
         log: process.env.NODE_ENV === "development"
             ? ["error", "warn"]
             : ["error"],
@@ -53,5 +51,5 @@ if (process.env.NODE_ENV === "production" && DATABASE_URL) {
         console.error("Please check your DATABASE_URL environment variable and ensure the database server is accessible.");
     });
 }
-exports.default = prisma;
+export default prisma;
 //# sourceMappingURL=db.js.map

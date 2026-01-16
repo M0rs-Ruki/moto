@@ -1,8 +1,5 @@
-"use strict";
-Object.defineProperty(exports, "__esModule", { value: true });
-exports.DigitalEnquiryRepository = void 0;
-const base_repository_1 = require("./base.repository");
-class DigitalEnquiryRepository extends base_repository_1.BaseRepository {
+import { BaseRepository } from "./base.repository";
+export class DigitalEnquiryRepository extends BaseRepository {
     /**
      * Find digital enquiry by ID and dealership
      */
@@ -78,5 +75,4 @@ class DigitalEnquiryRepository extends base_repository_1.BaseRepository {
         });
     }
 }
-exports.DigitalEnquiryRepository = DigitalEnquiryRepository;
 //# sourceMappingURL=digital-enquiry.repository.js.map

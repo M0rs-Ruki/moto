@@ -1,14 +1,9 @@
-"use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
-Object.defineProperty(exports, "__esModule", { value: true });
-const express_1 = require("express");
-const db_1 = __importDefault(require("../lib/db"));
-const auth_1 = require("../middleware/auth");
-const router = (0, express_1.Router)();
+import { Router } from "express";
+import prisma from "../lib/db";
+import { authenticate, asyncHandler } from "../middleware/auth";
+const router = Router();
 // Get statistics
-router.get("/", auth_1.authenticate, (0, auth_1.asyncHandler)(async (req, res) => {
+router.get("/", authenticate, asyncHandler(async (req, res) => {
     if (!req.user || !req.user.dealershipId) {
         res.status(401).json({ error: "Not authenticated" });
         return;
@@ -59,10 +54,10 @@ router.get("/", auth_1.authenticate, (0, auth_1.asyncHandler)(async (req, res) =
         return { today, week, month, year, total };
     };
     const baseWhere = { dealershipId: req.user.dealershipId };
-    const dailyWalkins = await countByDateRange(db_1.default.visitor, baseWhere);
-    const digitalEnquiry = await countByDateRange(db_1.default.digitalEnquiry, baseWhere);
-    const fieldInquiry = await countByDateRange(db_1.default.fieldInquiry, baseWhere);
-    const deliveryUpdate = await countByDateRange(db_1.default.deliveryTicket, baseWhere);
+    const dailyWalkins = await countByDateRange(prisma.visitor, baseWhere);
+    const digitalEnquiry = await countByDateRange(prisma.digitalEnquiry, baseWhere);
+    const fieldInquiry = await countByDateRange(prisma.fieldInquiry, baseWhere);
+    const deliveryUpdate = await countByDateRange(prisma.deliveryTicket, baseWhere);
     res.json({
         dailyWalkins,
         digitalEnquiry,
@@ -70,5 +65,5 @@ router.get("/", auth_1.authenticate, (0, auth_1.asyncHandler)(async (req, res) =
         deliveryUpdate,
     });
 }));
-exports.default = router;
+export default router;
 //# sourceMappingURL=statistics.js.map

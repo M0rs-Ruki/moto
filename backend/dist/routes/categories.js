@@ -1,19 +1,14 @@
-"use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
-Object.defineProperty(exports, "__esModule", { value: true });
-const express_1 = require("express");
-const db_1 = __importDefault(require("../lib/db"));
-const auth_1 = require("../middleware/auth");
-const router = (0, express_1.Router)();
+import { Router } from "express";
+import prisma from "../lib/db";
+import { authenticate, asyncHandler } from "../middleware/auth";
+const router = Router();
 // Get all categories
-router.get("/", auth_1.authenticate, (0, auth_1.asyncHandler)(async (req, res) => {
+router.get("/", authenticate, asyncHandler(async (req, res) => {
     if (!req.user || !req.user.dealershipId) {
         res.status(401).json({ error: "Not authenticated" });
         return;
     }
-    const categories = await db_1.default.vehicleCategory.findMany({
+    const categories = await prisma.vehicleCategory.findMany({
         where: {
             dealershipId: req.user.dealershipId,
         },
@@ -38,7 +33,7 @@ router.get("/", auth_1.authenticate, (0, auth_1.asyncHandler)(async (req, res) =
     res.json({ categories });
 }));
 // Create category
-router.post("/", auth_1.authenticate, (0, auth_1.asyncHandler)(async (req, res) => {
+router.post("/", authenticate, asyncHandler(async (req, res) => {
     if (!req.user || !req.user.dealershipId) {
         res.status(401).json({ error: "Not authenticated" });
         return;
@@ -48,7 +43,7 @@ router.post("/", auth_1.authenticate, (0, auth_1.asyncHandler)(async (req, res) 
         res.status(400).json({ error: "Category name is required" });
         return;
     }
-    const category = await db_1.default.vehicleCategory.create({
+    const category = await prisma.vehicleCategory.create({
         data: {
             name,
             dealershipId: req.user.dealershipId,
@@ -57,7 +52,7 @@ router.post("/", auth_1.authenticate, (0, auth_1.asyncHandler)(async (req, res) 
     res.json({ success: true, category });
 }));
 // Delete category
-router.delete("/", auth_1.authenticate, (0, auth_1.asyncHandler)(async (req, res) => {
+router.delete("/", authenticate, asyncHandler(async (req, res) => {
     if (!req.user || !req.user.dealershipId) {
         res.status(401).json({ error: "Not authenticated" });
         return;
@@ -68,7 +63,7 @@ router.delete("/", auth_1.authenticate, (0, auth_1.asyncHandler)(async (req, res
         return;
     }
     // Verify category belongs to user's dealership
-    const category = await db_1.default.vehicleCategory.findFirst({
+    const category = await prisma.vehicleCategory.findFirst({
         where: {
             id,
             dealershipId: req.user.dealershipId,
@@ -79,10 +74,10 @@ router.delete("/", auth_1.authenticate, (0, auth_1.asyncHandler)(async (req, res
         return;
     }
     // Delete category (models will be cascade deleted)
-    await db_1.default.vehicleCategory.delete({
+    await prisma.vehicleCategory.delete({
         where: { id },
     });
     res.json({ success: true, message: "Category deleted" });
 }));
-exports.default = router;
+export default router;
 //# sourceMappingURL=categories.js.map
