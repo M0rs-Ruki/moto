@@ -1,10 +1,13 @@
-import jwt from "jsonwebtoken";
+import { SignJWT, jwtVerify, type JWTPayload as JoseJWTPayload } from "jose";
 import { cookies } from "next/headers";
 import { NextRequest } from "next/server";
 
 const secret =
   process.env.JWT_SECRET ||
   "your-super-secret-jwt-key-change-this-in-production";
+
+// Pre-encode the secret so it works in the Edge runtime (middleware)
+const secretKey = new TextEncoder().encode(secret);
 
 export interface JWTPayload {
   userId: string;
@@ -16,12 +19,12 @@ export interface JWTPayload {
  * Generate JWT token
  */
 export async function generateToken(payload: JWTPayload): Promise<string> {
-  return new Promise((resolve, reject) => {
-    jwt.sign(payload, secret, { expiresIn: "7d" }, (err, token) => {
-      if (err) reject(err);
-      else resolve(token!);
-    });
-  });
+  const josePayload: JoseJWTPayload = { ...payload };
+
+  return new SignJWT(josePayload)
+    .setProtectedHeader({ alg: "HS256" })
+    .setExpirationTime("7d")
+    .sign(secretKey);
 }
 
 /**
@@ -29,9 +32,25 @@ export async function generateToken(payload: JWTPayload): Promise<string> {
  */
 export async function verifyToken(token: string): Promise<JWTPayload | null> {
   try {
-    const payload = jwt.verify(token, secret) as JWTPayload;
-    return payload;
+    const { payload } = await jwtVerify(token, secretKey);
+
+    if (
+      typeof payload?.userId !== "string" ||
+      typeof payload?.email !== "string"
+    ) {
+      return null;
+    }
+
+    return {
+      userId: payload.userId,
+      email: payload.email,
+      dealershipId:
+        typeof payload.dealershipId === "string"
+          ? payload.dealershipId
+          : undefined,
+    } satisfies JWTPayload;
   } catch (error) {
+    console.error("verifyToken failed", error);
     return null;
   }
 }

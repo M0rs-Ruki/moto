@@ -41,7 +41,9 @@ function LoginContent() {
     theme: "light",
   });
   const [profilePicture, setProfilePicture] = useState<File | null>(null);
-  const [profilePicturePreview, setProfilePicturePreview] = useState<string | null>(null);
+  const [profilePicturePreview, setProfilePicturePreview] = useState<
+    string | null
+  >(null);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -89,7 +91,7 @@ function LoginContent() {
       formData.append("dealershipName", registerData.dealershipName);
       formData.append("dealershipLocation", registerData.dealershipLocation);
       formData.append("theme", registerData.theme);
-      
+
       if (profilePicture) {
         formData.append("profilePicture", profilePicture);
       }
@@ -335,9 +337,17 @@ function LoginContent() {
                           return;
                         }
                         // Validate file type
-                        const allowedTypes = ["image/jpeg", "image/jpg", "image/png", "image/webp", "image/gif"];
+                        const allowedTypes = [
+                          "image/jpeg",
+                          "image/jpg",
+                          "image/png",
+                          "image/webp",
+                          "image/gif",
+                        ];
                         if (!allowedTypes.includes(file.type)) {
-                          setError("Please upload a valid image file (JPEG, PNG, WebP, or GIF)");
+                          setError(
+                            "Please upload a valid image file (JPEG, PNG, WebP, or GIF)"
+                          );
                           return;
                         }
                         setProfilePicture(file);

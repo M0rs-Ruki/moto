@@ -11,25 +11,19 @@ export async function middleware(request: NextRequest) {
 
   // Get token from cookies
   const token = request.cookies.get("auth-token")?.value;
-  
-  console.log("Middleware - Path:", pathname, "Has token:", !!token);
 
   // Verify token
   const user = token ? await verifyToken(token) : null;
-  
-  console.log("Middleware - User verified:", !!user);
 
   // Redirect to login if accessing protected route without auth
   if (!isPublicPath && !user) {
     const url = new URL("/login", request.url);
     url.searchParams.set("redirect", pathname);
-    console.log("Middleware - Redirecting to login");
     return NextResponse.redirect(url);
   }
 
   // Redirect to dashboard if accessing auth pages while logged in
   if (isPublicPath && user) {
-    console.log("Middleware - Redirecting to dashboard");
     return NextResponse.redirect(new URL("/dashboard", request.url));
   }
 
