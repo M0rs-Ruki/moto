@@ -24,14 +24,14 @@ export class VisitorService {
    */
   async createVisitor(
     data: CreateVisitorDto,
-    dealershipId: string
+    dealershipId: string,
   ): Promise<CreateVisitorResponse> {
     const normalizedPhone = normalizePhoneNumber(data.whatsappNumber);
 
     // Find existing visitor by normalized phone
     let visitor = await this.repository.findByPhoneAndDealership(
       data.whatsappNumber,
-      dealershipId
+      dealershipId,
     );
 
     const isNewVisitor = !visitor;
@@ -70,7 +70,7 @@ export class VisitorService {
     }
 
     const visitorId = visitor.id;
-    const sessionCount = visitor.sessions.length;
+    const sessionCount = visitor.sessions?.length || 0;
     const visitNumber = sessionCount + 1;
 
     // Create session
@@ -101,13 +101,14 @@ export class VisitorService {
                 sessionId: session.id,
               };
             }
-          }
+          },
         ),
       });
     }
 
     // Send WhatsApp message
-    let messageStatus: "sent" | "failed" | "not_sent" | "not_configured" = "not_sent";
+    let messageStatus: "sent" | "failed" | "not_sent" | "not_configured" =
+      "not_sent";
     let messageError: string | null = null;
     const name = `${data.firstName} ${data.lastName}`;
 
@@ -133,7 +134,8 @@ export class VisitorService {
         } catch (error: unknown) {
           console.error("Failed to send welcome message:", error);
           messageStatus = "failed";
-          messageError = (error as Error).message || "Failed to send welcome message";
+          messageError =
+            (error as Error).message || "Failed to send welcome message";
         }
       }
     } else {
@@ -151,10 +153,10 @@ export class VisitorService {
             visitNumber === 1
               ? "1st"
               : visitNumber === 2
-              ? "2nd"
-              : visitNumber === 3
-              ? "3rd"
-              : `${visitNumber}th`;
+                ? "2nd"
+                : visitNumber === 3
+                  ? "3rd"
+                  : `${visitNumber}th`;
 
           await whatsappClient.sendTemplate({
             contactNumber: data.whatsappNumber,
@@ -167,7 +169,8 @@ export class VisitorService {
         } catch (error: unknown) {
           console.error("Failed to send return visit message:", error);
           messageStatus = "failed";
-          messageError = (error as Error).message || "Failed to send return visit message";
+          messageError =
+            (error as Error).message || "Failed to send return visit message";
         }
       } else {
         // Fallback to welcome template
@@ -221,7 +224,7 @@ export class VisitorService {
   async getVisitors(
     dealershipId: string,
     limit?: number,
-    skip?: number
+    skip?: number,
   ): Promise<{
     visitors: VisitorWithRelations[];
     hasMore: boolean;
@@ -232,10 +235,11 @@ export class VisitorService {
     const take = limit || PAGINATION.DEFAULT_LIMIT;
     const offset = skip || PAGINATION.DEFAULT_SKIP;
 
-    const { visitors, total } = await this.repository.findByDealershipWithDeduplication(
-      dealershipId,
-      { limit: take, skip: offset }
-    );
+    const { visitors, total } =
+      await this.repository.findByDealershipWithDeduplication(dealershipId, {
+        limit: take,
+        skip: offset,
+      });
 
     const hasMore = offset + take < total;
 
@@ -253,11 +257,11 @@ export class VisitorService {
    */
   async lookupByPhone(
     phoneNumber: string,
-    dealershipId: string
+    dealershipId: string,
   ): Promise<VisitorLookupResponse> {
     const visitor = await this.repository.findByPhoneAndDealership(
       phoneNumber,
-      dealershipId
+      dealershipId,
     );
 
     if (!visitor) {
@@ -272,7 +276,7 @@ export class VisitorService {
         whatsappNumber: visitor.whatsappNumber,
         email: visitor.email,
         address: visitor.address,
-        sessionCount: visitor.sessions.length,
+        sessionCount: visitor.sessions?.length || 0,
         interests: visitor.interests.map((i) => ({
           modelId: i.model.id,
           modelName: i.model.name,
@@ -288,18 +292,18 @@ export class VisitorService {
    */
   async createSession(
     data: CreateSessionDto,
-    dealershipId: string
+    dealershipId: string,
   ): Promise<CreateSessionResponse> {
     const visitor = await this.repository.findByIdAndDealership(
       data.visitorId,
-      dealershipId
+      dealershipId,
     );
 
     if (!visitor) {
       throw new Error("Visitor not found");
     }
 
-    const sessionCount = visitor.sessions.length;
+    const sessionCount = visitor.sessions?.length || 0;
     const visitNumber = sessionCount + 1;
 
     // Create session
@@ -324,7 +328,7 @@ export class VisitorService {
       });
 
       const existingInterestsSet = new Set(
-        existingInterests.map((ei) => `${ei.modelId}:${ei.variantId || ""}`)
+        existingInterests.map((ei) => `${ei.modelId}:${ei.variantId || ""}`),
       );
 
       type InterestToCreate = {
@@ -337,10 +341,11 @@ export class VisitorService {
       const interestsToCreate: InterestToCreate[] = data.modelIds
         .map(
           (
-            item: string | { modelId: string; variantId?: string }
+            item: string | { modelId: string; variantId?: string },
           ): InterestToCreate | null => {
             const modelId = typeof item === "string" ? item : item.modelId;
-            const variantId = typeof item === "object" ? item.variantId : undefined;
+            const variantId =
+              typeof item === "object" ? item.variantId : undefined;
             const key = `${modelId}:${variantId || ""}`;
 
             if (!existingInterestsSet.has(key)) {
@@ -352,10 +357,11 @@ export class VisitorService {
               };
             }
             return null;
-          }
+          },
         )
         .filter(
-          (item: InterestToCreate | null): item is InterestToCreate => item !== null
+          (item: InterestToCreate | null): item is InterestToCreate =>
+            item !== null,
         );
 
       if (interestsToCreate.length > 0) {
@@ -368,16 +374,18 @@ export class VisitorService {
       const selectedItems = data.modelIds.filter(
         (item: string | { modelId: string; variantId?: string }) => {
           const modelId = typeof item === "string" ? item : item.modelId;
-          const variantId = typeof item === "object" ? item.variantId : undefined;
+          const variantId =
+            typeof item === "object" ? item.variantId : undefined;
           const key = `${modelId}:${variantId || ""}`;
           return existingInterestsSet.has(key);
-        }
+        },
       );
 
       if (selectedItems.length > 0) {
         for (const item of selectedItems) {
           const modelId = typeof item === "string" ? item : item.modelId;
-          const variantId = typeof item === "object" ? item.variantId : undefined;
+          const variantId =
+            typeof item === "object" ? item.variantId : undefined;
 
           await prisma.visitorInterest.updateMany({
             where: {
@@ -411,7 +419,8 @@ export class VisitorService {
 
     const templateToUse = returnVisitTemplate || welcomeTemplate;
 
-    let messageStatus: "sent" | "failed" | "not_sent" | "not_configured" = "not_sent";
+    let messageStatus: "sent" | "failed" | "not_sent" | "not_configured" =
+      "not_sent";
     let messageError: string | null = null;
 
     if (templateToUse) {
@@ -420,10 +429,10 @@ export class VisitorService {
           visitNumber === 1
             ? "1st"
             : visitNumber === 2
-            ? "2nd"
-            : visitNumber === 3
-            ? "3rd"
-            : `${visitNumber}th`;
+              ? "2nd"
+              : visitNumber === 3
+                ? "3rd"
+                : `${visitNumber}th`;
 
         const parameters =
           templateToUse.type === "return_visit"

@@ -80,13 +80,13 @@ interface Visitor {
   whatsappNumber: string;
   email: string | null;
   createdAt: string;
-  sessions: Array<{
+  sessions?: Array<{
     id: string;
     status: string;
     reason: string;
     createdAt: string;
   }>;
-  interests: Array<{
+  interests?: Array<{
     model: {
       name: string;
       category: {
@@ -154,13 +154,13 @@ export default function DailyWalkinsPage() {
   const [visitorSubmitting, setVisitorSubmitting] = useState(false);
   const [visitorError, setVisitorError] = useState("");
   const [openModelCategories, setOpenModelCategories] = useState<Set<string>>(
-    new Set()
+    new Set(),
   );
   const [expandedVariants, setExpandedVariants] = useState<Set<string>>(
-    new Set()
+    new Set(),
   );
   const [phoneLookups, setPhoneLookups] = useState<Record<string, PhoneLookup>>(
-    {}
+    {},
   );
 
   const { hasPermission } = usePermissions();
@@ -174,7 +174,7 @@ export default function DailyWalkinsPage() {
     return "visitors"; // fallback
   });
   const [selectedVisitorId, setSelectedVisitorId] = useState<string | null>(
-    null
+    null,
   );
 
   // Sessions state
@@ -185,7 +185,7 @@ export default function DailyWalkinsPage() {
   const [sessionsHasMore, setSessionsHasMore] = useState(false);
   const [sessionsTotal, setSessionsTotal] = useState(0);
   const [expandedSessions, setExpandedSessions] = useState<Set<string>>(
-    new Set()
+    new Set(),
   );
   const [selectedSession, setSelectedSession] = useState<Session | null>(null);
   const [testDriveDialogOpen, setTestDriveDialogOpen] = useState(false);
@@ -226,20 +226,20 @@ export default function DailyWalkinsPage() {
     // Try to load from cache first - use longer cache durations
     const cachedCategories = getCachedData<VehicleCategory[]>(
       "cache_daily_walkins_categories",
-      300000 // 5 minutes (categories don't change often)
+      300000, // 5 minutes (categories don't change often)
     );
     const cachedVisitors = getCachedData<Visitor[]>(
       "cache_daily_walkins_visitors",
-      120000 // 2 minutes (visitors change more often)
+      120000, // 2 minutes (visitors change more often)
     );
     const cachedSessions = getCachedData<Session[]>(
       "cache_daily_walkins_sessions",
-      120000 // 2 minutes
+      120000, // 2 minutes
     );
 
     // Use cache if available (even if partial)
     const hasAnyCache = cachedCategories || cachedVisitors || cachedSessions;
-    
+
     if (hasAnyCache) {
       // Set whatever we have in cache
       if (cachedCategories) setCategories(cachedCategories);
@@ -250,10 +250,10 @@ export default function DailyWalkinsPage() {
       // Check cache age to decide if we need to refresh
       try {
         const visitorsCacheEntry = JSON.parse(
-          sessionStorage.getItem("cache_daily_walkins_visitors") || "{}"
+          sessionStorage.getItem("cache_daily_walkins_visitors") || "{}",
         );
         const cacheAge = Date.now() - (visitorsCacheEntry.timestamp || 0);
-        
+
         // If cache is fresh (< 30 seconds), don't fetch
         if (cacheAge < 30000) {
           // Cache is fresh, only fetch missing data if needed
@@ -263,10 +263,10 @@ export default function DailyWalkinsPage() {
         } else {
           // Cache is stale (> 30 seconds), refresh in background
           if (mountedRef.current && !fetchingRef.current) {
-          setTimeout(() => {
-            if (mountedRef.current && !fetchingRef.current) {
+            setTimeout(() => {
+              if (mountedRef.current && !fetchingRef.current) {
                 fetchData(0, false, true); // Background fetch
-            }
+              }
             }, 500);
           }
         }
@@ -337,7 +337,7 @@ export default function DailyWalkinsPage() {
   const fetchData = async (
     skip: number = 0,
     append: boolean = false,
-    background: boolean = false
+    background: boolean = false,
   ) => {
     // Prevent duplicate fetches
     if (fetchingRef.current && !append) return;
@@ -351,11 +351,11 @@ export default function DailyWalkinsPage() {
       }
 
       const promises: Promise<any>[] = [apiClient.get("/categories")];
-      
+
       if (canViewVisitors) {
         promises.push(apiClient.get(`/visitors?limit=20&skip=${skip}`));
       }
-      
+
       if (canViewSessions) {
         promises.push(apiClient.get(`/sessions?limit=20&skip=0`));
       }
@@ -364,7 +364,7 @@ export default function DailyWalkinsPage() {
       const categoriesRes = results[0];
       let visitorsRes = null;
       let sessionsRes = null;
-      
+
       if (canViewVisitors) {
         visitorsRes = results[1];
         if (canViewSessions) {
@@ -377,39 +377,44 @@ export default function DailyWalkinsPage() {
       setCategories(categoriesRes.data.categories);
       setCachedData(
         "cache_daily_walkins_categories",
-        categoriesRes.data.categories
+        categoriesRes.data.categories,
       );
 
       // Append or replace visitors (only if permission granted)
       if (canViewVisitors && visitorsRes) {
-      if (append) {
-        setVisitors([...visitors, ...visitorsRes.data.visitors]);
-      } else {
-        setVisitors(visitorsRes.data.visitors);
-        setDisplayedCount(20);
-      }
+        if (append) {
+          // Deduplicate: only add visitors that don't already exist
+          const existingIds = new Set(visitors.map((v) => v.id));
+          const newVisitors = visitorsRes.data.visitors.filter(
+            (v: Visitor) => !existingIds.has(v.id),
+          );
+          setVisitors([...visitors, ...newVisitors]);
+        } else {
+          setVisitors(visitorsRes.data.visitors);
+          setDisplayedCount(20);
+        }
 
-      setHasMore(visitorsRes.data.hasMore || false);
-      setTotalVisitors(
-        visitorsRes.data.total || visitorsRes.data.visitors.length
-      );
+        setHasMore(visitorsRes.data.hasMore || false);
+        setTotalVisitors(
+          visitorsRes.data.total || visitorsRes.data.visitors.length,
+        );
       }
 
       // Handle sessions (only if permission granted)
       if (canViewSessions && sessionsRes) {
-      if (append) {
-        // Don't reload sessions when loading more visitors
-      } else {
-        setAllSessions(sessionsRes.data.sessions || []);
-        setCachedData(
-          "cache_daily_walkins_sessions",
-          sessionsRes.data.sessions || []
-        );
-        setSessionsHasMore(sessionsRes.data.hasMore || false);
-        setSessionsTotal(
-          sessionsRes.data.total || sessionsRes.data.sessions?.length || 0
-        );
-        setSessionsDisplayedCount(20);
+        if (append) {
+          // Don't reload sessions when loading more visitors
+        } else {
+          setAllSessions(sessionsRes.data.sessions || []);
+          setCachedData(
+            "cache_daily_walkins_sessions",
+            sessionsRes.data.sessions || [],
+          );
+          setSessionsHasMore(sessionsRes.data.hasMore || false);
+          setSessionsTotal(
+            sessionsRes.data.total || sessionsRes.data.sessions?.length || 0,
+          );
+          setSessionsDisplayedCount(20);
         }
       }
 
@@ -417,13 +422,18 @@ export default function DailyWalkinsPage() {
       if (!append && canViewVisitors && visitorsRes) {
         setCachedData(
           "cache_daily_walkins_visitors",
-          visitorsRes.data.visitors
+          visitorsRes.data.visitors,
         );
       }
 
       // Only fetch phone lookups when loading more data (not on initial load)
       // Use batch lookup to avoid multiple API calls
-      if (append && canViewVisitors && visitorsRes && visitorsRes.data.visitors.length > 0) {
+      if (
+        append &&
+        canViewVisitors &&
+        visitorsRes &&
+        visitorsRes.data.visitors.length > 0
+      ) {
         const newVisitors = visitorsRes.data.visitors;
         const lookups: Record<string, PhoneLookup> = { ...phoneLookups };
 
@@ -473,7 +483,7 @@ export default function DailyWalkinsPage() {
 
   const fetchAllSessions = async (
     skip: number = 0,
-    append: boolean = false
+    append: boolean = false,
   ) => {
     if (!append) {
       setLoadingSessions(true);
@@ -486,7 +496,7 @@ export default function DailyWalkinsPage() {
         ? `&visitorId=${selectedVisitorId}`
         : "";
       const response = await apiClient.get(
-        `/sessions?limit=20&skip=${skip}${visitorIdParam}`
+        `/sessions?limit=20&skip=${skip}${visitorIdParam}`,
       );
 
       if (append) {
@@ -498,7 +508,7 @@ export default function DailyWalkinsPage() {
 
       setSessionsHasMore(response.data.hasMore || false);
       setSessionsTotal(
-        response.data.total || response.data.sessions?.length || 0
+        response.data.total || response.data.sessions?.length || 0,
       );
     } catch (error) {
       console.error("Failed to fetch sessions:", error);
@@ -519,7 +529,7 @@ export default function DailyWalkinsPage() {
 
     if (displayedSessions.length > sessionsDisplayedCount) {
       setSessionsDisplayedCount(
-        Math.min(sessionsDisplayedCount + 20, displayedSessions.length)
+        Math.min(sessionsDisplayedCount + 20, displayedSessions.length),
       );
     }
     // Otherwise, fetch more from backend if available
@@ -570,7 +580,7 @@ export default function DailyWalkinsPage() {
       .filter((s: Session) => s.visitor.id === visitor.id)
       .sort(
         (a: Session, b: Session) =>
-          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
       );
 
     if (visitorSessions.length > 0) {
@@ -645,20 +655,22 @@ export default function DailyWalkinsPage() {
 
       if (response.data.success) {
         const updatedSession = response.data.session;
-        
+
         // 1. IMMEDIATE UI UPDATE - Update session status immediately
-        setAllSessions(prev => 
-          prev.map(s => s.id === sessionToExit.id ? { ...s, ...updatedSession } : s)
+        setAllSessions((prev) =>
+          prev.map((s) =>
+            s.id === sessionToExit.id ? { ...s, ...updatedSession } : s,
+          ),
         );
 
         // 2. UPDATE CACHE
         const cachedSessions = getCachedData<Session[]>(
           "cache_daily_walkins_sessions",
-          120000
+          120000,
         );
         if (cachedSessions) {
-          const updatedCache = cachedSessions.map(s => 
-            s.id === sessionToExit.id ? { ...s, ...updatedSession } : s
+          const updatedCache = cachedSessions.map((s) =>
+            s.id === sessionToExit.id ? { ...s, ...updatedSession } : s,
           );
           setCachedData("cache_daily_walkins_sessions", updatedCache);
         }
@@ -730,15 +742,22 @@ export default function DailyWalkinsPage() {
         const newVisitor = response.data.visitor;
 
         // 1. IMMEDIATE UI UPDATE (Real-time!) - Add visitor to list immediately
-        setVisitors(prev => [newVisitor, ...prev]);
+        setVisitors((prev) => {
+          // Check if visitor already exists to prevent duplicates
+          const exists = prev.some((v) => v.id === newVisitor.id);
+          return exists ? prev : [newVisitor, ...prev];
+        });
 
         // 2. UPDATE CACHE - Update cache with new visitor
         const cachedVisitors = getCachedData<Visitor[]>(
           "cache_daily_walkins_visitors",
-          120000
+          120000,
         );
         if (cachedVisitors) {
-          setCachedData("cache_daily_walkins_visitors", [newVisitor, ...cachedVisitors]);
+          setCachedData("cache_daily_walkins_visitors", [
+            newVisitor,
+            ...cachedVisitors,
+          ]);
         } else {
           setCachedData("cache_daily_walkins_visitors", [newVisitor]);
         }
@@ -763,7 +782,7 @@ export default function DailyWalkinsPage() {
         if (response.data.message?.status === "failed") {
           console.warn(
             "Visitor created but WhatsApp message failed:",
-            response.data.message.error
+            response.data.message.error,
           );
         }
       } else {
@@ -872,893 +891,912 @@ export default function DailyWalkinsPage() {
         }
         className="space-y-6"
       >
-        <TabsList className={`grid w-full ${canViewVisitors && canViewSessions ? 'grid-cols-2' : 'grid-cols-1'}`}>
+        <TabsList
+          className={`grid w-full ${canViewVisitors && canViewSessions ? "grid-cols-2" : "grid-cols-1"}`}
+        >
           {canViewVisitors && (
-          <TabsTrigger value="visitors">Visitors</TabsTrigger>
+            <TabsTrigger value="visitors">Visitors</TabsTrigger>
           )}
           {canViewSessions && (
-          <TabsTrigger value="sessions">Sessions</TabsTrigger>
+            <TabsTrigger value="sessions">Sessions</TabsTrigger>
           )}
         </TabsList>
 
         {/* Visitors Tab */}
         {canViewVisitors && (
-        <TabsContent value="visitors" className="space-y-6 mt-6">
-          {/* Search Bar */}
-          <div className="relative">
+          <TabsContent value="visitors" className="space-y-6 mt-6">
+            {/* Search Bar */}
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                type="text"
-                placeholder="Search by name, phone number, or email..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10 pr-10"
-              />
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  type="text"
+                  placeholder="Search by name, phone number, or email..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-10 pr-10"
+                />
+                {searchQuery && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={clearSearch}
+                    className="absolute right-1 top-1/2 transform -translate-y-1/2 h-7 w-7 p-0"
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                )}
+              </div>
               {searchQuery && (
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={clearSearch}
-                  className="absolute right-1 top-1/2 transform -translate-y-1/2 h-7 w-7 p-0"
-                >
-                  <X className="h-4 w-4" />
-                </Button>
+                <p className="text-xs text-muted-foreground mt-2">
+                  {filteredVisitors.length} result
+                  {filteredVisitors.length !== 1 ? "s" : ""} found
+                </p>
               )}
             </div>
-            {searchQuery && (
-              <p className="text-xs text-muted-foreground mt-2">
-                {filteredVisitors.length} result
-                {filteredVisitors.length !== 1 ? "s" : ""} found
-              </p>
-            )}
-          </div>
 
-          <div className="flex flex-col sm:flex-row gap-4 justify-between items-start sm:items-center">
-            <Dialog
-              open={visitorDialogOpen}
-              onOpenChange={setVisitorDialogOpen}
-            >
-              <DialogTrigger asChild>
-                <Button className="w-full sm:w-auto">
-                  <Plus className="mr-2 h-4 w-4" />
-                  New Visitor
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto p-4 sm:p-6">
-                <DialogHeader className="space-y-2">
-                  <DialogTitle>Add New Visitor</DialogTitle>
-                  <DialogDescription className="text-xs sm:text-sm">
-                    Fill in visitor details and select interested models. A
-                    WhatsApp welcome message will be sent automatically.
-                  </DialogDescription>
-                </DialogHeader>
+            <div className="flex flex-col sm:flex-row gap-4 justify-between items-start sm:items-center">
+              <Dialog
+                open={visitorDialogOpen}
+                onOpenChange={setVisitorDialogOpen}
+              >
+                <DialogTrigger asChild>
+                  <Button className="w-full sm:w-auto">
+                    <Plus className="mr-2 h-4 w-4" />
+                    New Visitor
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto p-4 sm:p-6">
+                  <DialogHeader className="space-y-2">
+                    <DialogTitle>Add New Visitor</DialogTitle>
+                    <DialogDescription className="text-xs sm:text-sm">
+                      Fill in visitor details and select interested models. A
+                      WhatsApp welcome message will be sent automatically.
+                    </DialogDescription>
+                  </DialogHeader>
 
-                <form onSubmit={handleVisitorSubmit} className="space-y-4 mt-4">
-                  {visitorError && (
-                    <div className="bg-destructive/10 text-destructive text-xs sm:text-sm p-3 rounded">
-                      {visitorError}
+                  <form
+                    onSubmit={handleVisitorSubmit}
+                    className="space-y-4 mt-4"
+                  >
+                    {visitorError && (
+                      <div className="bg-destructive/10 text-destructive text-xs sm:text-sm p-3 rounded">
+                        {visitorError}
+                      </div>
+                    )}
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="firstName" className="text-sm">
+                          First Name *
+                        </Label>
+                        <Input
+                          id="firstName"
+                          placeholder="John"
+                          value={visitorFormData.firstName}
+                          onChange={(e) =>
+                            setVisitorFormData({
+                              ...visitorFormData,
+                              firstName: e.target.value,
+                            })
+                          }
+                          required
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="lastName" className="text-sm">
+                          Last Name *
+                        </Label>
+                        <Input
+                          id="lastName"
+                          placeholder="Doe"
+                          value={visitorFormData.lastName}
+                          onChange={(e) =>
+                            setVisitorFormData({
+                              ...visitorFormData,
+                              lastName: e.target.value,
+                            })
+                          }
+                          required
+                        />
+                      </div>
                     </div>
-                  )}
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label htmlFor="firstName" className="text-sm">
-                        First Name *
+                      <Label htmlFor="whatsappNumber" className="text-sm">
+                        WhatsApp Number *
                       </Label>
                       <Input
-                        id="firstName"
-                        placeholder="John"
-                        value={visitorFormData.firstName}
+                        id="whatsappNumber"
+                        placeholder="+1234567890"
+                        value={visitorFormData.whatsappNumber}
                         onChange={(e) =>
                           setVisitorFormData({
                             ...visitorFormData,
-                            firstName: e.target.value,
+                            whatsappNumber: e.target.value,
                           })
                         }
                         required
                       />
                     </div>
 
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="email" className="text-sm">
+                          Email
+                        </Label>
+                        <Input
+                          id="email"
+                          type="email"
+                          placeholder="john@example.com"
+                          value={visitorFormData.email}
+                          onChange={(e) =>
+                            setVisitorFormData({
+                              ...visitorFormData,
+                              email: e.target.value,
+                            })
+                          }
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label htmlFor="address" className="text-sm">
+                          Address
+                        </Label>
+                        <Input
+                          id="address"
+                          placeholder="123 Main St"
+                          value={visitorFormData.address}
+                          onChange={(e) =>
+                            setVisitorFormData({
+                              ...visitorFormData,
+                              address: e.target.value,
+                            })
+                          }
+                        />
+                      </div>
+                    </div>
+
                     <div className="space-y-2">
-                      <Label htmlFor="lastName" className="text-sm">
-                        Last Name *
+                      <Label htmlFor="reason" className="text-sm">
+                        Reason for Visit *
                       </Label>
-                      <Input
-                        id="lastName"
-                        placeholder="Doe"
-                        value={visitorFormData.lastName}
+                      <Textarea
+                        id="reason"
+                        placeholder="Why are they visiting?"
+                        value={visitorFormData.reason}
                         onChange={(e) =>
                           setVisitorFormData({
                             ...visitorFormData,
-                            lastName: e.target.value,
+                            reason: e.target.value,
                           })
                         }
                         required
                       />
                     </div>
-                  </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="whatsappNumber" className="text-sm">
-                      WhatsApp Number *
-                    </Label>
-                    <Input
-                      id="whatsappNumber"
-                      placeholder="+1234567890"
-                      value={visitorFormData.whatsappNumber}
-                      onChange={(e) =>
-                        setVisitorFormData({
-                          ...visitorFormData,
-                          whatsappNumber: e.target.value,
-                        })
-                      }
-                      required
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="email" className="text-sm">
-                        Email
+                    <div className="space-y-3">
+                      <Label className="text-sm font-semibold">
+                        Interested Models
                       </Label>
-                      <Input
-                        id="email"
-                        type="email"
-                        placeholder="john@example.com"
-                        value={visitorFormData.email}
-                        onChange={(e) =>
-                          setVisitorFormData({
-                            ...visitorFormData,
-                            email: e.target.value,
-                          })
-                        }
-                      />
-                    </div>
-
-                    <div className="space-y-2">
-                      <Label htmlFor="address" className="text-sm">
-                        Address
-                      </Label>
-                      <Input
-                        id="address"
-                        placeholder="123 Main St"
-                        value={visitorFormData.address}
-                        onChange={(e) =>
-                          setVisitorFormData({
-                            ...visitorFormData,
-                            address: e.target.value,
-                          })
-                        }
-                      />
-                    </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="reason" className="text-sm">
-                      Reason for Visit *
-                    </Label>
-                    <Textarea
-                      id="reason"
-                      placeholder="Why are they visiting?"
-                      value={visitorFormData.reason}
-                      onChange={(e) =>
-                        setVisitorFormData({
-                          ...visitorFormData,
-                          reason: e.target.value,
-                        })
-                      }
-                      required
-                    />
-                  </div>
-
-                  <div className="space-y-3">
-                    <Label className="text-sm font-semibold">
-                      Interested Models
-                    </Label>
-                    <div className="border border-border/40 rounded-lg bg-background p-3 max-h-64 overflow-y-auto">
-                      {categories.length === 0 ? (
-                        <p className="text-sm text-muted-foreground text-center py-6">
-                          No models available. Add models in Global Settings.
-                        </p>
-                      ) : (
-                        <div className="space-y-1">
-                          {categories.map((category) => {
-                            const isOpen = openModelCategories.has(category.id);
-                            return (
-                              <Collapsible
-                                key={category.id}
-                                open={isOpen}
-                                onOpenChange={(open) => {
-                                  setOpenModelCategories((prev) => {
-                                    const newSet = new Set(prev);
-                                    if (open) {
-                                      newSet.add(category.id);
-                                    } else {
-                                      newSet.delete(category.id);
-                                    }
-                                    return newSet;
-                                  });
-                                }}
-                              >
-                                <CollapsibleTrigger className="w-full flex items-center justify-between px-3 py-2 bg-muted/40 hover:bg-muted/60 rounded-md text-sm font-medium transition-colors">
-                                  <span className="text-foreground">
-                                    {category.name}
-                                  </span>
-                                  <ChevronDown
-                                    className={`h-4 w-4 text-muted-foreground transition-transform ${
-                                      isOpen ? "rotate-180" : ""
-                                    }`}
-                                  />
-                                </CollapsibleTrigger>
-                                <CollapsibleContent className="mt-1.5 space-y-1">
-                                  {category.models.map((model) => {
-                                    const isModelSelected =
-                                      visitorFormData.modelIds.some(
-                                        (id) =>
-                                          (typeof id === "string" &&
-                                            id === model.id) ||
-                                          (typeof id === "object" &&
-                                            id.modelId === model.id &&
-                                            !id.variantId)
-                                      );
-                                    return (
-                                      <div
-                                        key={model.id}
-                                        className="space-y-0.5"
-                                      >
-                                        <label className="flex items-center gap-2.5 px-2 py-1.5 rounded hover:bg-muted/30 cursor-pointer transition-colors group">
-                                          <div className="relative flex items-center justify-center shrink-0">
-                                            <div
-                                              className={`flex items-center justify-center w-5 h-5 rounded border-2 transition-all ${
-                                                isModelSelected
-                                                  ? "bg-primary border-primary"
-                                                  : "bg-background border-border hover:border-primary/50"
-                                              }`}
-                                            >
-                                              {isModelSelected && (
-                                                <Check className="h-3.5 w-3.5 text-primary-foreground" />
-                                              )}
-                                            </div>
-                                            <input
-                                              type="checkbox"
-                                              checked={isModelSelected}
-                                              onChange={() =>
-                                                handleModelToggle(model.id)
-                                              }
-                                              className="absolute opacity-0 cursor-pointer w-5 h-5"
-                                            />
-                                          </div>
-                                          <span className="text-sm text-foreground flex-1">
-                                            {model.name}
-                                            {model.year && (
-                                              <span className="text-muted-foreground ml-1">
-                                                ({model.year})
-                                              </span>
-                                            )}
-                                          </span>
-                                        </label>
-                                        {model.variants &&
-                                          model.variants.length > 0 && (
-                                            <Collapsible
-                                              open={expandedVariants.has(
-                                                model.id
-                                              )}
-                                              onOpenChange={(open) => {
-                                                setExpandedVariants((prev) => {
-                                                  const newSet = new Set(prev);
-                                                  if (open) {
-                                                    newSet.add(model.id);
-                                                  } else {
-                                                    newSet.delete(model.id);
-                                                  }
-                                                  return newSet;
-                                                });
-                                              }}
-                                            >
-                                              <CollapsibleTrigger className="w-full flex items-center gap-2.5 px-2.5 py-2 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted/30 rounded transition-all">
-                                                <ChevronDown
-                                                  className={`h-4 w-4 transition-transform ${
-                                                    expandedVariants.has(
-                                                      model.id
-                                                    )
-                                                      ? "rotate-180"
-                                                      : ""
-                                                  }`}
-                                                />
-                                                <span>
-                                                  {model.variants.length}{" "}
-                                                  variant
-                                                  {model.variants.length !== 1
-                                                    ? "s"
-                                                    : ""}
-                                                </span>
-                                              </CollapsibleTrigger>
-                                              <CollapsibleContent className="ml-6 space-y-1 mt-1">
-                                                {model.variants.map(
-                                                  (variant) => {
-                                                    const isVariantSelected =
-                                                      visitorFormData.modelIds.some(
-                                                        (id) =>
-                                                          typeof id ===
-                                                            "object" &&
-                                                          id.modelId ===
-                                                            model.id &&
-                                                          id.variantId ===
-                                                            variant.id
-                                                      );
-                                                    return (
-                                                      <label
-                                                        key={variant.id}
-                                                        className="flex items-center gap-3 px-2.5 py-2 rounded hover:bg-muted/30 cursor-pointer transition-colors"
-                                                      >
-                                                        <div className="relative flex items-center justify-center shrink-0">
-                                                          <div
-                                                            className={`flex items-center justify-center w-5 h-5 rounded border-2 transition-all ${
-                                                              isVariantSelected
-                                                                ? "bg-primary border-primary"
-                                                                : "bg-background border-border hover:border-primary/50"
-                                                            }`}
-                                                          >
-                                                            {isVariantSelected && (
-                                                              <Check className="h-3.5 w-3.5 text-primary-foreground" />
-                                                            )}
-                                                          </div>
-                                                          <input
-                                                            type="checkbox"
-                                                            checked={
-                                                              isVariantSelected
-                                                            }
-                                                            onChange={() =>
-                                                              handleModelToggle(
-                                                                model.id,
-                                                                variant.id
-                                                              )
-                                                            }
-                                                            className="absolute opacity-0 cursor-pointer w-5 h-5"
-                                                          />
-                                                        </div>
-                                                        <span className="text-sm text-foreground flex-1">
-                                                          {model.name}.
-                                                          {variant.name}
-                                                        </span>
-                                                      </label>
-                                                    );
-                                                  }
-                                                )}
-                                              </CollapsibleContent>
-                                            </Collapsible>
-                                          )}
-                                      </div>
-                                    );
-                                  })}
-                                </CollapsibleContent>
-                              </Collapsible>
-                            );
-                          })}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="flex flex-col sm:flex-row justify-end gap-2">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => setVisitorDialogOpen(false)}
-                      className="w-full sm:w-auto"
-                    >
-                      Cancel
-                    </Button>
-                    <Button
-                      type="submit"
-                      disabled={visitorSubmitting}
-                      className="w-full sm:w-auto"
-                    >
-                      {visitorSubmitting ? (
-                        <>
-                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          Creating...
-                        </>
-                      ) : (
-                        <>
-                          <UserPlus className="mr-2 h-4 w-4" />
-                          Create & Send Welcome
-                        </>
-                      )}
-                    </Button>
-                  </div>
-                </form>
-              </DialogContent>
-            </Dialog>
-          </div>
-
-          {filteredVisitors.length === 0 ? (
-            <Card>
-              <CardContent className="pt-6">
-                <div className="text-center py-8 text-muted-foreground">
-                  <UserPlus className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                  <p className="text-sm sm:text-base">
-                    No visitors found. Create your first visitor to get started.
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
-          ) : (
-            <>
-              <Card>
-                <CardContent className="p-0">
-                  <div className="overflow-x-auto">
-                    <table className="w-full border-collapse">
-                      <thead>
-                        <tr className="border-b bg-muted/50">
-                          <th className="text-left py-3 px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-                            Visitor
-                          </th>
-                          <th className="text-left py-3 px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-                            Contact
-                          </th>
-                          <th className="text-left py-3 px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-                            Last Visit
-                          </th>
-                          <th className="text-left py-3 px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-                            Sessions
-                          </th>
-                          <th className="text-left py-3 px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-                            Interested Models
-                          </th>
-                          <th className="text-left py-3 px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-                            Actions
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {filteredVisitors
-                          .slice(0, displayedCount)
-                          .map((visitor) => {
-                            const initials = `${visitor.firstName.charAt(
-                              0
-                            )}${visitor.lastName.charAt(0)}`.toUpperCase();
-                            const lastVisit =
-                              visitor.sessions && visitor.sessions.length > 0
-                                ? formatDate(
-                                    visitor.sessions.sort(
-                                      (a, b) =>
-                                        new Date(b.createdAt).getTime() -
-                                        new Date(a.createdAt).getTime()
-                                    )[0].createdAt
-                                  )
-                                : formatDate(visitor.createdAt);
-
-                            return (
-                              <tr
-                                key={visitor.id}
-                                className="border-b hover:bg-muted/30 transition-colors cursor-pointer"
-                                onClick={() => handleViewSessions(visitor)}
-                              >
-                                {/* Visitor Column */}
-                                <td className="py-3 px-4">
-                                  <div className="flex items-center gap-3">
-                                    <div className="w-10 h-10 rounded-full bg-primary flex items-center justify-center text-primary-foreground font-semibold text-sm flex-shrink-0">
-                                      {initials}
-                                    </div>
-                                    <div className="min-w-0">
-                                      <p className="text-sm font-medium truncate">
-                                        {visitor.firstName} {visitor.lastName}
-                                      </p>
-                                      {visitor.email && (
-                                        <p className="text-xs text-muted-foreground truncate">
-                                          {visitor.email}
-                                        </p>
-                                      )}
-                                    </div>
-                                  </div>
-                                </td>
-
-                                {/* Contact Column */}
-                                <td className="py-3 px-4">
-                                  <div className="space-y-1">
-                                    <p className="text-sm">
-                                      {visitor.whatsappNumber || "No phone"}
-                                    </p>
-                                  </div>
-                                </td>
-
-                                {/* Last Visit Column */}
-                                <td className="py-3 px-4">
-                                  <p className="text-sm">{lastVisit}</p>
-                                </td>
-
-                                {/* Sessions Column */}
-                                <td className="py-3 px-4">
-                                  <Badge
-                                    variant="secondary"
-                                    className="text-xs font-medium"
-                                  >
-                                    {visitor.sessions.length} session
-                                    {visitor.sessions.length !== 1 ? "s" : ""}
-                                  </Badge>
-                                </td>
-
-                                {/* Interested Models Column */}
-                                <td className="py-3 px-4">
-                                  {visitor.interests &&
-                                  visitor.interests.length > 0 ? (
-                                    <div className="space-y-1">
-                                      {visitor.interests
-                                        .slice(0, 2)
-                                        .map((interest, idx) => (
-                                          <p
-                                            key={idx}
-                                            className="text-xs text-muted-foreground"
-                                          >
-                                            {interest.model.category.name} -{" "}
-                                            {interest.model.name}
-                                          </p>
-                                        ))}
-                                      {visitor.interests.length > 2 && (
-                                        <p className="text-xs text-muted-foreground">
-                                          +{visitor.interests.length - 2} more
-                                        </p>
-                                      )}
-                                    </div>
-                                  ) : (
-                                    <span className="text-xs text-muted-foreground">
-                                      None
+                      <div className="border border-border/40 rounded-lg bg-background p-3 max-h-64 overflow-y-auto">
+                        {categories.length === 0 ? (
+                          <p className="text-sm text-muted-foreground text-center py-6">
+                            No models available. Add models in Global Settings.
+                          </p>
+                        ) : (
+                          <div className="space-y-1">
+                            {categories.map((category) => {
+                              const isOpen = openModelCategories.has(
+                                category.id,
+                              );
+                              return (
+                                <Collapsible
+                                  key={category.id}
+                                  open={isOpen}
+                                  onOpenChange={(open) => {
+                                    setOpenModelCategories((prev) => {
+                                      const newSet = new Set(prev);
+                                      if (open) {
+                                        newSet.add(category.id);
+                                      } else {
+                                        newSet.delete(category.id);
+                                      }
+                                      return newSet;
+                                    });
+                                  }}
+                                >
+                                  <CollapsibleTrigger className="w-full flex items-center justify-between px-3 py-2 bg-muted/40 hover:bg-muted/60 rounded-md text-sm font-medium transition-colors">
+                                    <span className="text-foreground">
+                                      {category.name}
                                     </span>
-                                  )}
-                                </td>
+                                    <ChevronDown
+                                      className={`h-4 w-4 text-muted-foreground transition-transform ${
+                                        isOpen ? "rotate-180" : ""
+                                      }`}
+                                    />
+                                  </CollapsibleTrigger>
+                                  <CollapsibleContent className="mt-1.5 space-y-1">
+                                    {category.models.map((model) => {
+                                      const isModelSelected =
+                                        visitorFormData.modelIds.some(
+                                          (id) =>
+                                            (typeof id === "string" &&
+                                              id === model.id) ||
+                                            (typeof id === "object" &&
+                                              id.modelId === model.id &&
+                                              !id.variantId),
+                                        );
+                                      return (
+                                        <div
+                                          key={model.id}
+                                          className="space-y-0.5"
+                                        >
+                                          <label className="flex items-center gap-2.5 px-2 py-1.5 rounded hover:bg-muted/30 cursor-pointer transition-colors group">
+                                            <div className="relative flex items-center justify-center shrink-0">
+                                              <div
+                                                className={`flex items-center justify-center w-5 h-5 rounded border-2 transition-all ${
+                                                  isModelSelected
+                                                    ? "bg-primary border-primary"
+                                                    : "bg-background border-border hover:border-primary/50"
+                                                }`}
+                                              >
+                                                {isModelSelected && (
+                                                  <Check className="h-3.5 w-3.5 text-primary-foreground" />
+                                                )}
+                                              </div>
+                                              <input
+                                                type="checkbox"
+                                                checked={isModelSelected}
+                                                onChange={() =>
+                                                  handleModelToggle(model.id)
+                                                }
+                                                className="absolute opacity-0 cursor-pointer w-5 h-5"
+                                              />
+                                            </div>
+                                            <span className="text-sm text-foreground flex-1">
+                                              {model.name}
+                                              {model.year && (
+                                                <span className="text-muted-foreground ml-1">
+                                                  ({model.year})
+                                                </span>
+                                              )}
+                                            </span>
+                                          </label>
+                                          {model.variants &&
+                                            model.variants.length > 0 && (
+                                              <Collapsible
+                                                open={expandedVariants.has(
+                                                  model.id,
+                                                )}
+                                                onOpenChange={(open) => {
+                                                  setExpandedVariants(
+                                                    (prev) => {
+                                                      const newSet = new Set(
+                                                        prev,
+                                                      );
+                                                      if (open) {
+                                                        newSet.add(model.id);
+                                                      } else {
+                                                        newSet.delete(model.id);
+                                                      }
+                                                      return newSet;
+                                                    },
+                                                  );
+                                                }}
+                                              >
+                                                <CollapsibleTrigger className="w-full flex items-center gap-2.5 px-2.5 py-2 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted/30 rounded transition-all">
+                                                  <ChevronDown
+                                                    className={`h-4 w-4 transition-transform ${
+                                                      expandedVariants.has(
+                                                        model.id,
+                                                      )
+                                                        ? "rotate-180"
+                                                        : ""
+                                                    }`}
+                                                  />
+                                                  <span>
+                                                    {model.variants.length}{" "}
+                                                    variant
+                                                    {model.variants.length !== 1
+                                                      ? "s"
+                                                      : ""}
+                                                  </span>
+                                                </CollapsibleTrigger>
+                                                <CollapsibleContent className="ml-6 space-y-1 mt-1">
+                                                  {model.variants.map(
+                                                    (variant) => {
+                                                      const isVariantSelected =
+                                                        visitorFormData.modelIds.some(
+                                                          (id) =>
+                                                            typeof id ===
+                                                              "object" &&
+                                                            id.modelId ===
+                                                              model.id &&
+                                                            id.variantId ===
+                                                              variant.id,
+                                                        );
+                                                      return (
+                                                        <label
+                                                          key={variant.id}
+                                                          className="flex items-center gap-3 px-2.5 py-2 rounded hover:bg-muted/30 cursor-pointer transition-colors"
+                                                        >
+                                                          <div className="relative flex items-center justify-center shrink-0">
+                                                            <div
+                                                              className={`flex items-center justify-center w-5 h-5 rounded border-2 transition-all ${
+                                                                isVariantSelected
+                                                                  ? "bg-primary border-primary"
+                                                                  : "bg-background border-border hover:border-primary/50"
+                                                              }`}
+                                                            >
+                                                              {isVariantSelected && (
+                                                                <Check className="h-3.5 w-3.5 text-primary-foreground" />
+                                                              )}
+                                                            </div>
+                                                            <input
+                                                              type="checkbox"
+                                                              checked={
+                                                                isVariantSelected
+                                                              }
+                                                              onChange={() =>
+                                                                handleModelToggle(
+                                                                  model.id,
+                                                                  variant.id,
+                                                                )
+                                                              }
+                                                              className="absolute opacity-0 cursor-pointer w-5 h-5"
+                                                            />
+                                                          </div>
+                                                          <span className="text-sm text-foreground flex-1">
+                                                            {model.name}.
+                                                            {variant.name}
+                                                          </span>
+                                                        </label>
+                                                      );
+                                                    },
+                                                  )}
+                                                </CollapsibleContent>
+                                              </Collapsible>
+                                            )}
+                                        </div>
+                                      );
+                                    })}
+                                  </CollapsibleContent>
+                                </Collapsible>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    </div>
 
-                                {/* Actions Column */}
-                                <td className="py-3 px-4">
-                                  <div className="flex items-center gap-2">
-                                    {phoneLookups[visitor.whatsappNumber]
-                                      ?.digitalEnquiry && (
-                                      <Link
-                                        href="/dashboard/digital-enquiry"
-                                        onClick={(e) => e.stopPropagation()}
-                                      >
-                                        <Badge
-                                          variant="outline"
-                                          className="text-xs cursor-pointer hover:bg-primary/10 transition-colors"
-                                        >
-                                          Digital
-                                        </Badge>
-                                      </Link>
-                                    )}
-                                    {phoneLookups[visitor.whatsappNumber]
-                                      ?.deliveryUpdate && (
-                                      <Link
-                                        href="/dashboard/delivery-update"
-                                        onClick={(e) => e.stopPropagation()}
-                                      >
-                                        <Badge
-                                          variant="outline"
-                                          className="text-xs cursor-pointer hover:bg-primary/10 transition-colors"
-                                        >
-                                          Delivery
-                                        </Badge>
-                                      </Link>
-                                    )}
-                                    <Button
-                                      variant="ghost"
-                                      size="sm"
-                                      className="h-8 w-8 p-0"
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        handleViewSessions(visitor);
-                                      }}
-                                    >
-                                      <UserCheck className="h-4 w-4" />
-                                    </Button>
-                                  </div>
-                                </td>
-                              </tr>
-                            );
-                          })}
-                      </tbody>
-                    </table>
+                    <div className="flex flex-col sm:flex-row justify-end gap-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => setVisitorDialogOpen(false)}
+                        className="w-full sm:w-auto"
+                      >
+                        Cancel
+                      </Button>
+                      <Button
+                        type="submit"
+                        disabled={visitorSubmitting}
+                        className="w-full sm:w-auto"
+                      >
+                        {visitorSubmitting ? (
+                          <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            Creating...
+                          </>
+                        ) : (
+                          <>
+                            <UserPlus className="mr-2 h-4 w-4" />
+                            Create & Send Welcome
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                  </form>
+                </DialogContent>
+              </Dialog>
+            </div>
+
+            {filteredVisitors.length === 0 ? (
+              <Card>
+                <CardContent className="pt-6">
+                  <div className="text-center py-8 text-muted-foreground">
+                    <UserPlus className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                    <p className="text-sm sm:text-base">
+                      No visitors found. Create your first visitor to get
+                      started.
+                    </p>
                   </div>
                 </CardContent>
               </Card>
-              {(hasMore || filteredVisitors.length > displayedCount) && (
-                <div className="flex justify-center pt-4">
-                  <Button
-                    variant="outline"
-                    onClick={handleLoadMore}
-                    disabled={loadingMore}
-                    className="w-full sm:w-auto"
-                  >
-                    {loadingMore ? (
-                      <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        Loading...
-                      </>
-                    ) : (
-                      `See More (${
-                        hasMore
-                          ? totalVisitors - displayedCount
-                          : filteredVisitors.length - displayedCount
-                      } remaining)`
-                    )}
-                  </Button>
-                </div>
-              )}
-            </>
-          )}
-        </TabsContent>
+            ) : (
+              <>
+                <Card>
+                  <CardContent className="p-0">
+                    <div className="overflow-x-auto">
+                      <table className="w-full border-collapse">
+                        <thead>
+                          <tr className="border-b bg-muted/50">
+                            <th className="text-left py-3 px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                              Visitor
+                            </th>
+                            <th className="text-left py-3 px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                              Contact
+                            </th>
+                            <th className="text-left py-3 px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                              Last Visit
+                            </th>
+                            <th className="text-left py-3 px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                              Sessions
+                            </th>
+                            <th className="text-left py-3 px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                              Interested Models
+                            </th>
+                            <th className="text-left py-3 px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                              Actions
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {filteredVisitors
+                            .slice(0, displayedCount)
+                            .map((visitor) => {
+                              const initials = `${visitor.firstName.charAt(
+                                0,
+                              )}${visitor.lastName.charAt(0)}`.toUpperCase();
+                              const lastVisit =
+                                visitor.sessions && visitor.sessions.length > 0
+                                  ? formatDate(
+                                      visitor.sessions.sort(
+                                        (a, b) =>
+                                          new Date(b.createdAt).getTime() -
+                                          new Date(a.createdAt).getTime(),
+                                      )[0].createdAt,
+                                    )
+                                  : formatDate(visitor.createdAt);
+
+                              return (
+                                <tr
+                                  key={visitor.id}
+                                  className="border-b hover:bg-muted/30 transition-colors cursor-pointer"
+                                  onClick={() => handleViewSessions(visitor)}
+                                >
+                                  {/* Visitor Column */}
+                                  <td className="py-3 px-4">
+                                    <div className="flex items-center gap-3">
+                                      <div className="w-10 h-10 rounded-full bg-primary flex items-center justify-center text-primary-foreground font-semibold text-sm flex-shrink-0">
+                                        {initials}
+                                      </div>
+                                      <div className="min-w-0">
+                                        <p className="text-sm font-medium truncate">
+                                          {visitor.firstName} {visitor.lastName}
+                                        </p>
+                                        {visitor.email && (
+                                          <p className="text-xs text-muted-foreground truncate">
+                                            {visitor.email}
+                                          </p>
+                                        )}
+                                      </div>
+                                    </div>
+                                  </td>
+
+                                  {/* Contact Column */}
+                                  <td className="py-3 px-4">
+                                    <div className="space-y-1">
+                                      <p className="text-sm">
+                                        {visitor.whatsappNumber || "No phone"}
+                                      </p>
+                                    </div>
+                                  </td>
+
+                                  {/* Last Visit Column */}
+                                  <td className="py-3 px-4">
+                                    <p className="text-sm">{lastVisit}</p>
+                                  </td>
+
+                                  {/* Sessions Column */}
+                                  <td className="py-3 px-4">
+                                    <Badge
+                                      variant="secondary"
+                                      className="text-xs font-medium"
+                                    >
+                                      {visitor.sessions?.length || 0} session
+                                      {(visitor.sessions?.length || 0) !== 1
+                                        ? "s"
+                                        : ""}
+                                    </Badge>
+                                  </td>
+
+                                  {/* Interested Models Column */}
+                                  <td className="py-3 px-4">
+                                    {visitor.interests &&
+                                    visitor.interests.length > 0 ? (
+                                      <div className="space-y-1">
+                                        {visitor.interests
+                                          .slice(0, 2)
+                                          .map((interest, idx) => (
+                                            <p
+                                              key={idx}
+                                              className="text-xs text-muted-foreground"
+                                            >
+                                              {interest.model.category.name} -{" "}
+                                              {interest.model.name}
+                                            </p>
+                                          ))}
+                                        {visitor.interests.length > 2 && (
+                                          <p className="text-xs text-muted-foreground">
+                                            +{visitor.interests.length - 2} more
+                                          </p>
+                                        )}
+                                      </div>
+                                    ) : (
+                                      <span className="text-xs text-muted-foreground">
+                                        None
+                                      </span>
+                                    )}
+                                  </td>
+
+                                  {/* Actions Column */}
+                                  <td className="py-3 px-4">
+                                    <div className="flex items-center gap-2">
+                                      {phoneLookups[visitor.whatsappNumber]
+                                        ?.digitalEnquiry && (
+                                        <Link
+                                          href="/dashboard/digital-enquiry"
+                                          onClick={(e) => e.stopPropagation()}
+                                        >
+                                          <Badge
+                                            variant="outline"
+                                            className="text-xs cursor-pointer hover:bg-primary/10 transition-colors"
+                                          >
+                                            Digital
+                                          </Badge>
+                                        </Link>
+                                      )}
+                                      {phoneLookups[visitor.whatsappNumber]
+                                        ?.deliveryUpdate && (
+                                        <Link
+                                          href="/dashboard/delivery-update"
+                                          onClick={(e) => e.stopPropagation()}
+                                        >
+                                          <Badge
+                                            variant="outline"
+                                            className="text-xs cursor-pointer hover:bg-primary/10 transition-colors"
+                                          >
+                                            Delivery
+                                          </Badge>
+                                        </Link>
+                                      )}
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        className="h-8 w-8 p-0"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          handleViewSessions(visitor);
+                                        }}
+                                      >
+                                        <UserCheck className="h-4 w-4" />
+                                      </Button>
+                                    </div>
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                        </tbody>
+                      </table>
+                    </div>
+                  </CardContent>
+                </Card>
+                {(hasMore || filteredVisitors.length > displayedCount) && (
+                  <div className="flex justify-center pt-4">
+                    <Button
+                      variant="outline"
+                      onClick={handleLoadMore}
+                      disabled={loadingMore}
+                      className="w-full sm:w-auto"
+                    >
+                      {loadingMore ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Loading...
+                        </>
+                      ) : (
+                        `See More (${
+                          hasMore
+                            ? totalVisitors - displayedCount
+                            : filteredVisitors.length - displayedCount
+                        } remaining)`
+                      )}
+                    </Button>
+                  </div>
+                )}
+              </>
+            )}
+          </TabsContent>
         )}
 
         {/* Sessions Tab */}
         {canViewSessions && (
-        <TabsContent value="sessions" className="space-y-6 mt-6">
-          {/* Visitor Info Header (when opened from visitor) */}
-          {selectedVisitorId &&
-            (() => {
-              const visitor = visitors.find((v) => v.id === selectedVisitorId);
-              if (!visitor) return null;
-              const visitorSessions = allSessions.filter(
-                (s: Session) => s.visitor.id === selectedVisitorId
-              );
-              return (
-                <Card className="bg-muted/30">
-                  <CardContent className="pt-6">
-                    <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                      <div>
-                        <h3 className="text-lg font-semibold">
-                          {visitor.firstName} {visitor.lastName}
-                        </h3>
-                        <p className="text-sm text-muted-foreground mt-1">
-                          {visitor.whatsappNumber}
-                        </p>
-                        <p className="text-xs text-muted-foreground mt-1">
-                          {visitorSessions.length} session
-                          {visitorSessions.length !== 1 ? "s" : ""} •{" "}
-                          {visitorSessions.length} visit
-                          {visitorSessions.length !== 1 ? "s" : ""} to showroom
-                        </p>
-                      </div>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => {
-                          setSelectedVisitorId(null);
-                          setSessionsDisplayedCount(20);
-                          fetchAllSessions(0, false);
-                        }}
-                      >
-                        Clear Filter
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              );
-            })()}
-
-          {loadingSessions ? (
-            <div className="flex items-center justify-center py-12">
-              <Loader2 className="h-8 w-8 animate-spin text-primary" />
-            </div>
-          ) : allSessions.length === 0 ? (
-            <Card>
-              <CardContent className="pt-6">
-                <div className="text-center py-8 text-muted-foreground">
-                  <UserCheck className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                  <p className="text-sm sm:text-base">No sessions found.</p>
-                </div>
-              </CardContent>
-            </Card>
-          ) : (
-            <>
-              <div className="space-y-4">
-                {(selectedVisitorId
-                  ? allSessions.filter(
-                      (s: Session) => s.visitor.id === selectedVisitorId
-                    )
-                  : allSessions
-                )
-                  .slice(0, sessionsDisplayedCount)
-                  .map((session: Session) => {
-                    const isExited = session.status === "exited";
-                    const hasTestDrives = session.testDrives.length > 0;
-                    const isExpanded = expandedSessions.has(session.id);
-
-                    return (
-                      <Card key={session.id} className="overflow-hidden">
-                        <Collapsible
-                          open={isExpanded}
-                          onOpenChange={(open) => {
-                            setExpandedSessions((prev) => {
-                              const newSet = new Set(prev);
-                              if (open) {
-                                newSet.add(session.id);
-                              } else {
-                                newSet.delete(session.id);
-                              }
-                              return newSet;
-                            });
+          <TabsContent value="sessions" className="space-y-6 mt-6">
+            {/* Visitor Info Header (when opened from visitor) */}
+            {selectedVisitorId &&
+              (() => {
+                const visitor = visitors.find(
+                  (v) => v.id === selectedVisitorId,
+                );
+                if (!visitor) return null;
+                const visitorSessions = allSessions.filter(
+                  (s: Session) => s.visitor.id === selectedVisitorId,
+                );
+                return (
+                  <Card className="bg-muted/30">
+                    <CardContent className="pt-6">
+                      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                        <div>
+                          <h3 className="text-lg font-semibold">
+                            {visitor.firstName} {visitor.lastName}
+                          </h3>
+                          <p className="text-sm text-muted-foreground mt-1">
+                            {visitor.whatsappNumber}
+                          </p>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            {visitorSessions.length} session
+                            {visitorSessions.length !== 1 ? "s" : ""} •{" "}
+                            {visitorSessions.length} visit
+                            {visitorSessions.length !== 1 ? "s" : ""} to
+                            showroom
+                          </p>
+                        </div>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            setSelectedVisitorId(null);
+                            setSessionsDisplayedCount(20);
+                            fetchAllSessions(0, false);
                           }}
                         >
-                          <CollapsibleTrigger asChild>
-                            <CardHeader className="pb-3 border-b cursor-pointer hover:bg-muted/30 transition-colors">
-                              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-                                <div className="flex items-center gap-2 flex-1">
-                                  <ChevronDown
-                                    className={`h-4 w-4 text-muted-foreground transition-transform flex-shrink-0 ${
-                                      isExpanded ? "rotate-180" : ""
-                                    }`}
-                                  />
-                                  <div className="flex-1 min-w-0">
-                                    <CardTitle className="text-sm sm:text-base">
-                                      {session.visitor.firstName}{" "}
-                                      {session.visitor.lastName} - Session{" "}
-                                      {formatDateTime(session.createdAt)}
-                                    </CardTitle>
-                                    <CardDescription className="text-xs mt-1">
-                                      Status: {session.status}
-                                      {!isExpanded && (
-                                        <span className="ml-2">
-                                          •{" "}
-                                          {session.reason.length > 40
-                                            ? session.reason.substring(0, 40) +
-                                              "..."
-                                            : session.reason}
-                                        </span>
-                                      )}
-                                    </CardDescription>
-                                  </div>
-                                </div>
-                                <Badge
-                                  variant={
-                                    isExited
-                                      ? "default"
-                                      : session.status === "test_drive"
-                                      ? "secondary"
-                                      : "outline"
-                                  }
-                                  className="text-xs flex-shrink-0"
-                                >
-                                  {session.status}
-                                </Badge>
-                              </div>
-                            </CardHeader>
-                          </CollapsibleTrigger>
-                          <CollapsibleContent>
-                            <CardContent className="space-y-4 pt-4">
-                              <div className="flex items-start gap-3 p-3 bg-muted/30 rounded-lg">
-                                <span className="text-xs font-semibold text-muted-foreground uppercase min-w-fit">
-                                  Reason:
-                                </span>
-                                <p className="text-xs sm:text-sm text-muted-foreground break-words flex-1">
-                                  {session.reason}
-                                </p>
-                              </div>
+                          Clear Filter
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })()}
 
-                              {session.visitorInterests &&
-                                session.visitorInterests.length > 0 && (
+            {loadingSessions ? (
+              <div className="flex items-center justify-center py-12">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+              </div>
+            ) : allSessions.length === 0 ? (
+              <Card>
+                <CardContent className="pt-6">
+                  <div className="text-center py-8 text-muted-foreground">
+                    <UserCheck className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                    <p className="text-sm sm:text-base">No sessions found.</p>
+                  </div>
+                </CardContent>
+              </Card>
+            ) : (
+              <>
+                <div className="space-y-4">
+                  {(selectedVisitorId
+                    ? allSessions.filter(
+                        (s: Session) => s.visitor.id === selectedVisitorId,
+                      )
+                    : allSessions
+                  )
+                    .slice(0, sessionsDisplayedCount)
+                    .map((session: Session) => {
+                      const isExited = session.status === "exited";
+                      const hasTestDrives = session.testDrives.length > 0;
+                      const isExpanded = expandedSessions.has(session.id);
+
+                      return (
+                        <Card key={session.id} className="overflow-hidden">
+                          <Collapsible
+                            open={isExpanded}
+                            onOpenChange={(open) => {
+                              setExpandedSessions((prev) => {
+                                const newSet = new Set(prev);
+                                if (open) {
+                                  newSet.add(session.id);
+                                } else {
+                                  newSet.delete(session.id);
+                                }
+                                return newSet;
+                              });
+                            }}
+                          >
+                            <CollapsibleTrigger asChild>
+                              <CardHeader className="pb-3 border-b cursor-pointer hover:bg-muted/30 transition-colors">
+                                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                                  <div className="flex items-center gap-2 flex-1">
+                                    <ChevronDown
+                                      className={`h-4 w-4 text-muted-foreground transition-transform flex-shrink-0 ${
+                                        isExpanded ? "rotate-180" : ""
+                                      }`}
+                                    />
+                                    <div className="flex-1 min-w-0">
+                                      <CardTitle className="text-sm sm:text-base">
+                                        {session.visitor.firstName}{" "}
+                                        {session.visitor.lastName} - Session{" "}
+                                        {formatDateTime(session.createdAt)}
+                                      </CardTitle>
+                                      <CardDescription className="text-xs mt-1">
+                                        Status: {session.status}
+                                        {!isExpanded && (
+                                          <span className="ml-2">
+                                            •{" "}
+                                            {session.reason.length > 40
+                                              ? session.reason.substring(
+                                                  0,
+                                                  40,
+                                                ) + "..."
+                                              : session.reason}
+                                          </span>
+                                        )}
+                                      </CardDescription>
+                                    </div>
+                                  </div>
+                                  <Badge
+                                    variant={
+                                      isExited
+                                        ? "default"
+                                        : session.status === "test_drive"
+                                          ? "secondary"
+                                          : "outline"
+                                    }
+                                    className="text-xs flex-shrink-0"
+                                  >
+                                    {session.status}
+                                  </Badge>
+                                </div>
+                              </CardHeader>
+                            </CollapsibleTrigger>
+                            <CollapsibleContent>
+                              <CardContent className="space-y-4 pt-4">
+                                <div className="flex items-start gap-3 p-3 bg-muted/30 rounded-lg">
+                                  <span className="text-xs font-semibold text-muted-foreground uppercase min-w-fit">
+                                    Reason:
+                                  </span>
+                                  <p className="text-xs sm:text-sm text-muted-foreground break-words flex-1">
+                                    {session.reason}
+                                  </p>
+                                </div>
+
+                                {session.visitorInterests &&
+                                  session.visitorInterests.length > 0 && (
+                                    <div>
+                                      <p className="text-xs sm:text-sm font-semibold mb-2">
+                                        Vehicle Interests:
+                                      </p>
+                                      <div className="flex flex-wrap gap-2">
+                                        {session.visitorInterests.map(
+                                          (interest) => (
+                                            <Badge
+                                              key={interest.id}
+                                              variant="secondary"
+                                              className="text-xs"
+                                            >
+                                              {interest.model.category.name} -{" "}
+                                              {interest.model.name}
+                                            </Badge>
+                                          ),
+                                        )}
+                                      </div>
+                                    </div>
+                                  )}
+
+                                {hasTestDrives && (
                                   <div>
                                     <p className="text-xs sm:text-sm font-semibold mb-2">
-                                      Vehicle Interests:
+                                      Test Drives ({session.testDrives.length}):
                                     </p>
-                                    <div className="flex flex-wrap gap-2">
-                                      {session.visitorInterests.map(
-                                        (interest) => (
-                                          <Badge
-                                            key={interest.id}
-                                            variant="secondary"
-                                            className="text-xs"
-                                          >
-                                            {interest.model.category.name} -{" "}
-                                            {interest.model.name}
-                                          </Badge>
-                                        )
-                                      )}
+                                    <div className="space-y-2">
+                                      {session.testDrives.map((td) => (
+                                        <div
+                                          key={td.id}
+                                          className="text-xs sm:text-sm pl-4 border-l-2 border-primary/30"
+                                        >
+                                          <p className="font-medium">
+                                            {td.model.category.name} -{" "}
+                                            {td.model.name}
+                                          </p>
+                                        </div>
+                                      ))}
                                     </div>
                                   </div>
                                 )}
 
-                              {hasTestDrives && (
-                                <div>
-                                  <p className="text-xs sm:text-sm font-semibold mb-2">
-                                    Test Drives ({session.testDrives.length}):
-                                  </p>
-                                  <div className="space-y-2">
-                                    {session.testDrives.map((td) => (
-                                      <div
-                                        key={td.id}
-                                        className="text-xs sm:text-sm pl-4 border-l-2 border-primary/30"
-                                      >
-                                        <p className="font-medium">
-                                          {td.model.category.name} -{" "}
-                                          {td.model.name}
-                                        </p>
-                                      </div>
-                                    ))}
+                                {!isExited && (
+                                  <div className="flex flex-col sm:flex-row gap-2 pt-2 border-t">
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setSelectedSession(session);
+                                        setTestDriveDialogOpen(true);
+                                      }}
+                                      className="w-full sm:w-auto text-xs sm:text-sm"
+                                    >
+                                      <Car className="mr-2 h-3 w-3 sm:h-4 sm:w-4" />
+                                      Add Test Drive
+                                    </Button>
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleExitSession(session);
+                                      }}
+                                      disabled={sessionSubmitting}
+                                      className="w-full sm:w-auto text-xs sm:text-sm"
+                                    >
+                                      {sessionSubmitting ? (
+                                        <Loader2 className="mr-2 h-3 w-3 sm:h-4 sm:w-4 animate-spin" />
+                                      ) : (
+                                        <LogOut className="mr-2 h-3 w-3 sm:h-4 sm:w-4" />
+                                      )}
+                                      Exit Session
+                                    </Button>
                                   </div>
-                                </div>
-                              )}
+                                )}
+                              </CardContent>
+                            </CollapsibleContent>
+                          </Collapsible>
+                        </Card>
+                      );
+                    })}
+                </div>
+                {(() => {
+                  const displayedSessions = selectedVisitorId
+                    ? allSessions.filter(
+                        (s: Session) => s.visitor.id === selectedVisitorId,
+                      )
+                    : allSessions;
+                  const hasMoreToShow =
+                    displayedSessions.length > sessionsDisplayedCount ||
+                    sessionsHasMore;
 
-                              {!isExited && (
-                                <div className="flex flex-col sm:flex-row gap-2 pt-2 border-t">
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      setSelectedSession(session);
-                                      setTestDriveDialogOpen(true);
-                                    }}
-                                    className="w-full sm:w-auto text-xs sm:text-sm"
-                                  >
-                                    <Car className="mr-2 h-3 w-3 sm:h-4 sm:w-4" />
-                                    Add Test Drive
-                                  </Button>
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handleExitSession(session);
-                                    }}
-                                    disabled={sessionSubmitting}
-                                    className="w-full sm:w-auto text-xs sm:text-sm"
-                                  >
-                                    {sessionSubmitting ? (
-                                      <Loader2 className="mr-2 h-3 w-3 sm:h-4 sm:w-4 animate-spin" />
-                                    ) : (
-                                      <LogOut className="mr-2 h-3 w-3 sm:h-4 sm:w-4" />
-                                    )}
-                                    Exit Session
-                                  </Button>
-                                </div>
-                              )}
-                            </CardContent>
-                          </CollapsibleContent>
-                        </Collapsible>
-                      </Card>
-                    );
-                  })}
-              </div>
-              {(() => {
-                const displayedSessions = selectedVisitorId
-                  ? allSessions.filter(
-                      (s: Session) => s.visitor.id === selectedVisitorId
+                  return (
+                    hasMoreToShow && (
+                      <div className="flex justify-center pt-4">
+                        <Button
+                          variant="outline"
+                          onClick={handleLoadMoreSessions}
+                          disabled={sessionsLoadingMore}
+                          className="w-full sm:w-auto"
+                        >
+                          {sessionsLoadingMore ? (
+                            <>
+                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                              Loading...
+                            </>
+                          ) : (
+                            `See More (${
+                              sessionsHasMore
+                                ? sessionsTotal - sessionsDisplayedCount
+                                : displayedSessions.length -
+                                  sessionsDisplayedCount
+                            } remaining)`
+                          )}
+                        </Button>
+                      </div>
                     )
-                  : allSessions;
-                const hasMoreToShow =
-                  displayedSessions.length > sessionsDisplayedCount ||
-                  sessionsHasMore;
-
-                return (
-                  hasMoreToShow && (
-                    <div className="flex justify-center pt-4">
-                      <Button
-                        variant="outline"
-                        onClick={handleLoadMoreSessions}
-                        disabled={sessionsLoadingMore}
-                        className="w-full sm:w-auto"
-                      >
-                        {sessionsLoadingMore ? (
-                          <>
-                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                            Loading...
-                          </>
-                        ) : (
-                          `See More (${
-                            sessionsHasMore
-                              ? sessionsTotal - sessionsDisplayedCount
-                              : displayedSessions.length -
-                                sessionsDisplayedCount
-                          } remaining)`
-                        )}
-                      </Button>
-                    </div>
-                  )
-                );
-              })()}
-            </>
-          )}
-        </TabsContent>
+                  );
+                })()}
+              </>
+            )}
+          </TabsContent>
         )}
       </Tabs>
 

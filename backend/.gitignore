@@ -13,7 +13,7 @@
 # pnpm
 pnpm-lock.yaml
 
-/dist
+/dist*
 
 # testing
 /coverage
