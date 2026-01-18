@@ -425,14 +425,15 @@ router.get(
       return;
     }
 
-    // Get full user details
+    // Get full user details with all required fields
+    // Cache bust: 2026-01-18-2 - Force rebuild
     const fullUser = await prisma.user.findUnique({
       where: { id: req.user.userId },
       select: {
         id: true,
         email: true,
-        role: true,
-        isActive: true,
+        role: true, // Required for RBAC
+        isActive: true, // Required for account status
         theme: true,
         profilePicture: true,
         dealership: {
@@ -442,7 +443,7 @@ router.get(
             location: true,
           },
         },
-        permissions: true,
+        permissions: true, // Required for permission checks
       },
     });
 
