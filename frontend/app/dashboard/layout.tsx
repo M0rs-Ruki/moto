@@ -135,131 +135,131 @@ function DashboardLayoutContent({
             <nav className="flex-1 flex flex-col items-start space-y-1 w-full overflow-y-auto">
               {/* Dashboard */}
               {hasPermission("dashboard") && (
-                <Link
-                  prefetch={false}
-                  href="/dashboard"
-                  onClick={() => setSidebarOpen(false)}
-                  className="w-full"
+              <Link
+                prefetch={false}
+                href="/dashboard"
+                onClick={() => setSidebarOpen(false)}
+                className="w-full"
+              >
+                <Button
+                  variant={pathname === "/dashboard" ? "secondary" : "ghost"}
+                  className="w-full h-12 justify-start relative"
                 >
-                  <Button
-                    variant={pathname === "/dashboard" ? "secondary" : "ghost"}
-                    className="w-full h-12 justify-start relative"
-                  >
-                    <LayoutDashboard className="h-5 w-5 mr-3 flex-shrink-0 text-blue-600 dark:text-blue-400" />
-                    <span className="text-sm font-medium">Dashboard</span>
-                    {pathname === "/dashboard" && (
-                      <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-8 bg-blue-600 rounded-r-full" />
-                    )}
-                  </Button>
-                </Link>
+                  <LayoutDashboard className="h-5 w-5 mr-3 flex-shrink-0 text-blue-600 dark:text-blue-400" />
+                  <span className="text-sm font-medium">Dashboard</span>
+                  {pathname === "/dashboard" && (
+                    <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-8 bg-blue-600 rounded-r-full" />
+                  )}
+                </Button>
+              </Link>
               )}
 
               {/* Daily Walkins */}
               {(hasPermission("dailyWalkinsVisitors") || hasPermission("dailyWalkinsSessions")) && (
-                <Link
-                  prefetch={false}
-                  href="/dashboard/daily-walkins"
-                  onClick={() => setSidebarOpen(false)}
-                  className="w-full"
+              <Link
+                prefetch={false}
+                href="/dashboard/daily-walkins"
+                onClick={() => setSidebarOpen(false)}
+                className="w-full"
+              >
+                <Button
+                  variant={
+                    pathname === "/dashboard/daily-walkins" ||
+                    pathname?.startsWith("/dashboard/daily-walkins/")
+                      ? "secondary"
+                      : "ghost"
+                  }
+                  className="w-full h-12 justify-start relative"
                 >
-                  <Button
-                    variant={
-                      pathname === "/dashboard/daily-walkins" ||
-                      pathname?.startsWith("/dashboard/daily-walkins/")
-                        ? "secondary"
-                        : "ghost"
-                    }
-                    className="w-full h-12 justify-start relative"
-                  >
-                    <DoorOpen className="h-5 w-5 mr-3 flex-shrink-0 text-blue-600 dark:text-blue-400" />
-                    <span className="text-sm font-medium">Daily Walkins</span>
-                    {(pathname === "/dashboard/daily-walkins" ||
-                      pathname?.startsWith("/dashboard/daily-walkins/")) && (
-                      <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-8 bg-blue-600 rounded-r-full" />
-                    )}
-                  </Button>
-                </Link>
+                  <DoorOpen className="h-5 w-5 mr-3 flex-shrink-0 text-blue-600 dark:text-blue-400" />
+                  <span className="text-sm font-medium">Daily Walkins</span>
+                  {(pathname === "/dashboard/daily-walkins" ||
+                    pathname?.startsWith("/dashboard/daily-walkins/")) && (
+                    <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-8 bg-blue-600 rounded-r-full" />
+                  )}
+                </Button>
+              </Link>
               )}
 
               {/* Digital Enquiry */}
               {hasPermission("digitalEnquiry") && (
-                <Link
-                  prefetch={false}
-                  href="/dashboard/digital-enquiry"
-                  onClick={() => setSidebarOpen(false)}
-                  className="w-full"
+              <Link
+                prefetch={false}
+                href="/dashboard/digital-enquiry"
+                onClick={() => setSidebarOpen(false)}
+                className="w-full"
+              >
+                <Button
+                  variant={
+                    pathname === "/dashboard/digital-enquiry" ||
+                    pathname?.startsWith("/dashboard/digital-enquiry/")
+                      ? "secondary"
+                      : "ghost"
+                  }
+                  className="w-full h-12 justify-start relative"
                 >
-                  <Button
-                    variant={
-                      pathname === "/dashboard/digital-enquiry" ||
-                      pathname?.startsWith("/dashboard/digital-enquiry/")
-                        ? "secondary"
-                        : "ghost"
-                    }
-                    className="w-full h-12 justify-start relative"
-                  >
-                    <MessageSquare className="h-5 w-5 mr-3 flex-shrink-0 text-blue-600 dark:text-blue-400" />
-                    <span className="text-sm font-medium">Digital Enquiry</span>
-                    {(pathname === "/dashboard/digital-enquiry" ||
-                      pathname?.startsWith("/dashboard/digital-enquiry/")) && (
-                      <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-8 bg-blue-600 rounded-r-full" />
-                    )}
-                  </Button>
-                </Link>
+                  <MessageSquare className="h-5 w-5 mr-3 flex-shrink-0 text-blue-600 dark:text-blue-400" />
+                  <span className="text-sm font-medium">Digital Enquiry</span>
+                  {(pathname === "/dashboard/digital-enquiry" ||
+                    pathname?.startsWith("/dashboard/digital-enquiry/")) && (
+                    <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-8 bg-blue-600 rounded-r-full" />
+                  )}
+                </Button>
+              </Link>
               )}
 
               {/* Field Inquiry */}
               {hasPermission("fieldInquiry") && (
-                <Link
-                  prefetch={false}
-                  href="/dashboard/field-inquiry"
-                  onClick={() => setSidebarOpen(false)}
-                  className="w-full"
+              <Link
+                prefetch={false}
+                href="/dashboard/field-inquiry"
+                onClick={() => setSidebarOpen(false)}
+                className="w-full"
+              >
+                <Button
+                  variant={
+                    pathname === "/dashboard/field-inquiry" ||
+                    pathname?.startsWith("/dashboard/field-inquiry/")
+                      ? "secondary"
+                      : "ghost"
+                  }
+                  className="w-full h-12 justify-start relative"
                 >
-                  <Button
-                    variant={
-                      pathname === "/dashboard/field-inquiry" ||
-                      pathname?.startsWith("/dashboard/field-inquiry/")
-                        ? "secondary"
-                        : "ghost"
-                    }
-                    className="w-full h-12 justify-start relative"
-                  >
-                    <MapPin className="h-5 w-5 mr-3 flex-shrink-0 text-blue-600 dark:text-blue-400" />
-                    <span className="text-sm font-medium">Field Inquiry</span>
-                    {(pathname === "/dashboard/field-inquiry" ||
-                      pathname?.startsWith("/dashboard/field-inquiry/")) && (
-                      <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-8 bg-blue-600 rounded-r-full" />
-                    )}
-                  </Button>
-                </Link>
+                  <MapPin className="h-5 w-5 mr-3 flex-shrink-0 text-blue-600 dark:text-blue-400" />
+                  <span className="text-sm font-medium">Field Inquiry</span>
+                  {(pathname === "/dashboard/field-inquiry" ||
+                    pathname?.startsWith("/dashboard/field-inquiry/")) && (
+                    <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-8 bg-blue-600 rounded-r-full" />
+                  )}
+                </Button>
+              </Link>
               )}
 
               {/* Delivery Update */}
               {hasPermission("deliveryUpdate") && (
-                <Link
-                  prefetch={false}
-                  href="/dashboard/delivery-update"
-                  onClick={() => setSidebarOpen(false)}
-                  className="w-full"
+              <Link
+                prefetch={false}
+                href="/dashboard/delivery-update"
+                onClick={() => setSidebarOpen(false)}
+                className="w-full"
+              >
+                <Button
+                  variant={
+                    pathname === "/dashboard/delivery-update" ||
+                    pathname?.startsWith("/dashboard/delivery-update/")
+                      ? "secondary"
+                      : "ghost"
+                  }
+                  className="w-full h-12 justify-start relative"
                 >
-                  <Button
-                    variant={
-                      pathname === "/dashboard/delivery-update" ||
-                      pathname?.startsWith("/dashboard/delivery-update/")
-                        ? "secondary"
-                        : "ghost"
-                    }
-                    className="w-full h-12 justify-start relative"
-                  >
-                    <Package className="h-5 w-5 mr-3 flex-shrink-0 text-blue-600 dark:text-blue-400" />
-                    <span className="text-sm font-medium">Delivery Update</span>
-                    {(pathname === "/dashboard/delivery-update" ||
-                      pathname?.startsWith("/dashboard/delivery-update/")) && (
-                      <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-8 bg-blue-600 rounded-r-full" />
-                    )}
-                  </Button>
-                </Link>
+                  <Package className="h-5 w-5 mr-3 flex-shrink-0 text-blue-600 dark:text-blue-400" />
+                  <span className="text-sm font-medium">Delivery Update</span>
+                  {(pathname === "/dashboard/delivery-update" ||
+                    pathname?.startsWith("/dashboard/delivery-update/")) && (
+                    <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-8 bg-blue-600 rounded-r-full" />
+                  )}
+                </Button>
+              </Link>
               )}
 
               {/* Settings */}
@@ -267,29 +267,29 @@ function DashboardLayoutContent({
                 hasPermission("settingsVehicleModels") ||
                 hasPermission("settingsLeadSources") ||
                 hasPermission("settingsWhatsApp")) && (
-                <div className="pt-2 border-t w-full mt-auto">
-                  <Link
-                    prefetch={false}
-                    href="/dashboard/global-settings"
-                    onClick={() => setSidebarOpen(false)}
-                    className="w-full"
+              <div className="pt-2 border-t w-full mt-auto">
+                <Link
+                  prefetch={false}
+                  href="/dashboard/global-settings"
+                  onClick={() => setSidebarOpen(false)}
+                  className="w-full"
+                >
+                  <Button
+                    variant={
+                      pathname === "/dashboard/global-settings"
+                        ? "secondary"
+                        : "ghost"
+                    }
+                    className="w-full h-12 justify-start relative"
                   >
-                    <Button
-                      variant={
-                        pathname === "/dashboard/global-settings"
-                          ? "secondary"
-                          : "ghost"
-                      }
-                      className="w-full h-12 justify-start relative"
-                    >
-                      <Globe className="h-5 w-5 mr-3 flex-shrink-0 text-blue-600 dark:text-blue-400" />
-                      <span className="text-sm font-medium">Settings</span>
-                      {pathname === "/dashboard/global-settings" && (
-                        <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-8 bg-blue-600 rounded-r-full" />
-                      )}
-                    </Button>
-                  </Link>
-                </div>
+                    <Globe className="h-5 w-5 mr-3 flex-shrink-0 text-blue-600 dark:text-blue-400" />
+                    <span className="text-sm font-medium">Settings</span>
+                    {pathname === "/dashboard/global-settings" && (
+                      <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-8 bg-blue-600 rounded-r-full" />
+                    )}
+                  </Button>
+                </Link>
+              </div>
               )}
 
               {/* User Management - Admin only */}

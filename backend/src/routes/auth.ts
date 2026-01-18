@@ -492,10 +492,18 @@ router.get(
       });
     }
 
+    // Explicitly include all fields to ensure they're always present in the response
+    // This prevents issues with spread operator or missing fields in production
     res.json({ 
       user: {
-        ...fullUser,
-        permissions: userPermissions,
+        id: fullUser.id,
+        email: fullUser.email,
+        role: fullUser.role || UserRole.user, // Ensure role is always present
+        isActive: fullUser.isActive ?? true, // Ensure isActive is always present
+        theme: fullUser.theme,
+        profilePicture: fullUser.profilePicture,
+        dealership: fullUser.dealership,
+        permissions: userPermissions, // Always include permissions (created or existing)
       }
     });
   })

@@ -263,10 +263,10 @@ export default function DailyWalkinsPage() {
         } else {
           // Cache is stale (> 30 seconds), refresh in background
           if (mountedRef.current && !fetchingRef.current) {
-            setTimeout(() => {
-              if (mountedRef.current && !fetchingRef.current) {
+          setTimeout(() => {
+            if (mountedRef.current && !fetchingRef.current) {
                 fetchData(0, false, true); // Background fetch
-              }
+            }
             }, 500);
           }
         }
@@ -382,34 +382,34 @@ export default function DailyWalkinsPage() {
 
       // Append or replace visitors (only if permission granted)
       if (canViewVisitors && visitorsRes) {
-        if (append) {
-          setVisitors([...visitors, ...visitorsRes.data.visitors]);
-        } else {
-          setVisitors(visitorsRes.data.visitors);
-          setDisplayedCount(20);
-        }
+      if (append) {
+        setVisitors([...visitors, ...visitorsRes.data.visitors]);
+      } else {
+        setVisitors(visitorsRes.data.visitors);
+        setDisplayedCount(20);
+      }
 
-        setHasMore(visitorsRes.data.hasMore || false);
-        setTotalVisitors(
-          visitorsRes.data.total || visitorsRes.data.visitors.length
-        );
+      setHasMore(visitorsRes.data.hasMore || false);
+      setTotalVisitors(
+        visitorsRes.data.total || visitorsRes.data.visitors.length
+      );
       }
 
       // Handle sessions (only if permission granted)
       if (canViewSessions && sessionsRes) {
-        if (append) {
-          // Don't reload sessions when loading more visitors
-        } else {
-          setAllSessions(sessionsRes.data.sessions || []);
-          setCachedData(
-            "cache_daily_walkins_sessions",
-            sessionsRes.data.sessions || []
-          );
-          setSessionsHasMore(sessionsRes.data.hasMore || false);
-          setSessionsTotal(
-            sessionsRes.data.total || sessionsRes.data.sessions?.length || 0
-          );
-          setSessionsDisplayedCount(20);
+      if (append) {
+        // Don't reload sessions when loading more visitors
+      } else {
+        setAllSessions(sessionsRes.data.sessions || []);
+        setCachedData(
+          "cache_daily_walkins_sessions",
+          sessionsRes.data.sessions || []
+        );
+        setSessionsHasMore(sessionsRes.data.hasMore || false);
+        setSessionsTotal(
+          sessionsRes.data.total || sessionsRes.data.sessions?.length || 0
+        );
+        setSessionsDisplayedCount(20);
         }
       }
 
@@ -874,16 +874,16 @@ export default function DailyWalkinsPage() {
       >
         <TabsList className={`grid w-full ${canViewVisitors && canViewSessions ? 'grid-cols-2' : 'grid-cols-1'}`}>
           {canViewVisitors && (
-            <TabsTrigger value="visitors">Visitors</TabsTrigger>
+          <TabsTrigger value="visitors">Visitors</TabsTrigger>
           )}
           {canViewSessions && (
-            <TabsTrigger value="sessions">Sessions</TabsTrigger>
+          <TabsTrigger value="sessions">Sessions</TabsTrigger>
           )}
         </TabsList>
 
         {/* Visitors Tab */}
         {canViewVisitors && (
-          <TabsContent value="visitors" className="space-y-6 mt-6">
+        <TabsContent value="visitors" className="space-y-6 mt-6">
           {/* Search Bar */}
           <div className="relative">
             <div className="relative">
@@ -1491,7 +1491,7 @@ export default function DailyWalkinsPage() {
 
         {/* Sessions Tab */}
         {canViewSessions && (
-          <TabsContent value="sessions" className="space-y-6 mt-6">
+        <TabsContent value="sessions" className="space-y-6 mt-6">
           {/* Visitor Info Header (when opened from visitor) */}
           {selectedVisitorId &&
             (() => {
