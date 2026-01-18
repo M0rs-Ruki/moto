@@ -495,8 +495,8 @@ router.get(
 
     // Explicitly include all fields to ensure they're always present in the response
     // This prevents issues with spread operator or missing fields in production
-    // Updated: 2026-01-18 - Force cache invalidation
-    res.json({ 
+    // FIXED: 2026-01-18 - Explicitly return role, isActive, and permissions
+    const response = { 
       user: {
         id: fullUser.id,
         email: fullUser.email,
@@ -507,7 +507,8 @@ router.get(
         dealership: fullUser.dealership,
         permissions: userPermissions, // Always include permissions (created or existing)
       }
-    });
+    };
+    res.json(response);
   })
 );
 
