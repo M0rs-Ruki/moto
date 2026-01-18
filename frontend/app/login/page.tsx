@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/card";
 import { ThemeSwitcher } from "@/components/theme-switcher";
 import Link from "next/link";
+import { Eye, EyeOff } from "lucide-react";
 
 function LoginContent() {
   const router = useRouter();
@@ -23,6 +24,7 @@ function LoginContent() {
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
 
   // Login form state
   const [loginData, setLoginData] = useState({
@@ -60,23 +62,31 @@ function LoginContent() {
       <Card className="w-full max-w-md">
         <CardHeader className="space-y-4">
           {/* Logo */}
-          <div className="flex justify-center mb-4">
+          <div className="flex justify-center mb-2">
             <img
               src="/autopluse-black.png"
               alt="Autopluse Logo"
-              className="h-16 w-auto object-contain dark:hidden"
+              className="h-24 w-auto object-contain dark:hidden"
             />
             <img
               src="/autopluse-white.png"
               alt="Autopluse Logo"
-              className="h-16 w-auto object-contain hidden dark:block"
+              className="h-24 w-auto object-contain hidden dark:block"
             />
           </div>
-          <CardTitle className="text-xl sm:text-2xl text-center">
-            Showroom Management
+          <CardTitle className="text-xl sm:text-2xl text-center font-semibold">
+            WhatsApp-powered CRM For Smarter Dealership Management
           </CardTitle>
           <CardDescription className="text-xs sm:text-sm text-center">
-            Login to manage your showroom
+            AutoPulse by{" "}
+            <a
+              href="https://prominds.digital/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-semibold hover:underline"
+            >
+              Prominds Digital
+            </a>
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -109,17 +119,30 @@ function LoginContent() {
                 <Label htmlFor="login-password" className="text-sm">
                   Password
                 </Label>
-                <Input
-                  id="login-password"
-                  type="password"
-                  placeholder="••••••••"
-                  value={loginData.password}
-                  onChange={(e) =>
-                    setLoginData({ ...loginData, password: e.target.value })
-                  }
-                  required
-                  className="text-sm"
-                />
+                <div className="relative">
+                  <Input
+                    id="login-password"
+                    type={showPassword ? "text" : "password"}
+                    placeholder="••••••••"
+                    value={loginData.password}
+                    onChange={(e) =>
+                      setLoginData({ ...loginData, password: e.target.value })
+                    }
+                    required
+                    className="text-sm pr-10"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    {showPassword ? (
+                      <EyeOff className="h-4 w-4" />
+                    ) : (
+                      <Eye className="h-4 w-4" />
+                    )}
+                  </button>
+                </div>
               </div>
 
               <Button
@@ -130,6 +153,18 @@ function LoginContent() {
                 {loading ? "Logging in..." : "Login"}
               </Button>
             </form>
+
+            {/* Copyright Footer */}
+            <div className="mt-6 text-center">
+              <a
+                href="https://prominds.digital/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-xs text-muted-foreground hover:underline"
+              >
+                © 2026 Prominds Digital. All rights reserved.
+              </a>
+            </div>
           </div>
         </CardContent>
       </Card>

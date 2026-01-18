@@ -5,7 +5,7 @@
   "main": "dist/server.js",
   "scripts": {
     "dev": "tsx watch src/server.ts",
-    "build": "rm -rf dist && rm -rf tsconfig.tsbuildinfo && rm -rf node_modules/.cache && pnpm i && pnpm run prisma:generate && tsc && echo 'TypeScript compilation completed successfully'",
+    "build": "rm -rf dist && rm -rf node_modules/.cache && pnpm i && pnpm run prisma:generate && tsc && echo 'TypeScript compilation completed successfully'",
     "start": "node dist/server.js",
     "prisma:generate": "prisma generate",
     "prisma:dbpush": "prisma db push",
