@@ -146,26 +146,27 @@ export default function DashboardLayout({
             {/* Logo/Theme-aware Logo */}
             <div className="mb-2 hidden md:flex items-center justify-center w-full">
               <img
-                src={
-                  theme === "dark"
-                    ? "/Autopluse White1.png"
-                    : "/Autopluse Black1.png"
-                }
+                src="/autopluse-black.png"
                 alt="Logo"
-                className="h-12 w-auto object-contain"
+                className="h-12 w-auto object-contain dark:hidden"
+              />
+              <img
+                src="/autopluse-white.png"
+                alt="Logo"
+                className="h-12 w-auto object-contain hidden dark:block"
               />
             </div>
 
             {/* Powered by link */}
-            <Link
-              href="/about"
+            <a
+              href="https://prominds.digital/"
               target="_blank"
               rel="noopener noreferrer"
               className="mb-6 hidden md:flex items-center justify-center text-xs text-muted-foreground hover:text-blue-600 dark:hover:text-blue-400 transition-colors cursor-pointer"
             >
               powered by{" "}
               <span className="font-semibold ml-1">Prominds Digital</span>
-            </Link>
+            </a>
 
             {/* Navigation */}
             <nav className="flex-1 flex flex-col items-start space-y-1 w-full overflow-y-auto">
