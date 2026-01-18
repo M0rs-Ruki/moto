@@ -14,8 +14,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Showroom Management",
-  description: "Visitor management system for car and bike showrooms",
+  title: "Autopulse",
+  description: "Autopulse visitor management for car and bike showrooms",
 };
 
 export default function RootLayout({

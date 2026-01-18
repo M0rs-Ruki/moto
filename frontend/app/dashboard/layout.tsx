@@ -64,6 +64,15 @@ export default function DashboardLayout({
     };
   }, []);
 
+  // Set browser tab title to dealership name (fallback to Autopulse)
+  useEffect(() => {
+    if (!mountedRef.current) return;
+    const title = user?.dealership?.name || "Autopulse";
+    if (typeof document !== "undefined") {
+      document.title = title;
+    }
+  }, [user]);
+
   const fetchUser = async () => {
     // Prevent duplicate fetches
     if (fetchingRef.current) return;
@@ -360,9 +369,20 @@ export default function DashboardLayout({
                   Admin
                 </div>
               )}
-              <span className="text-sm text-muted-foreground hidden sm:inline">
-                {user?.name || user?.email?.split("@")[0] || "User"}
-              </span>
+              <div className="flex flex-col items-start leading-tight">
+                <span className="text-sm font-medium text-foreground">
+                  {user?.name || user?.email?.split("@")[0] || "User"}
+                </span>
+                {/* <span className="text-xs text-muted-foreground">
+                  {user?.dealership?.name
+                    ? `${user.dealership.name}${
+                        user.dealership.location
+                          ? " · " + user.dealership.location
+                          : ""
+                      }`
+                    : "No dealership assigned"}
+                </span> */}
+              </div>
             </button>
           </div>
           {/* Page content */}
