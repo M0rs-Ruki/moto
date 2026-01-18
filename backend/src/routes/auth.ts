@@ -451,7 +451,53 @@ router.get(
       return;
     }
 
-    res.json({ user: fullUser });
+    // Auto-create permissions for users who don't have them (backward compatibility)
+    // This handles existing users in production who were created before the permissions system
+    let userPermissions = fullUser.permissions;
+    if (!userPermissions) {
+      const isAdmin = fullUser.role === UserRole.admin;
+      
+      // Create default permissions (all true for admin, all false for regular users)
+      const defaultPermissions = isAdmin
+        ? {
+            dashboard: true,
+            dailyWalkinsVisitors: true,
+            dailyWalkinsSessions: true,
+            digitalEnquiry: true,
+            fieldInquiry: true,
+            deliveryUpdate: true,
+            settingsProfile: true,
+            settingsVehicleModels: true,
+            settingsLeadSources: true,
+            settingsWhatsApp: true,
+          }
+        : {
+            dashboard: false,
+            dailyWalkinsVisitors: false,
+            dailyWalkinsSessions: false,
+            digitalEnquiry: false,
+            fieldInquiry: false,
+            deliveryUpdate: false,
+            settingsProfile: false,
+            settingsVehicleModels: false,
+            settingsLeadSources: false,
+            settingsWhatsApp: false,
+          };
+
+      userPermissions = await prisma.userPermission.create({
+        data: {
+          userId: fullUser.id,
+          ...defaultPermissions,
+        },
+      });
+    }
+
+    res.json({ 
+      user: {
+        ...fullUser,
+        permissions: userPermissions,
+      }
+    });
   })
 );
 
