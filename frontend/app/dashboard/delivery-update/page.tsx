@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import apiClient from "@/lib/api";
 import { getCachedData, setCachedData } from "@/lib/cache";
+import { usePermissions } from "@/contexts/permissions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -84,6 +85,27 @@ interface VehicleCategory {
 }
 
 export default function DeliveryUpdatePage() {
+  const { hasPermission } = usePermissions();
+
+  if (!hasPermission("deliveryUpdate")) {
+    return (
+      <div className="space-y-8">
+        <div className="pb-2 border-b">
+          <h1 className="text-3xl sm:text-4xl font-bold bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent">
+            Delivery Update
+          </h1>
+        </div>
+        <Card>
+          <CardContent className="pt-6">
+            <div className="text-center py-12 text-muted-foreground">
+              <p className="text-base">You don't have permission to access this page.</p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   const [tickets, setTickets] = useState<DeliveryTicket[]>([]);
   const [loading, setLoading] = useState(true);
   const [displayedCount, setDisplayedCount] = useState(20); // Show 20 initially
@@ -125,26 +147,36 @@ export default function DeliveryUpdatePage() {
   useEffect(() => {
     mountedRef.current = true;
     
-    // Try to load from cache first
-    const cached = getCachedData<DeliveryTicket[]>("cache_delivery_tickets", 30000);
+    // Try to load from cache first - use longer cache duration
+    const cached = getCachedData<DeliveryTicket[]>("cache_delivery_tickets", 120000); // 2 minutes
     if (cached) {
       setTickets(cached);
       setLoading(false);
-      // Only fetch in background if cache is older than 10 seconds
+      
+      // Check cache age to decide if we need to refresh
       try {
         const cacheEntry = JSON.parse(sessionStorage.getItem("cache_delivery_tickets") || '{}');
         const cacheAge = Date.now() - (cacheEntry.timestamp || 0);
-        if (cacheAge > 10000 && mountedRef.current && !fetchingRef.current) {
-          setTimeout(() => {
-            if (mountedRef.current && !fetchingRef.current) {
-              fetchTickets(0, false, true);
-            }
-          }, 1000);
+        
+        // If cache is fresh (< 30 seconds), don't fetch
+        if (cacheAge < 30000) {
+          // Cache is fresh, no need to fetch
+        } else {
+          // Cache is stale (> 30 seconds), refresh in background
+          if (mountedRef.current && !fetchingRef.current) {
+            setTimeout(() => {
+              if (mountedRef.current && !fetchingRef.current) {
+                fetchTickets(0, false, true); // Background fetch
+              }
+            }, 500);
+          }
         }
       } catch {
-        // Ignore cache parsing errors
+        // If cache parsing fails, fetch normally
+        fetchTickets(0, false);
       }
     } else {
+      // No cache, fetch normally
       fetchTickets(0, false);
     }
     
@@ -168,26 +200,47 @@ export default function DeliveryUpdatePage() {
     setError("");
 
     try {
-      await apiClient.post("/delivery-tickets", {
+      const response = await apiClient.post("/delivery-tickets", {
         ...formData,
         modelId: formData.modelId || null,
         variantId: formData.variantId || null,
       });
 
-      setCreateDialogOpen(false);
-      setFormData({
-        firstName: "",
-        lastName: "",
-        whatsappNumber: "",
-        email: "",
-        address: "",
-        description: "",
-        deliveryDate: "",
-        modelId: "",
-        variantId: "",
-        scheduleOption: "d3",
-      });
-      fetchTickets(0, false); // Reset pagination when creating new ticket
+      if (response.data.success) {
+        const newTicket = response.data.ticket;
+
+        // 1. IMMEDIATE UI UPDATE - Add ticket to list immediately
+        setTickets(prev => [newTicket, ...prev]);
+
+        // 2. UPDATE CACHE
+        const cachedTickets = getCachedData<DeliveryTicket[]>(
+          "cache_delivery_tickets",
+          120000
+        );
+        if (cachedTickets) {
+          setCachedData("cache_delivery_tickets", [newTicket, ...cachedTickets]);
+        } else {
+          setCachedData("cache_delivery_tickets", [newTicket]);
+        }
+
+        // 3. BACKGROUND REFETCH - Ensure consistency
+        fetchTickets(0, false, true); // Background fetch
+
+        // Reset form and close dialog
+        setCreateDialogOpen(false);
+        setFormData({
+          firstName: "",
+          lastName: "",
+          whatsappNumber: "",
+          email: "",
+          address: "",
+          description: "",
+          deliveryDate: "",
+          modelId: "",
+          variantId: "",
+          scheduleOption: "d3",
+        });
+      }
     } catch (err: unknown) {
       const error = err as { response?: { data?: { error?: string } } };
       setError(error.response?.data?.error || "Failed to create ticket");

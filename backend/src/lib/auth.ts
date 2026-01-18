@@ -9,6 +9,7 @@ export interface JWTPayload {
   userId: string;
   email: string;
   dealershipId?: string;
+  role?: string; // Included for performance - reduces DB queries
 }
 
 /**

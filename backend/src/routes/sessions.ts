@@ -2,6 +2,8 @@ import { Router, Request, Response } from "express";
 import prisma from "../lib/db";
 import { whatsappClient } from "../lib/whatsapp";
 import { authenticate, asyncHandler } from "../middleware/auth";
+import { checkPermission } from "../middleware/permissions";
+import { PERMISSIONS } from "../config/permissions";
 
 const router: Router = Router();
 
@@ -9,6 +11,7 @@ const router: Router = Router();
 router.get(
   "/",
   authenticate,
+  checkPermission(PERMISSIONS.DAILY_WALKINS_SESSIONS),
   asyncHandler(async (req: Request, res: Response) => {
     if (!req.user || !req.user.dealershipId) {
       res.status(401).json({ error: "Not authenticated" });
@@ -85,6 +88,7 @@ router.get(
 router.post(
   "/exit",
   authenticate,
+  checkPermission(PERMISSIONS.DAILY_WALKINS_SESSIONS),
   asyncHandler(async (req: Request, res: Response) => {
     if (!req.user || !req.user.dealershipId) {
       res.status(401).json({ error: "Not authenticated" });

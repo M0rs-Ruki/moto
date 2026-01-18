@@ -12,5 +12,25 @@ const apiClient = axios.create({
   },
 });
 
+// Response interceptor to handle 403 permission denied errors
+apiClient.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response?.status === 403) {
+      const errorMessage = error.response?.data?.error || "Permission denied";
+      
+      // Show notification/toast (you can integrate with a toast library)
+      if (typeof window !== "undefined") {
+        // Optionally show a toast notification
+        console.warn("Permission denied:", errorMessage);
+        
+        // You can dispatch a custom event or use a toast library here
+        // For now, we'll just log it
+      }
+    }
+    return Promise.reject(error);
+  }
+);
+
 export default apiClient;
 

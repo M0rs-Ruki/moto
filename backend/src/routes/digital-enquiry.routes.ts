@@ -1,20 +1,22 @@
 import { Router } from "express";
 import { DigitalEnquiryController } from "../controllers/digital-enquiry.controller";
 import { authenticate, asyncHandler } from "../middleware/auth";
+import { checkPermission } from "../middleware/permissions";
+import { PERMISSIONS } from "../config/permissions";
 
 const router: Router = Router();
 const controller = new DigitalEnquiryController();
 
 // Create digital enquiry
-router.post("/", authenticate, asyncHandler(controller.create));
+router.post("/", authenticate, checkPermission(PERMISSIONS.DIGITAL_ENQUIRY), asyncHandler(controller.create));
 
 // Get digital enquiries
-router.get("/", authenticate, asyncHandler(controller.getAll));
+router.get("/", authenticate, checkPermission(PERMISSIONS.DIGITAL_ENQUIRY), asyncHandler(controller.getAll));
 
 // Update lead scope
-router.patch("/:id", authenticate, asyncHandler(controller.updateLeadScope));
+router.patch("/:id", authenticate, checkPermission(PERMISSIONS.DIGITAL_ENQUIRY), asyncHandler(controller.updateLeadScope));
 
 // Bulk upload
-router.post("/bulk", authenticate, asyncHandler(controller.bulkUpload));
+router.post("/bulk", authenticate, checkPermission(PERMISSIONS.DIGITAL_ENQUIRY), asyncHandler(controller.bulkUpload));
 
 export default router;

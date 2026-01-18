@@ -13,6 +13,35 @@ export interface JWTPayload {
   userId: string;
   email: string;
   dealershipId?: string;
+  role?: string;
+}
+
+export interface UserPermissions {
+  dashboard: boolean;
+  dailyWalkinsVisitors: boolean;
+  dailyWalkinsSessions: boolean;
+  digitalEnquiry: boolean;
+  fieldInquiry: boolean;
+  deliveryUpdate: boolean;
+  settingsProfile: boolean;
+  settingsVehicleModels: boolean;
+  settingsLeadSources: boolean;
+  settingsWhatsApp: boolean;
+}
+
+export interface User {
+  id: string;
+  email: string;
+  role?: string;
+  isActive?: boolean;
+  theme?: string;
+  profilePicture?: string | null;
+  dealership?: {
+    id: string;
+    name: string;
+    location: string;
+  } | null;
+  permissions?: UserPermissions | null;
 }
 
 /**

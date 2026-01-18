@@ -7,16 +7,24 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum UserRole {
+  admin
+  user
+}
+
 model User {
-  id             String      @id @default(cuid())
-  email          String      @unique
+  id             String          @id @default(cuid())
+  email          String          @unique
   password       String
-  createdAt      DateTime    @default(now())
-  updatedAt      DateTime    @updatedAt
+  role           UserRole        @default(user)
+  isActive       Boolean         @default(true)
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
   dealershipId   String?
-  theme          String      @default("light")
+  theme          String          @default("light")
   profilePicture String?
-  dealership     Dealership? @relation(fields: [dealershipId], references: [id])
+  dealership     Dealership?     @relation(fields: [dealershipId], references: [id])
+  permissions    UserPermission?
 
   @@index([dealershipId])
 }
@@ -311,4 +319,32 @@ model FieldInquirySession {
 
   @@index([fieldInquiryId])
   @@index([status])
+}
+
+model UserPermission {
+  id        String   @id @default(cuid())
+  userId    String   @unique
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  // Feature permissions
+  dashboard Boolean  @default(false)
+  
+  // Daily Walkins - granular control
+  dailyWalkinsVisitors Boolean @default(false)
+  dailyWalkinsSessions Boolean @default(false)
+  
+  digitalEnquiry Boolean @default(false)
+  fieldInquiry   Boolean @default(false)
+  deliveryUpdate Boolean @default(false)
+  
+  // Settings - granular control for each tab
+  settingsProfile      Boolean @default(false)  // Profile & Appearance tab
+  settingsVehicleModels Boolean @default(false) // Vehicle Models tab
+  settingsLeadSources  Boolean @default(false) // Lead Sources tab
+  settingsWhatsApp     Boolean @default(false) // WhatsApp Templates tab
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  @@index([userId])
 }

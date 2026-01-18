@@ -1,6 +1,8 @@
 import { Router, Request, Response } from "express";
 import prisma from "../lib/db";
 import { authenticate, asyncHandler } from "../middleware/auth";
+import { checkPermission } from "../middleware/permissions";
+import { PERMISSIONS } from "../config/permissions";
 
 const router: Router = Router();
 
@@ -8,6 +10,7 @@ const router: Router = Router();
 router.post(
   "/",
   authenticate,
+  checkPermission(PERMISSIONS.SETTINGS_VEHICLE_MODELS),
   asyncHandler(async (req: Request, res: Response) => {
     if (!req.user || !req.user.dealershipId) {
       res.status(401).json({ error: "Not authenticated" });
@@ -50,6 +53,7 @@ router.post(
 router.delete(
   "/",
   authenticate,
+  checkPermission(PERMISSIONS.SETTINGS_VEHICLE_MODELS),
   asyncHandler(async (req: Request, res: Response) => {
     if (!req.user || !req.user.dealershipId) {
       res.status(401).json({ error: "Not authenticated" });

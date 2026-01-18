@@ -1,10 +1,12 @@
 import { Router, Request, Response } from "express";
 import prisma from "../lib/db";
 import { authenticate, asyncHandler } from "../middleware/auth";
+import { checkPermission } from "../middleware/permissions";
+import { PERMISSIONS } from "../config/permissions";
 
 const router: Router = Router();
 
-// Get templates
+// Get templates (no permission check - needed for forms)
 router.get(
   "/",
   authenticate,
@@ -108,6 +110,7 @@ router.get(
 router.put(
   "/",
   authenticate,
+  checkPermission(PERMISSIONS.SETTINGS_WHATSAPP),
   asyncHandler(async (req: Request, res: Response) => {
     if (!req.user || !req.user.dealershipId) {
       res.status(401).json({ error: "Not authenticated" });

@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import apiClient from "@/lib/api";
 import { getCachedData, setCachedData } from "@/lib/cache";
+import { usePermissions } from "@/contexts/permissions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -89,6 +90,27 @@ interface PhoneLookup {
 }
 
 export default function DigitalEnquiryPage() {
+  const { hasPermission } = usePermissions();
+
+  if (!hasPermission("digitalEnquiry")) {
+    return (
+      <div className="space-y-8">
+        <div className="pb-2 border-b">
+          <h1 className="text-3xl sm:text-4xl font-bold bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent">
+            Digital Enquiry
+          </h1>
+        </div>
+        <Card>
+          <CardContent className="pt-6">
+            <div className="text-center py-12 text-muted-foreground">
+              <p className="text-base">You don't have permission to access this page.</p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   const [enquiries, setEnquiries] = useState<DigitalEnquiry[]>([]);
   const [loading, setLoading] = useState(true);
   const [displayedCount, setDisplayedCount] = useState(20); // Show 20 initially
@@ -148,31 +170,41 @@ export default function DigitalEnquiryPage() {
   useEffect(() => {
     mountedRef.current = true;
 
-    // Try to load from cache first
+    // Try to load from cache first - use longer cache duration
     const cached = getCachedData<DigitalEnquiry[]>(
       "cache_digital_enquiry",
-      30000
+      120000 // 2 minutes
     );
     if (cached) {
       setEnquiries(cached);
       setLoading(false);
-      // Only fetch in background if cache is older than 10 seconds
+      
+      // Check cache age to decide if we need to refresh
       try {
         const cacheEntry = JSON.parse(
           sessionStorage.getItem("cache_digital_enquiry") || "{}"
         );
         const cacheAge = Date.now() - (cacheEntry.timestamp || 0);
-        if (cacheAge > 10000 && mountedRef.current && !fetchingRef.current) {
-          setTimeout(() => {
-            if (mountedRef.current && !fetchingRef.current) {
-              fetchData(0, false, true);
-            }
-          }, 1000);
+        
+        // If cache is fresh (< 30 seconds), don't fetch
+        if (cacheAge < 30000) {
+          // Cache is fresh, no need to fetch
+        } else {
+          // Cache is stale (> 30 seconds), refresh in background
+          if (mountedRef.current && !fetchingRef.current) {
+            setTimeout(() => {
+              if (mountedRef.current && !fetchingRef.current) {
+                fetchData(0, false, true); // Background fetch
+              }
+            }, 500);
+          }
         }
       } catch {
-        // Ignore cache parsing errors
+        // If cache parsing fails, fetch normally
+        fetchData(0, false);
       }
     } else {
+      // No cache, fetch normally
       fetchData(0, false);
     }
 
@@ -293,6 +325,26 @@ export default function DigitalEnquiryPage() {
       });
 
       if (response.data.success) {
+        const newEnquiry = response.data.enquiry;
+
+        // 1. IMMEDIATE UI UPDATE - Add enquiry to list immediately
+        setEnquiries(prev => [newEnquiry, ...prev]);
+
+        // 2. UPDATE CACHE
+        const cachedEnquiries = getCachedData<DigitalEnquiry[]>(
+          "cache_digital_enquiry",
+          120000
+        );
+        if (cachedEnquiries) {
+          setCachedData("cache_digital_enquiry", [newEnquiry, ...cachedEnquiries]);
+        } else {
+          setCachedData("cache_digital_enquiry", [newEnquiry]);
+        }
+
+        // 3. BACKGROUND REFETCH - Ensure consistency
+        fetchData(0, false, true); // Background fetch
+
+        // Reset form and close dialog
         setCreateDialogOpen(false);
         setFormData({
           firstName: "",
@@ -306,7 +358,6 @@ export default function DigitalEnquiryPage() {
           interestedModelId: "",
           interestedVariantId: "",
         });
-        fetchData(0, false); // Reset pagination when creating new enquiry
       }
     } catch (err: unknown) {
       const error = err as { response?: { data?: { error?: string } } };
@@ -387,8 +438,8 @@ export default function DigitalEnquiryPage() {
 
       if (response.data.success) {
         setUploadResults(response.data);
-        // Refresh the enquiry list
-        await fetchData(0, false); // Reset pagination after bulk upload
+        // Refresh the enquiry list in background
+        fetchData(0, false, true); // Background fetch after bulk upload
       }
     } catch (err: unknown) {
       const error = err as {
@@ -434,7 +485,7 @@ export default function DigitalEnquiryPage() {
       });
 
       if (response.data.success) {
-        // Update the enquiry in the local state
+        // 1. IMMEDIATE UI UPDATE - Update enquiry in local state
         setEnquiries((prev) =>
           prev.map((enquiry) =>
             enquiry.id === enquiryId
@@ -442,6 +493,21 @@ export default function DigitalEnquiryPage() {
               : enquiry
           )
         );
+
+        // 2. UPDATE CACHE
+        const cachedEnquiries = getCachedData<DigitalEnquiry[]>(
+          "cache_digital_enquiry",
+          120000
+        );
+        if (cachedEnquiries) {
+          const updatedCache = cachedEnquiries.map(enquiry =>
+            enquiry.id === enquiryId
+              ? { ...enquiry, leadScope: newLeadScope }
+              : enquiry
+          );
+          setCachedData("cache_digital_enquiry", updatedCache);
+        }
+
         setEditingLeadScope(null);
       }
     } catch (error: any) {

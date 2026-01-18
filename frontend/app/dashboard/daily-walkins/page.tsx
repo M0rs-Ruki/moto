@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import apiClient from "@/lib/api";
 import { getCachedData, setCachedData } from "@/lib/cache";
+import { usePermissions } from "@/contexts/permissions";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -162,10 +163,16 @@ export default function DailyWalkinsPage() {
     {}
   );
 
-  // Tab state
-  const [activeTab, setActiveTab] = useState<"visitors" | "sessions">(
-    "visitors"
-  );
+  const { hasPermission } = usePermissions();
+  const canViewVisitors = hasPermission("dailyWalkinsVisitors");
+  const canViewSessions = hasPermission("dailyWalkinsSessions");
+
+  // Tab state - default to first available tab
+  const [activeTab, setActiveTab] = useState<"visitors" | "sessions">(() => {
+    if (canViewVisitors) return "visitors";
+    if (canViewSessions) return "sessions";
+    return "visitors"; // fallback
+  });
   const [selectedVisitorId, setSelectedVisitorId] = useState<string | null>(
     null
   );
@@ -216,42 +223,61 @@ export default function DailyWalkinsPage() {
   useEffect(() => {
     mountedRef.current = true;
 
-    // Try to load from cache first
+    // Try to load from cache first - use longer cache durations
     const cachedCategories = getCachedData<VehicleCategory[]>(
       "cache_daily_walkins_categories",
-      60000
+      300000 // 5 minutes (categories don't change often)
     );
     const cachedVisitors = getCachedData<Visitor[]>(
       "cache_daily_walkins_visitors",
-      30000
+      120000 // 2 minutes (visitors change more often)
     );
     const cachedSessions = getCachedData<Session[]>(
       "cache_daily_walkins_sessions",
-      30000
+      120000 // 2 minutes
     );
 
-    if (cachedCategories && cachedVisitors && cachedSessions) {
-      setCategories(cachedCategories);
-      setVisitors(cachedVisitors);
-      setAllSessions(cachedSessions);
+    // Use cache if available (even if partial)
+    const hasAnyCache = cachedCategories || cachedVisitors || cachedSessions;
+    
+    if (hasAnyCache) {
+      // Set whatever we have in cache
+      if (cachedCategories) setCategories(cachedCategories);
+      if (cachedVisitors) setVisitors(cachedVisitors);
+      if (cachedSessions) setAllSessions(cachedSessions);
       setLoading(false);
-      // Only fetch in background if cache is older than 10 seconds
+
+      // Check cache age to decide if we need to refresh
       try {
-        const cacheEntry = JSON.parse(
+        const visitorsCacheEntry = JSON.parse(
           sessionStorage.getItem("cache_daily_walkins_visitors") || "{}"
         );
-        const cacheAge = Date.now() - (cacheEntry.timestamp || 0);
-        if (cacheAge > 10000 && mountedRef.current && !fetchingRef.current) {
-          setTimeout(() => {
-            if (mountedRef.current && !fetchingRef.current) {
-              fetchData(0, false, true);
-            }
-          }, 1000);
+        const cacheAge = Date.now() - (visitorsCacheEntry.timestamp || 0);
+        
+        // If cache is fresh (< 30 seconds), don't fetch
+        if (cacheAge < 30000) {
+          // Cache is fresh, only fetch missing data if needed
+          if (!cachedCategories || !cachedVisitors || !cachedSessions) {
+            fetchData(0, false, true); // Background fetch for missing data
+          }
+        } else {
+          // Cache is stale (> 30 seconds), refresh in background
+          if (mountedRef.current && !fetchingRef.current) {
+            setTimeout(() => {
+              if (mountedRef.current && !fetchingRef.current) {
+                fetchData(0, false, true); // Background fetch
+              }
+            }, 500);
+          }
         }
       } catch {
-        // Ignore cache parsing errors
+        // If cache parsing fails, fetch normally
+        if (!cachedCategories || !cachedVisitors || !cachedSessions) {
+          fetchData();
+        }
       }
     } else {
+      // No cache at all, fetch normally
       fetchData();
     }
 
@@ -324,11 +350,29 @@ export default function DailyWalkinsPage() {
         setLoadingMore(true);
       }
 
-      const [categoriesRes, visitorsRes, sessionsRes] = await Promise.all([
-        apiClient.get("/categories"),
-        apiClient.get(`/visitors?limit=20&skip=${skip}`),
-        apiClient.get(`/sessions?limit=20&skip=0`),
-      ]);
+      const promises: Promise<any>[] = [apiClient.get("/categories")];
+      
+      if (canViewVisitors) {
+        promises.push(apiClient.get(`/visitors?limit=20&skip=${skip}`));
+      }
+      
+      if (canViewSessions) {
+        promises.push(apiClient.get(`/sessions?limit=20&skip=0`));
+      }
+
+      const results = await Promise.all(promises);
+      const categoriesRes = results[0];
+      let visitorsRes = null;
+      let sessionsRes = null;
+      
+      if (canViewVisitors) {
+        visitorsRes = results[1];
+        if (canViewSessions) {
+          sessionsRes = results[2];
+        }
+      } else if (canViewSessions) {
+        sessionsRes = results[1];
+      }
 
       setCategories(categoriesRes.data.categories);
       setCachedData(
@@ -336,37 +380,41 @@ export default function DailyWalkinsPage() {
         categoriesRes.data.categories
       );
 
-      // Append or replace visitors
-      if (append) {
-        setVisitors([...visitors, ...visitorsRes.data.visitors]);
-      } else {
-        setVisitors(visitorsRes.data.visitors);
-        setDisplayedCount(20);
+      // Append or replace visitors (only if permission granted)
+      if (canViewVisitors && visitorsRes) {
+        if (append) {
+          setVisitors([...visitors, ...visitorsRes.data.visitors]);
+        } else {
+          setVisitors(visitorsRes.data.visitors);
+          setDisplayedCount(20);
+        }
+
+        setHasMore(visitorsRes.data.hasMore || false);
+        setTotalVisitors(
+          visitorsRes.data.total || visitorsRes.data.visitors.length
+        );
       }
 
-      setHasMore(visitorsRes.data.hasMore || false);
-      setTotalVisitors(
-        visitorsRes.data.total || visitorsRes.data.visitors.length
-      );
-
-      // Handle sessions
-      if (append) {
-        // Don't reload sessions when loading more visitors
-      } else {
-        setAllSessions(sessionsRes.data.sessions || []);
-        setCachedData(
-          "cache_daily_walkins_sessions",
-          sessionsRes.data.sessions || []
-        );
-        setSessionsHasMore(sessionsRes.data.hasMore || false);
-        setSessionsTotal(
-          sessionsRes.data.total || sessionsRes.data.sessions?.length || 0
-        );
-        setSessionsDisplayedCount(20);
+      // Handle sessions (only if permission granted)
+      if (canViewSessions && sessionsRes) {
+        if (append) {
+          // Don't reload sessions when loading more visitors
+        } else {
+          setAllSessions(sessionsRes.data.sessions || []);
+          setCachedData(
+            "cache_daily_walkins_sessions",
+            sessionsRes.data.sessions || []
+          );
+          setSessionsHasMore(sessionsRes.data.hasMore || false);
+          setSessionsTotal(
+            sessionsRes.data.total || sessionsRes.data.sessions?.length || 0
+          );
+          setSessionsDisplayedCount(20);
+        }
       }
 
-      // Cache visitors
-      if (!append) {
+      // Cache visitors (only if we have visitors data and permission)
+      if (!append && canViewVisitors && visitorsRes) {
         setCachedData(
           "cache_daily_walkins_visitors",
           visitorsRes.data.visitors
@@ -375,7 +423,7 @@ export default function DailyWalkinsPage() {
 
       // Only fetch phone lookups when loading more data (not on initial load)
       // Use batch lookup to avoid multiple API calls
-      if (append && visitorsRes.data.visitors.length > 0) {
+      if (append && canViewVisitors && visitorsRes && visitorsRes.data.visitors.length > 0) {
         const newVisitors = visitorsRes.data.visitors;
         const lookups: Record<string, PhoneLookup> = { ...phoneLookups };
 
@@ -587,13 +635,36 @@ export default function DailyWalkinsPage() {
     setExitConfirmDialogOpen(false);
     setSessionSubmitting(true);
     try {
+      if (!canViewSessions) {
+        alert("You don't have permission to exit sessions");
+        return;
+      }
       const response = await apiClient.post("/sessions/exit", {
         sessionId: sessionToExit.id,
       });
 
       if (response.data.success) {
-        // Refresh sessions
-        await fetchAllSessions();
+        const updatedSession = response.data.session;
+        
+        // 1. IMMEDIATE UI UPDATE - Update session status immediately
+        setAllSessions(prev => 
+          prev.map(s => s.id === sessionToExit.id ? { ...s, ...updatedSession } : s)
+        );
+
+        // 2. UPDATE CACHE
+        const cachedSessions = getCachedData<Session[]>(
+          "cache_daily_walkins_sessions",
+          120000
+        );
+        if (cachedSessions) {
+          const updatedCache = cachedSessions.map(s => 
+            s.id === sessionToExit.id ? { ...s, ...updatedSession } : s
+          );
+          setCachedData("cache_daily_walkins_sessions", updatedCache);
+        }
+
+        // 3. BACKGROUND REFETCH - Ensure consistency
+        fetchAllSessions(0, false);
       } else {
         throw new Error(response.data.error || "Failed to exit session");
       }
@@ -648,10 +719,35 @@ export default function DailyWalkinsPage() {
     setVisitorError("");
 
     try {
+      if (!canViewVisitors) {
+        alert("You don't have permission to create visitors");
+        return;
+      }
       const response = await apiClient.post("/visitors", visitorFormData);
 
       // Check if visitor was created successfully (even if WhatsApp message failed)
       if (response.data.success) {
+        const newVisitor = response.data.visitor;
+
+        // 1. IMMEDIATE UI UPDATE (Real-time!) - Add visitor to list immediately
+        setVisitors(prev => [newVisitor, ...prev]);
+
+        // 2. UPDATE CACHE - Update cache with new visitor
+        const cachedVisitors = getCachedData<Visitor[]>(
+          "cache_daily_walkins_visitors",
+          120000
+        );
+        if (cachedVisitors) {
+          setCachedData("cache_daily_walkins_visitors", [newVisitor, ...cachedVisitors]);
+        } else {
+          setCachedData("cache_daily_walkins_visitors", [newVisitor]);
+        }
+
+        // 3. BACKGROUND REFETCH - Ensure data consistency (fetch in background)
+        fetchData(0, false, true);
+        fetchAllSessions(0, false);
+
+        // Reset form
         setVisitorFormData({
           firstName: "",
           lastName: "",
@@ -662,8 +758,6 @@ export default function DailyWalkinsPage() {
           modelIds: [],
         });
         setVisitorDialogOpen(false);
-        await fetchData();
-        await fetchAllSessions();
 
         // Show warning if WhatsApp message failed but visitor was created
         if (response.data.message?.status === "failed") {
@@ -778,13 +872,18 @@ export default function DailyWalkinsPage() {
         }
         className="space-y-6"
       >
-        <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="visitors">Visitors</TabsTrigger>
-          <TabsTrigger value="sessions">Sessions</TabsTrigger>
+        <TabsList className={`grid w-full ${canViewVisitors && canViewSessions ? 'grid-cols-2' : 'grid-cols-1'}`}>
+          {canViewVisitors && (
+            <TabsTrigger value="visitors">Visitors</TabsTrigger>
+          )}
+          {canViewSessions && (
+            <TabsTrigger value="sessions">Sessions</TabsTrigger>
+          )}
         </TabsList>
 
         {/* Visitors Tab */}
-        <TabsContent value="visitors" className="space-y-6 mt-6">
+        {canViewVisitors && (
+          <TabsContent value="visitors" className="space-y-6 mt-6">
           {/* Search Bar */}
           <div className="relative">
             <div className="relative">
@@ -1388,9 +1487,11 @@ export default function DailyWalkinsPage() {
             </>
           )}
         </TabsContent>
+        )}
 
         {/* Sessions Tab */}
-        <TabsContent value="sessions" className="space-y-6 mt-6">
+        {canViewSessions && (
+          <TabsContent value="sessions" className="space-y-6 mt-6">
           {/* Visitor Info Header (when opened from visitor) */}
           {selectedVisitorId &&
             (() => {
@@ -1658,6 +1759,7 @@ export default function DailyWalkinsPage() {
             </>
           )}
         </TabsContent>
+        )}
       </Tabs>
 
       {/* Test Drive Dialog */}

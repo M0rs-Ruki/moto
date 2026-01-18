@@ -2,6 +2,8 @@ import { Router, Request, Response } from "express";
 import prisma from "../lib/db";
 import { whatsappClient } from "../lib/whatsapp";
 import { authenticate, asyncHandler } from "../middleware/auth";
+import { checkPermission } from "../middleware/permissions";
+import { PERMISSIONS } from "../config/permissions";
 
 const router: Router = Router();
 
@@ -9,6 +11,7 @@ const router: Router = Router();
 router.post(
   "/",
   authenticate,
+  checkPermission(PERMISSIONS.DELIVERY_UPDATE),
   asyncHandler(async (req: Request, res: Response) => {
     if (!req.user || !req.user.dealershipId) {
       res.status(401).json({ error: "Not authenticated" });
@@ -182,6 +185,7 @@ router.post(
 router.get(
   "/",
   authenticate,
+  checkPermission(PERMISSIONS.DELIVERY_UPDATE),
   asyncHandler(async (req: Request, res: Response) => {
     if (!req.user || !req.user.dealershipId) {
       res.status(401).json({ error: "Not authenticated" });
@@ -238,6 +242,7 @@ router.get(
 router.post(
   "/:id/send-now",
   authenticate,
+  checkPermission(PERMISSIONS.DELIVERY_UPDATE),
   asyncHandler(async (req: Request, res: Response) => {
     if (!req.user || !req.user.dealershipId) {
       res.status(401).json({ error: "Not authenticated" });
@@ -355,6 +360,7 @@ router.post(
 router.post(
   "/:id/send-completion",
   authenticate,
+  checkPermission(PERMISSIONS.DELIVERY_UPDATE),
   asyncHandler(async (req: Request, res: Response) => {
     if (!req.user || !req.user.dealershipId) {
       res.status(401).json({ error: "Not authenticated" });

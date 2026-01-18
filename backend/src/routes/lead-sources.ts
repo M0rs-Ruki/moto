@@ -1,6 +1,8 @@
 import { Router, Request, Response } from "express";
 import prisma from "../lib/db";
 import { authenticate, asyncHandler } from "../middleware/auth";
+import { checkPermission } from "../middleware/permissions";
+import { PERMISSIONS } from "../config/permissions";
 
 const router: Router = Router();
 
@@ -17,6 +19,7 @@ const DEFAULT_LEAD_SOURCES = [
 router.get(
   "/",
   authenticate,
+  // No permission check - needed for forms
   asyncHandler(async (req: Request, res: Response) => {
     if (!req.user || !req.user.dealershipId) {
       res.status(401).json({ error: "Not authenticated" });
@@ -58,6 +61,7 @@ router.get(
 router.post(
   "/",
   authenticate,
+  checkPermission(PERMISSIONS.SETTINGS_LEAD_SOURCES),
   asyncHandler(async (req: Request, res: Response) => {
     if (!req.user || !req.user.dealershipId) {
       res.status(401).json({ error: "Not authenticated" });
@@ -113,6 +117,7 @@ router.post(
 router.put(
   "/",
   authenticate,
+  checkPermission(PERMISSIONS.SETTINGS_LEAD_SOURCES),
   asyncHandler(async (req: Request, res: Response) => {
     if (!req.user || !req.user.dealershipId) {
       res.status(401).json({ error: "Not authenticated" });
@@ -172,6 +177,7 @@ router.put(
 router.delete(
   "/",
   authenticate,
+  checkPermission(PERMISSIONS.SETTINGS_LEAD_SOURCES),
   asyncHandler(async (req: Request, res: Response) => {
     if (!req.user || !req.user.dealershipId) {
       res.status(401).json({ error: "Not authenticated" });
