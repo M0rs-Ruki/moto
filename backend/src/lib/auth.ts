@@ -40,7 +40,7 @@ export async function verifyToken(token: string): Promise<JWTPayload | null> {
  * Get user from Express request (for API routes)
  */
 export async function getUserFromRequest(
-  request: Request
+  request: Request,
 ): Promise<JWTPayload | null> {
   const token =
     request.cookies?.["auth-token"] ||
@@ -58,6 +58,9 @@ export async function getUserFromRequest(
  */
 export function setAuthCookie(res: Response, token: string): void {
   const isProduction = process.env.NODE_ENV === "production";
+  const cookieDomain =
+    process.env.COOKIE_DOMAIN ||
+    (isProduction ? ".utkalautomobiles.co.in" : undefined);
 
   res.cookie("auth-token", token, {
     httpOnly: true,
@@ -65,7 +68,7 @@ export function setAuthCookie(res: Response, token: string): void {
     sameSite: isProduction ? "none" : "lax", // "none" for cross-origin in production
     maxAge: 60 * 60 * 24 * 7 * 1000, // 7 days in milliseconds
     path: "/",
-    domain: isProduction ? ".utkalautomobiles.co.in" : undefined, // Share cookie across subdomains
+    domain: cookieDomain, // Share cookie across subdomains if specified
   });
 }
 
@@ -74,12 +77,15 @@ export function setAuthCookie(res: Response, token: string): void {
  */
 export function clearAuthCookie(res: Response): void {
   const isProduction = process.env.NODE_ENV === "production";
+  const cookieDomain =
+    process.env.COOKIE_DOMAIN ||
+    (isProduction ? ".utkalautomobiles.co.in" : undefined);
 
   res.clearCookie("auth-token", {
     httpOnly: true,
     secure: isProduction,
     sameSite: isProduction ? "none" : "lax",
     path: "/",
-    domain: isProduction ? ".utkalautomobiles.co.in" : undefined,
+    domain: cookieDomain,
   });
 }

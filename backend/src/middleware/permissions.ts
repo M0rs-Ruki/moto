@@ -28,7 +28,7 @@ export function checkPermission(permission: string) {
   return async (
     req: Request,
     res: Response,
-    next: NextFunction
+    next: NextFunction,
   ): Promise<void> => {
     try {
       // Check if user is authenticated
@@ -56,7 +56,12 @@ export function checkPermission(permission: string) {
         });
 
         if (!userWithPermissions) {
-          res.status(403).json({ error: "User not found" });
+          console.error(
+            `[PERMISSION ERROR] User not found in DB. JWT userId: ${req.user.userId}, Email: ${req.user.email}`,
+          );
+          res
+            .status(401)
+            .json({ error: "Session expired or invalid. Please login again." });
           return;
         }
 
@@ -84,7 +89,8 @@ export function checkPermission(permission: string) {
       }
 
       // Check if user has the required permission
-      const hasPermission = (req._cachedPermissions as any)[permission] === true;
+      const hasPermission =
+        (req._cachedPermissions as any)[permission] === true;
 
       if (!hasPermission) {
         res.status(403).json({ error: "Permission denied" });
