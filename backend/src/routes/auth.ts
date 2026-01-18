@@ -495,7 +495,8 @@ router.get(
 
     // Explicitly include all fields to ensure they're always present in the response
     // This prevents issues with spread operator or missing fields in production
-    // FIXED: 2026-01-18 - Explicitly return role, isActive, and permissions
+    // FIXED: 2026-01-18-v2 - Explicitly return role, isActive, and permissions
+    // Build verification: This code must be compiled by tsc during Docker build
     const response = { 
       user: {
         id: fullUser.id,
