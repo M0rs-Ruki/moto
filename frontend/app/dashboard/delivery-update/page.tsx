@@ -35,7 +35,16 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
-import { Plus, Loader2, Package, Calendar, Send, ChevronDown, CheckCircle } from "lucide-react";
+import {
+  Plus,
+  Loader2,
+  Package,
+  Calendar,
+  Send,
+  ChevronDown,
+  CheckCircle,
+  X,
+} from "lucide-react";
 import Link from "next/link";
 
 interface DeliveryTicket {
@@ -98,7 +107,9 @@ export default function DeliveryUpdatePage() {
         <Card>
           <CardContent className="pt-6">
             <div className="text-center py-12 text-muted-foreground">
-              <p className="text-base">You don't have permission to access this page.</p>
+              <p className="text-base">
+                You don't have permission to access this page.
+              </p>
             </div>
           </CardContent>
         </Card>
@@ -113,9 +124,11 @@ export default function DeliveryUpdatePage() {
   const [hasMore, setHasMore] = useState(false);
   const [totalTickets, setTotalTickets] = useState(0);
   const [phoneLookups, setPhoneLookups] = useState<Record<string, PhoneLookup>>(
-    {}
+    {},
   );
-  const [sendingCompletion, setSendingCompletion] = useState<Record<string, boolean>>({});
+  const [sendingCompletion, setSendingCompletion] = useState<
+    Record<string, boolean>
+  >({});
   const fetchingRef = useRef(false);
   const mountedRef = useRef(true);
 
@@ -125,10 +138,10 @@ export default function DeliveryUpdatePage() {
   const [error, setError] = useState("");
   const [categories, setCategories] = useState<VehicleCategory[]>([]);
   const [openModelCategories, setOpenModelCategories] = useState<Set<string>>(
-    new Set()
+    new Set(),
   );
   const [expandedVariants, setExpandedVariants] = useState<Set<string>>(
-    new Set()
+    new Set(),
   );
 
   const [formData, setFormData] = useState({
@@ -146,18 +159,23 @@ export default function DeliveryUpdatePage() {
 
   useEffect(() => {
     mountedRef.current = true;
-    
+
     // Try to load from cache first - use longer cache duration
-    const cached = getCachedData<DeliveryTicket[]>("cache_delivery_tickets", 120000); // 2 minutes
+    const cached = getCachedData<DeliveryTicket[]>(
+      "cache_delivery_tickets",
+      120000,
+    ); // 2 minutes
     if (cached) {
       setTickets(cached);
       setLoading(false);
-      
+
       // Check cache age to decide if we need to refresh
       try {
-        const cacheEntry = JSON.parse(sessionStorage.getItem("cache_delivery_tickets") || '{}');
+        const cacheEntry = JSON.parse(
+          sessionStorage.getItem("cache_delivery_tickets") || "{}",
+        );
         const cacheAge = Date.now() - (cacheEntry.timestamp || 0);
-        
+
         // If cache is fresh (< 30 seconds), don't fetch
         if (cacheAge < 30000) {
           // Cache is fresh, no need to fetch
@@ -179,7 +197,7 @@ export default function DeliveryUpdatePage() {
       // No cache, fetch normally
       fetchTickets(0, false);
     }
-    
+
     return () => {
       mountedRef.current = false;
     };
@@ -210,15 +228,18 @@ export default function DeliveryUpdatePage() {
         const newTicket = response.data.ticket;
 
         // 1. IMMEDIATE UI UPDATE - Add ticket to list immediately
-        setTickets(prev => [newTicket, ...prev]);
+        setTickets((prev) => [newTicket, ...prev]);
 
         // 2. UPDATE CACHE
         const cachedTickets = getCachedData<DeliveryTicket[]>(
           "cache_delivery_tickets",
-          120000
+          120000,
         );
         if (cachedTickets) {
-          setCachedData("cache_delivery_tickets", [newTicket, ...cachedTickets]);
+          setCachedData("cache_delivery_tickets", [
+            newTicket,
+            ...cachedTickets,
+          ]);
         } else {
           setCachedData("cache_delivery_tickets", [newTicket]);
         }
@@ -249,11 +270,15 @@ export default function DeliveryUpdatePage() {
     }
   };
 
-  const fetchTickets = async (skip: number = 0, append: boolean = false, background: boolean = false) => {
+  const fetchTickets = async (
+    skip: number = 0,
+    append: boolean = false,
+    background: boolean = false,
+  ) => {
     // Prevent duplicate fetches
     if (fetchingRef.current && !append) return;
     if (!append) fetchingRef.current = true;
-    
+
     try {
       if (!append && !background) {
         setLoading(true);
@@ -261,8 +286,10 @@ export default function DeliveryUpdatePage() {
         setLoadingMore(true);
       }
 
-      const response = await apiClient.get(`/delivery-tickets?limit=20&skip=${skip}`);
-      
+      const response = await apiClient.get(
+        `/delivery-tickets?limit=20&skip=${skip}`,
+      );
+
       // Append or replace tickets
       if (append) {
         setTickets([...tickets, ...response.data.tickets]);
@@ -272,7 +299,7 @@ export default function DeliveryUpdatePage() {
         // Cache the data
         setCachedData("cache_delivery_tickets", response.data.tickets);
       }
-      
+
       setHasMore(response.data.hasMore || false);
       setTotalTickets(response.data.total || response.data.tickets.length);
 
@@ -281,24 +308,26 @@ export default function DeliveryUpdatePage() {
       if (append && response.data.tickets.length > 0) {
         const newTickets = response.data.tickets;
         const lookups: Record<string, PhoneLookup> = { ...phoneLookups };
-        
+
         try {
           // Extract unique phone numbers
-          const phoneNumbers = [...new Set(newTickets.map((t: DeliveryTicket) => t.whatsappNumber))];
-          
+          const phoneNumbers = [
+            ...new Set(newTickets.map((t: DeliveryTicket) => t.whatsappNumber)),
+          ];
+
           // Batch lookup all phones in one request
-          const lookupRes = await apiClient.post('/phone-lookup', {
-            phones: phoneNumbers
+          const lookupRes = await apiClient.post("/phone-lookup", {
+            phones: phoneNumbers,
           });
-          
+
           // Merge batch results into lookups
           Object.assign(lookups, lookupRes.data);
           setPhoneLookups(lookups);
-      } catch (error) {
-        console.error('Failed to batch lookup phones:', error);
-        // Don't break the page if phone lookup fails
+        } catch (error) {
+          console.error("Failed to batch lookup phones:", error);
+          // Don't break the page if phone lookup fails
+        }
       }
-    }
     } catch (error) {
       console.error("Failed to fetch tickets:", error);
     } finally {
@@ -314,7 +343,7 @@ export default function DeliveryUpdatePage() {
     // If we have more tickets than displayed, just show more from what we already have
     if (tickets.length > displayedCount) {
       setDisplayedCount(Math.min(displayedCount + 20, tickets.length));
-    } 
+    }
     // Otherwise, fetch more from backend if available
     else if (hasMore) {
       const currentSkip = tickets.length;
@@ -349,23 +378,34 @@ export default function DeliveryUpdatePage() {
     }
 
     // Prevent sending if already sent, closed, or currently sending
-    if (ticket.completionSent || ticket.status === "closed" || sendingCompletion[ticketId]) {
-      alert("Completion message has already been sent for this ticket. Ticket is closed.");
+    if (
+      ticket.completionSent ||
+      ticket.status === "closed" ||
+      sendingCompletion[ticketId]
+    ) {
+      alert(
+        "Completion message has already been sent for this ticket. Ticket is closed.",
+      );
       return;
     }
 
     setSendingCompletion((prev) => ({ ...prev, [ticketId]: true }));
     try {
-      const response = await apiClient.post(`/delivery-tickets/${ticketId}/send-completion`);
+      const response = await apiClient.post(
+        `/delivery-tickets/${ticketId}/send-completion`,
+      );
       if (response.data.success) {
         // Refresh tickets to get updated completionSent status from database
         await fetchTickets(0, false);
       } else {
-        alert(response.data.message?.error || "Failed to send completion message");
+        alert(
+          response.data.message?.error || "Failed to send completion message",
+        );
       }
     } catch (error: unknown) {
       const err = error as { response?: { data?: { error?: string } } };
-      const errorMessage = err.response?.data?.error || "Failed to send completion message";
+      const errorMessage =
+        err.response?.data?.error || "Failed to send completion message";
       alert(errorMessage);
       // If error is about already sent, refresh to update UI
       if (errorMessage.includes("already been sent")) {
@@ -441,11 +481,17 @@ export default function DeliveryUpdatePage() {
                   </thead>
                   <tbody>
                     {tickets.slice(0, displayedCount).map((ticket) => {
-                      const initials = `${ticket.firstName.charAt(0)}${ticket.lastName.charAt(0)}`.toUpperCase();
-                      const daysUntil = getDaysUntilDelivery(ticket.deliveryDate);
-                      const hasPendingMessage = ticket.scheduledMessages.length > 0;
-                      const deliveryDate = new Date(ticket.deliveryDate).toLocaleDateString();
-                      
+                      const initials =
+                        `${ticket.firstName.charAt(0)}${ticket.lastName.charAt(0)}`.toUpperCase();
+                      const daysUntil = getDaysUntilDelivery(
+                        ticket.deliveryDate,
+                      );
+                      const hasPendingMessage =
+                        (ticket.scheduledMessages?.length ?? 0) > 0;
+                      const deliveryDate = new Date(
+                        ticket.deliveryDate,
+                      ).toLocaleDateString();
+
                       return (
                         <tr
                           key={ticket.id}
@@ -469,7 +515,8 @@ export default function DeliveryUpdatePage() {
                                 {ticket.description && (
                                   <p className="text-xs text-muted-foreground truncate max-w-[200px]">
                                     {ticket.description.length > 50
-                                      ? ticket.description.substring(0, 50) + "..."
+                                      ? ticket.description.substring(0, 50) +
+                                        "..."
                                       : ticket.description}
                                   </p>
                                 )}
@@ -484,7 +531,8 @@ export default function DeliveryUpdatePage() {
                             </p>
                             {phoneLookups[ticket.whatsappNumber] && (
                               <div className="flex flex-wrap items-center gap-1 mt-1">
-                                {phoneLookups[ticket.whatsappNumber].dailyWalkins && (
+                                {phoneLookups[ticket.whatsappNumber]
+                                  .dailyWalkins && (
                                   <Link href="/dashboard/daily-walkins">
                                     <Badge
                                       variant="outline"
@@ -494,7 +542,8 @@ export default function DeliveryUpdatePage() {
                                     </Badge>
                                   </Link>
                                 )}
-                                {phoneLookups[ticket.whatsappNumber].digitalEnquiry && (
+                                {phoneLookups[ticket.whatsappNumber]
+                                  .digitalEnquiry && (
                                   <Link href="/dashboard/digital-enquiry">
                                     <Badge
                                       variant="outline"
@@ -520,8 +569,8 @@ export default function DeliveryUpdatePage() {
                                   {daysUntil === 0
                                     ? "Today"
                                     : daysUntil === 1
-                                    ? "Tomorrow"
-                                    : `${daysUntil} days`}
+                                      ? "Tomorrow"
+                                      : `${daysUntil} days`}
                                 </Badge>
                               )}
                             </div>
@@ -531,10 +580,10 @@ export default function DeliveryUpdatePage() {
                           <td className="py-3 px-4">
                             <div className="space-y-1">
                               <p className="text-xs text-muted-foreground">
-                                {ticket.model.category.name}
+                                {ticket.model?.category?.name || "N/A"}
                               </p>
                               <p className="text-sm font-medium">
-                                {ticket.model.name}
+                                {ticket.model?.name || "N/A"}
                               </p>
                             </div>
                           </td>
@@ -548,11 +597,16 @@ export default function DeliveryUpdatePage() {
                                   Sent
                                 </Badge>
                               ) : hasPendingMessage ? (
-                                <Badge variant="secondary" className="text-xs">Scheduled</Badge>
+                                <Badge variant="secondary" className="text-xs">
+                                  Scheduled
+                                </Badge>
                               ) : (
-                                <Badge variant="outline" className="text-xs">Not Sent</Badge>
+                                <Badge variant="outline" className="text-xs">
+                                  Not Sent
+                                </Badge>
                               )}
-                              {ticket.completionSent || ticket.status === "closed" ? (
+                              {ticket.completionSent ||
+                              ticket.status === "closed" ? (
                                 <Badge className="bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400 text-xs mt-1">
                                   <CheckCircle className="h-3 w-3 mr-1" />
                                   Closed
@@ -563,7 +617,8 @@ export default function DeliveryUpdatePage() {
 
                           {/* Actions Column */}
                           <td className="py-3 px-4">
-                            {ticket.completionSent || ticket.status === "closed" ? (
+                            {ticket.completionSent ||
+                            ticket.status === "closed" ? (
                               <Button
                                 size="sm"
                                 variant="outline"
@@ -581,7 +636,10 @@ export default function DeliveryUpdatePage() {
                                   e.stopPropagation();
                                   handleSendCompletion(ticket.id);
                                 }}
-                                disabled={sendingCompletion[ticket.id] || ticket.completionSent}
+                                disabled={
+                                  sendingCompletion[ticket.id] ||
+                                  ticket.completionSent
+                                }
                                 className="text-xs"
                               >
                                 {sendingCompletion[ticket.id] ? (
@@ -606,7 +664,7 @@ export default function DeliveryUpdatePage() {
               </div>
             </CardContent>
           </Card>
-          {(hasMore || tickets.length > displayedCount) ? (
+          {hasMore || tickets.length > displayedCount ? (
             <div className="flex justify-center pt-4">
               <Button
                 variant="outline"
@@ -633,9 +691,7 @@ export default function DeliveryUpdatePage() {
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Create Delivery Ticket</DialogTitle>
-            <DialogDescription>
-              Add a new delivery client
-            </DialogDescription>
+            <DialogDescription>Add a new delivery client</DialogDescription>
           </DialogHeader>
           <form onSubmit={handleCreateTicket} className="space-y-4 mt-4">
             {error && (
@@ -741,11 +797,28 @@ export default function DeliveryUpdatePage() {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="deliveryDate" className="text-sm font-medium">
+                <Label
+                  htmlFor="deliveryDate"
+                  className="text-sm font-medium flex items-center gap-2"
+                >
+                  <Calendar className="h-4 w-4 text-primary" />
                   Delivery Date *
                 </Label>
-                <div className="relative">
-                  <Calendar className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+                <div className="relative group">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const input = document.getElementById(
+                        "deliveryDate",
+                      ) as HTMLInputElement;
+                      input?.focus();
+                      input?.click();
+                    }}
+                    className="absolute left-3 top-1/2 transform -translate-y-1/2 z-10 hover:bg-accent rounded-full p-1 transition-colors"
+                    tabIndex={-1}
+                  >
+                    <Calendar className="h-4 w-4 text-foreground" />
+                  </button>
                   <Input
                     id="deliveryDate"
                     type="date"
@@ -755,26 +828,49 @@ export default function DeliveryUpdatePage() {
                     }
                     required
                     min={new Date().toISOString().split("T")[0]}
-                    className="pl-10 w-full cursor-pointer"
+                    className="pl-10 pr-10 w-full cursor-pointer hover:border-primary focus:border-primary transition-colors text-base hover:bg-accent/50 text-foreground font-medium"
                     style={{
                       colorScheme: "light dark",
                     }}
                   />
+                  {formData.deliveryDate && (
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setFormData({ ...formData, deliveryDate: "" });
+                      }}
+                      className="absolute right-3 top-1/2 transform -translate-y-1/2 h-6 w-6 rounded-full bg-destructive/20 hover:bg-destructive/30 flex items-center justify-center transition-colors z-10 group border border-destructive/30"
+                      aria-label="Clear date"
+                    >
+                      <X className="h-3.5 w-3.5 text-destructive font-bold" />
+                    </button>
+                  )}
                 </div>
                 {formData.deliveryDate && (
-                  <p className="text-xs text-muted-foreground">
-                    Selected: {new Date(formData.deliveryDate).toLocaleDateString("en-US", {
-                      weekday: "long",
-                      year: "numeric",
-                      month: "long",
-                      day: "numeric",
-                    })}
-                  </p>
+                  <div className="flex items-center gap-2 p-2 rounded-md bg-primary/5 border border-primary/10">
+                    <CheckCircle className="h-3.5 w-3.5 text-primary flex-shrink-0" />
+                    <p className="text-xs text-foreground font-medium">
+                      {new Date(formData.deliveryDate).toLocaleDateString(
+                        "en-US",
+                        {
+                          weekday: "long",
+                          year: "numeric",
+                          month: "long",
+                          day: "numeric",
+                        },
+                      )}
+                    </p>
+                  </div>
                 )}
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="scheduleOption" className="text-sm font-medium">
+                <Label
+                  htmlFor="scheduleOption"
+                  className="text-sm font-medium flex items-center gap-2"
+                >
+                  <Send className="h-4 w-4 text-primary" />
                   Send Message
                 </Label>
                 <Select
@@ -786,7 +882,7 @@ export default function DeliveryUpdatePage() {
                     })
                   }
                 >
-                  <SelectTrigger className="w-full">
+                  <SelectTrigger className="w-full hover:border-primary/50 transition-colors">
                     <SelectValue placeholder="Select schedule option" />
                   </SelectTrigger>
                   <SelectContent>
@@ -798,12 +894,20 @@ export default function DeliveryUpdatePage() {
                 </Select>
                 {formData.deliveryDate && formData.scheduleOption !== "now" && (
                   <p className="text-xs text-muted-foreground">
-                    {formData.scheduleOption === "d3" && "Message will be sent 3 days before delivery"}
-                    {formData.scheduleOption === "d2" && "Message will be sent 2 days before delivery"}
-                    {formData.scheduleOption === "d1" && "Message will be sent 1 day before delivery"}
+                    {formData.scheduleOption === "d3" &&
+                      "Message will be sent 3 days before delivery"}
+                    {formData.scheduleOption === "d2" &&
+                      "Message will be sent 2 days before delivery"}
+                    {formData.scheduleOption === "d1" &&
+                      "Message will be sent 1 day before delivery"}
                     {(() => {
                       const deliveryDate = new Date(formData.deliveryDate);
-                      const days = formData.scheduleOption === "d3" ? 3 : formData.scheduleOption === "d2" ? 2 : 1;
+                      const days =
+                        formData.scheduleOption === "d3"
+                          ? 3
+                          : formData.scheduleOption === "d2"
+                            ? 2
+                            : 1;
                       const scheduledDate = new Date(deliveryDate);
                       scheduledDate.setDate(scheduledDate.getDate() - days);
                       return ` (${scheduledDate.toLocaleDateString("en-US", {
@@ -993,19 +1097,20 @@ export default function DeliveryUpdatePage() {
               </div>
             </div>
 
-            <div className="flex flex-col sm:flex-row justify-end gap-2 pt-4">
+            <div className="flex flex-col sm:flex-row justify-end gap-3 pt-6">
               <Button
                 type="button"
                 variant="outline"
                 onClick={() => setCreateDialogOpen(false)}
-                className="w-full sm:w-auto"
+                className="w-full sm:w-auto min-w-[120px] hover:bg-muted transition-colors"
+                disabled={submitting}
               >
                 Cancel
               </Button>
               <Button
                 type="submit"
                 disabled={submitting}
-                className="w-full sm:w-auto"
+                className="w-full sm:w-auto min-w-[140px] bg-primary hover:bg-primary/90 transition-all shadow-md hover:shadow-lg"
               >
                 {submitting ? (
                   <>
@@ -1013,7 +1118,10 @@ export default function DeliveryUpdatePage() {
                     Creating...
                   </>
                 ) : (
-                  "Create Ticket"
+                  <>
+                    <Plus className="mr-2 h-4 w-4" />
+                    Create Ticket
+                  </>
                 )}
               </Button>
             </div>
