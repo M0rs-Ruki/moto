@@ -805,20 +805,9 @@ export default function DeliveryUpdatePage() {
                   Delivery Date *
                 </Label>
                 <div className="relative group">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const input = document.getElementById(
-                        "deliveryDate",
-                      ) as HTMLInputElement;
-                      input?.focus();
-                      input?.click();
-                    }}
-                    className="absolute left-3 top-1/2 transform -translate-y-1/2 z-10 hover:bg-accent rounded-full p-1 transition-colors"
-                    tabIndex={-1}
-                  >
-                    <Calendar className="h-4 w-4 text-foreground" />
-                  </button>
+                  <div className="absolute left-2 top-1/2 transform -translate-y-1/2 z-10 pointer-events-none">
+                    <Calendar className="h-5 w-5 text-primary" />
+                  </div>
                   <Input
                     id="deliveryDate"
                     type="date"
@@ -828,9 +817,9 @@ export default function DeliveryUpdatePage() {
                     }
                     required
                     min={new Date().toISOString().split("T")[0]}
-                    className="pl-10 pr-10 w-full cursor-pointer hover:border-primary focus:border-primary transition-colors text-base hover:bg-accent/50 text-foreground font-medium"
+                    className="pl-10 pr-10 w-full cursor-pointer hover:border-primary focus:border-primary transition-colors text-sm sm:text-base hover:bg-accent/50 text-foreground font-medium [&::-webkit-calendar-picker-indicator]:opacity-0 [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:w-full [&::-webkit-calendar-picker-indicator]:h-full [&::-webkit-calendar-picker-indicator]:left-0 [&::-webkit-calendar-picker-indicator]:cursor-pointer"
                     style={{
-                      colorScheme: "light dark",
+                      colorScheme: "light",
                     }}
                   />
                   {formData.deliveryDate && (
@@ -840,7 +829,7 @@ export default function DeliveryUpdatePage() {
                         e.stopPropagation();
                         setFormData({ ...formData, deliveryDate: "" });
                       }}
-                      className="absolute right-3 top-1/2 transform -translate-y-1/2 h-6 w-6 rounded-full bg-destructive/20 hover:bg-destructive/30 flex items-center justify-center transition-colors z-10 group border border-destructive/30"
+                      className="absolute right-3 top-1/2 transform -translate-y-1/2 h-6 w-6 rounded-full bg-destructive/20 hover:bg-destructive/30 flex items-center justify-center transition-colors z-20 group border border-destructive/30"
                       aria-label="Clear date"
                     >
                       <X className="h-3.5 w-3.5 text-destructive font-bold" />
