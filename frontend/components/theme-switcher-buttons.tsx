@@ -14,7 +14,7 @@ export function ThemeSwitcherButtons() {
         className="flex-1 h-12 justify-center gap-2"
         onClick={() => setTheme("light")}
       >
-        <Sun className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+        <Sun className="h-4 w-4" style={{ color: "#1976B8" }} />
         <span className="text-sm font-medium">Light</span>
       </Button>
       <Button
@@ -22,7 +22,7 @@ export function ThemeSwitcherButtons() {
         className="flex-1 h-12 justify-center gap-2"
         onClick={() => setTheme("dark")}
       >
-        <Moon className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+        <Moon className="h-4 w-4" style={{ color: "#1976B8" }} />
         <span className="text-sm font-medium">Dark</span>
       </Button>
     </div>

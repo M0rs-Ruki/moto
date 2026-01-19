@@ -54,27 +54,27 @@ function LoginContent() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background p-4">
-      <div className="absolute top-4 right-4 z-50">
+    <div className="min-h-screen flex items-center justify-center bg-background p-3 sm:p-4 md:p-6">
+      <div className="absolute top-3 right-3 sm:top-4 sm:right-4 z-50">
         <ThemeSwitcher />
       </div>
 
-      <Card className="w-full max-w-md">
-        <CardHeader className="space-y-4">
+      <Card className="w-full max-w-md mx-auto">
+        <CardHeader className="space-y-3 sm:space-y-4">
           {/* Logo */}
-          <div className="flex justify-center mb-2">
+          <div className="flex justify-center mb-1 sm:mb-2">
             <img
               src="/autopluse-black.png"
               alt="Autopluse Logo"
-              className="h-24 w-auto object-contain dark:hidden"
+              className="h-20 sm:h-24 w-auto object-contain dark:hidden"
             />
             <img
               src="/autopluse-white.png"
               alt="Autopluse Logo"
-              className="h-24 w-auto object-contain hidden dark:block"
+              className="h-20 sm:h-24 w-auto object-contain hidden dark:block"
             />
           </div>
-          <CardTitle className="text-xl sm:text-2xl text-center font-semibold">
+          <CardTitle className="text-lg sm:text-xl md:text-2xl text-center font-semibold leading-tight">
             WhatsApp-powered CRM For Smarter Dealership Management
           </CardTitle>
           <CardDescription className="text-xs sm:text-sm text-center">
@@ -91,9 +91,9 @@ function LoginContent() {
         </CardHeader>
         <CardContent>
           <div className="w-full">
-            <form onSubmit={handleLogin} className="space-y-4">
+            <form onSubmit={handleLogin} className="space-y-3 sm:space-y-4">
               {error && (
-                <div className="bg-destructive/10 text-destructive text-xs sm:text-sm p-3 rounded">
+                <div className="bg-destructive/10 text-destructive text-xs sm:text-sm p-2.5 sm:p-3 rounded">
                   {error}
                 </div>
               )}

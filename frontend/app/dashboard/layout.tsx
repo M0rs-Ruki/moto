@@ -68,14 +68,26 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Mobile Header */}
-      <header className="fixed top-0 left-0 right-0 z-50 md:hidden border-b bg-card">
-        <div className="flex items-center justify-between p-4">
-          <h1 className="text-lg font-bold">Showroom Manager</h1>
+      {/* Mobile/Tablet Header */}
+      <header className="fixed top-0 left-0 right-0 z-50 lg:hidden border-b bg-card">
+        <div className="flex items-center justify-between p-3 sm:p-4">
+          <div className="flex items-center h-10 sm:h-12">
+            <img
+              src="/autopluse-black.png"
+              alt="Brand Logo"
+              className="h-full w-auto object-contain dark:hidden"
+            />
+            <img
+              src="/autopluse-white.png"
+              alt="Brand Logo"
+              className="h-full w-auto object-contain hidden dark:block"
+            />
+          </div>
           <Button
             variant="ghost"
             size="icon"
             onClick={() => setSidebarOpen(!sidebarOpen)}
+            className="shrink-0"
           >
             {sidebarOpen ? (
               <X className="h-5 w-5" />
@@ -86,10 +98,10 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
         </div>
       </header>
 
-      {/* Mobile Overlay */}
+      {/* Mobile/Tablet Overlay */}
       {sidebarOpen && (
         <div
-          className="fixed inset-0 z-40 bg-black/50 md:hidden mt-16"
+          className="fixed inset-0 z-40 bg-black/50 lg:hidden mt-14 sm:mt-16"
           onClick={() => setSidebarOpen(false)}
         />
       )}
@@ -97,8 +109,10 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
       <div className="flex">
         {/* Sidebar */}
         <aside
-          className={`fixed left-0 top-0 z-40 h-screen w-64 border-r bg-gradient-to-b from-card to-card/95 shadow-lg transition-transform duration-200 ease-in-out md:relative md:translate-x-0 md:sticky md:top-0 md:h-screen md:w-64 md:shadow-none md:z-auto ${
-            sidebarOpen ? "translate-x-0 pt-16 md:pt-0" : "-translate-x-full"
+          className={`fixed left-0 top-0 z-40 h-screen w-64 sm:w-72 border-r bg-gradient-to-b from-card to-card/95 shadow-lg transition-transform duration-200 ease-in-out lg:relative lg:translate-x-0 lg:sticky lg:top-0 lg:h-screen lg:w-64 lg:shadow-none lg:z-auto ${
+            sidebarOpen
+              ? "translate-x-0 pt-14 sm:pt-16 lg:pt-0"
+              : "-translate-x-full"
           }`}
         >
           <div className="flex flex-col h-full items-center py-4 px-4">
@@ -380,19 +394,21 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
         </aside>
 
         {/* Main content */}
-        <main className="flex-1 w-full bg-gradient-to-br from-background to-muted/30 mt-16 md:mt-0 p-4 sm:p-6 md:p-8">
+        <main className="flex-1 w-full bg-gradient-to-br from-background to-muted/30 mt-14 sm:mt-16 lg:mt-0 p-3 sm:p-4 md:p-6 lg:p-8">
           {/* Breadcrumb & Profile Box */}
-          <div className="mb-6 border bg-card rounded-lg px-4 sm:px-6 md:px-8 py-4 flex items-center justify-between shadow-sm">
-            <Breadcrumb />
+          <div className="mb-4 sm:mb-6 border bg-card rounded-lg px-3 sm:px-4 md:px-6 lg:px-8 py-3 sm:py-4 flex flex-row items-center justify-between shadow-sm gap-3 sm:gap-4">
+            <div className="flex-1 min-w-0 flex items-center">
+              <Breadcrumb />
+            </div>
             {/* User Profile Picture */}
             <button
               onClick={() => router.push("/dashboard/global-settings")}
-              className="flex items-center gap-3 hover:opacity-80 transition-opacity ml-4"
+              className="flex items-center gap-2 sm:gap-3 hover:opacity-80 transition-opacity shrink-0"
               title="Click to go to settings"
             >
               {user?.profilePicture ? (
                 <div
-                  className="w-8 h-8 rounded-md overflow-hidden border-2"
+                  className="w-7 h-7 sm:w-8 sm:h-8 rounded-md overflow-hidden border-2"
                   style={{ borderColor: "#1976B8" }}
                 >
                   <img
@@ -407,13 +423,13 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
                 </div>
               ) : (
                 <div
-                  className="w-8 h-8 rounded-md flex items-center justify-center text-xs font-bold text-white"
+                  className="w-7 h-7 sm:w-8 sm:h-8 rounded-md flex items-center justify-center text-xs font-bold text-white"
                   style={{ backgroundColor: "#1976B8" }}
                 >
                   Admin
                 </div>
               )}
-              <div className="flex flex-col items-start leading-tight">
+              <div className="hidden sm:flex flex-col items-start leading-tight">
                 <span className="text-sm font-medium text-foreground">
                   {user?.email?.split("@")[0] || "User"}
                 </span>

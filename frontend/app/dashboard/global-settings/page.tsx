@@ -34,24 +34,27 @@ export default function SettingsPage() {
 
   // If user has no permissions, show access denied
   if (!hasProfile && !hasVehicleModels && !hasLeadSources && !hasWhatsApp) {
-  return (
-    <div className="space-y-8">
-      <div className="pb-2 border-b">
-        <h1 className="text-3xl sm:text-4xl font-bold bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent">
-          Settings
-        </h1>
-        <p className="text-sm sm:text-base text-muted-foreground mt-2">
-            Configure vehicle models, WhatsApp templates, lead sources, and appearance
-        </p>
-      </div>
-        <div className="text-center py-12">
-          <p className="text-muted-foreground">You don't have permission to access any settings.</p>
+    return (
+      <div className="space-y-8">
+        <div className="pb-2 border-b">
+          <h1 className="text-3xl sm:text-4xl font-bold bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent">
+            Settings
+          </h1>
+          <p className="text-sm sm:text-base text-muted-foreground mt-2">
+            Configure vehicle models, WhatsApp templates, lead sources, and
+            appearance
+          </p>
         </div>
-                  </div>
+        <div className="text-center py-12">
+          <p className="text-muted-foreground">
+            You don't have permission to access any settings.
+          </p>
+        </div>
+      </div>
     );
-                            }
+  }
 
-                    return (
+  return (
     <div className="space-y-8">
       {/* Header */}
       <div className="pb-2 border-b">
@@ -59,16 +62,36 @@ export default function SettingsPage() {
           Settings
         </h1>
         <p className="text-sm sm:text-base text-muted-foreground mt-2">
-          Configure vehicle models, WhatsApp templates, lead sources, and appearance
+          Configure vehicle models, WhatsApp templates, lead sources, and
+          appearance
         </p>
-                                        </div>
+      </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-4 text-xs sm:text-base">
-          {hasProfile && <TabsTrigger value="profile">Profile & Appearance</TabsTrigger>}
-          {hasVehicleModels && <TabsTrigger value="vehicles">Vehicle Models</TabsTrigger>}
-          {hasLeadSources && <TabsTrigger value="lead-sources">Lead Sources</TabsTrigger>}
-          {hasWhatsApp && <TabsTrigger value="templates">WhatsApp</TabsTrigger>}
+        <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4 gap-1 h-auto p-1 text-xs sm:text-sm">
+          {hasProfile && (
+            <TabsTrigger value="profile" className="text-xs sm:text-sm py-2">
+              Profile & Appearance
+            </TabsTrigger>
+          )}
+          {hasVehicleModels && (
+            <TabsTrigger value="vehicles" className="text-xs sm:text-sm py-2">
+              Vehicle Models
+            </TabsTrigger>
+          )}
+          {hasLeadSources && (
+            <TabsTrigger
+              value="lead-sources"
+              className="text-xs sm:text-sm py-2"
+            >
+              Lead Sources
+            </TabsTrigger>
+          )}
+          {hasWhatsApp && (
+            <TabsTrigger value="templates" className="text-xs sm:text-sm py-2">
+              WhatsApp
+            </TabsTrigger>
+          )}
         </TabsList>
 
         {hasProfile && (
@@ -80,11 +103,11 @@ export default function SettingsPage() {
         {hasVehicleModels && (
           <TabsContent value="vehicles" className="space-y-4">
             <VehicleModelsSettings />
-        </TabsContent>
+          </TabsContent>
         )}
 
         {hasLeadSources && (
-        <TabsContent value="lead-sources" className="space-y-4">
+          <TabsContent value="lead-sources" className="space-y-4">
             <LeadSourcesSettings />
           </TabsContent>
         )}
@@ -92,7 +115,7 @@ export default function SettingsPage() {
         {hasWhatsApp && (
           <TabsContent value="templates" className="space-y-4">
             <WhatsAppSettings />
-        </TabsContent>
+          </TabsContent>
         )}
       </Tabs>
     </div>

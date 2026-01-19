@@ -935,10 +935,14 @@ export default function DailyWalkinsPage() {
               )}
             </div>
 
-            <div className="flex flex-col sm:flex-row gap-4 justify-between items-start sm:items-center">
+            <div className="flex flex-col sm:flex-row gap-4 justify-between items-start sm:items-end">
+              <div className="w-full sm:w-auto order-2 sm:order-1">
+                {/* Placeholder for other content if needed */}
+              </div>
               <Dialog
                 open={visitorDialogOpen}
                 onOpenChange={setVisitorDialogOpen}
+                className="order-1 sm:order-2"
               >
                 <DialogTrigger asChild>
                   <Button className="w-full sm:w-auto">

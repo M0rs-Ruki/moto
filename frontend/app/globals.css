@@ -123,7 +123,9 @@
 
   body {
     @apply bg-background text-foreground;
-    font-feature-settings: "rlig" 1, "calt" 1;
+    font-feature-settings:
+      "rlig" 1,
+      "calt" 1;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
@@ -225,8 +227,15 @@
 
   /* Better scrollbar styling */
   ::-webkit-scrollbar {
-    width: 8px;
-    height: 8px;
+    width: 6px;
+    height: 6px;
+  }
+
+  @media (min-width: 640px) {
+    ::-webkit-scrollbar {
+      width: 8px;
+      height: 8px;
+    }
   }
 
   ::-webkit-scrollbar-track {
@@ -235,6 +244,18 @@
 
   ::-webkit-scrollbar-thumb {
     @apply bg-muted hover:bg-muted-foreground rounded-full;
+  }
+
+  /* Tablet-friendly touch targets */
+  @media (hover: none) and (pointer: coarse) {
+    button,
+    a,
+    input[type="checkbox"],
+    input[type="radio"],
+    select {
+      min-height: 44px;
+      min-width: 44px;
+    }
   }
 
   /* Selection styling */
@@ -303,5 +324,60 @@
 
   .badge-error {
     @apply bg-red-500/20 text-red-700 dark:text-red-400;
+  }
+
+  /* Tablet-specific optimizations */
+  @media (min-width: 640px) and (max-width: 1024px) {
+    /* Optimize spacing for tablets */
+    .container {
+      @apply px-4;
+    }
+
+    /* Better dialog sizing for tablets */
+    [data-slot="dialog-content"] {
+      max-width: 90vw !important;
+    }
+
+    /* Improve table readability */
+    table {
+      font-size: 0.875rem;
+    }
+
+    /* Better card spacing */
+    [data-slot="card"] {
+      @apply p-4;
+    }
+
+    /* Optimize form layouts */
+    form .grid {
+      @apply gap-3;
+    }
+  }
+
+  /* Touch-friendly interactions */
+  @media (hover: none) {
+    button:hover {
+      transform: none;
+    }
+
+    button:active {
+      transform: scale(0.98);
+    }
+  }
+
+  /* Utilities for tablet layouts */
+  .tablet-grid {
+    @apply grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4;
+  }
+
+  .tablet-stack {
+    @apply flex flex-col md:flex-row gap-3 md:gap-4;
+  }
+}
+
+/* Tablet-specific scrollbar improvements */
+@media (min-width: 640px) and (max-width: 1024px) {
+  .overflow-x-auto {
+    scrollbar-width: thin;
   }
 }
