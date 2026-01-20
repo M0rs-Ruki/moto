@@ -117,10 +117,12 @@ export default function DeliveryUpdatePage() {
     );
   }
 
+  const PAGE_SIZE = 10;
+
   const [tickets, setTickets] = useState<DeliveryTicket[]>([]);
   const [loading, setLoading] = useState(true);
-  const [displayedCount, setDisplayedCount] = useState(20); // Show 20 initially
-  const [loadingMore, setLoadingMore] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageLoading, setPageLoading] = useState(false);
   const [hasMore, setHasMore] = useState(false);
   const [totalTickets, setTotalTickets] = useState(0);
   const [phoneLookups, setPhoneLookups] = useState<Record<string, PhoneLookup>>(
@@ -229,6 +231,9 @@ export default function DeliveryUpdatePage() {
 
         // 1. IMMEDIATE UI UPDATE - Add ticket to list immediately
         setTickets((prev) => [newTicket, ...prev]);
+        setTotalTickets((prev) => prev + 1);
+        setCurrentPage(1);
+        setHasMore(true);
 
         // 2. UPDATE CACHE
         const cachedTickets = getCachedData<DeliveryTicket[]>(
@@ -283,11 +288,11 @@ export default function DeliveryUpdatePage() {
       if (!append && !background) {
         setLoading(true);
       } else if (append) {
-        setLoadingMore(true);
+        setPageLoading(true);
       }
 
       const response = await apiClient.get(
-        `/delivery-tickets?limit=20&skip=${skip}`,
+        `/delivery-tickets?limit=${PAGE_SIZE}&skip=${skip}`,
       );
 
       // Append or replace tickets
@@ -295,7 +300,7 @@ export default function DeliveryUpdatePage() {
         setTickets([...tickets, ...response.data.tickets]);
       } else {
         setTickets(response.data.tickets);
-        setDisplayedCount(20);
+        setCurrentPage(1);
         // Cache the data
         setCachedData("cache_delivery_tickets", response.data.tickets);
       }
@@ -334,23 +339,46 @@ export default function DeliveryUpdatePage() {
       if (!append) fetchingRef.current = false;
       if (mountedRef.current) {
         setLoading(false);
-        setLoadingMore(false);
+        setPageLoading(false);
       }
     }
   };
 
-  const handleLoadMore = async () => {
-    // If we have more tickets than displayed, just show more from what we already have
-    if (tickets.length > displayedCount) {
-      setDisplayedCount(Math.min(displayedCount + 20, tickets.length));
+  const handlePageChange = async (page: number) => {
+    const totalPages = Math.max(1, Math.ceil(totalTickets / PAGE_SIZE));
+    const targetPage = Math.min(Math.max(page, 1), totalPages);
+
+    if (targetPage * PAGE_SIZE <= tickets.length || !hasMore) {
+      setCurrentPage(targetPage);
+      return;
     }
-    // Otherwise, fetch more from backend if available
-    else if (hasMore) {
-      const currentSkip = tickets.length;
-      await fetchTickets(currentSkip, true);
-      // Increase displayed count after new data is loaded
-      setDisplayedCount(displayedCount + 20);
+
+    if (hasMore && !pageLoading) {
+      await fetchTickets(tickets.length, true);
+      setCurrentPage(targetPage);
     }
+  };
+
+  const getVisiblePages = (totalPages: number, page: number) => {
+    const maxVisible = 5;
+    const pages: number[] = [];
+
+    let start = Math.max(1, page - 2);
+    let end = Math.min(totalPages, page + 2);
+
+    if (page <= 3) {
+      start = 1;
+      end = Math.min(totalPages, maxVisible);
+    } else if (page >= totalPages - 2) {
+      end = totalPages;
+      start = Math.max(1, totalPages - (maxVisible - 1));
+    }
+
+    for (let i = start; i <= end; i += 1) {
+      pages.push(i);
+    }
+
+    return pages;
   };
 
   if (loading) {
@@ -360,6 +388,13 @@ export default function DeliveryUpdatePage() {
       </div>
     );
   }
+
+  const totalPages = Math.max(1, Math.ceil(totalTickets / PAGE_SIZE));
+  const paginatedTickets = tickets.slice(
+    (currentPage - 1) * PAGE_SIZE,
+    currentPage * PAGE_SIZE,
+  );
+  const pageNumbers = getVisiblePages(totalPages, currentPage);
 
   const getDaysUntilDelivery = (deliveryDate: string) => {
     const today = new Date();
@@ -480,7 +515,7 @@ export default function DeliveryUpdatePage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {tickets.slice(0, displayedCount).map((ticket) => {
+                    {paginatedTickets.map((ticket) => {
                       const initials =
                         `${ticket.firstName.charAt(0)}${ticket.lastName.charAt(0)}`.toUpperCase();
                       const daysUntil = getDaysUntilDelivery(
@@ -664,22 +699,39 @@ export default function DeliveryUpdatePage() {
               </div>
             </CardContent>
           </Card>
-          {hasMore || tickets.length > displayedCount ? (
-            <div className="flex justify-center pt-4">
+          {totalPages > 1 ? (
+            <div className="flex flex-wrap items-center justify-center gap-2 pt-4">
               <Button
                 variant="outline"
-                onClick={handleLoadMore}
-                disabled={loadingMore}
-                className="w-full sm:w-auto"
+                size="sm"
+                onClick={() => handlePageChange(currentPage - 1)}
+                disabled={currentPage === 1 || pageLoading}
+                className="w-auto"
               >
-                {loadingMore ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Loading...
-                  </>
-                ) : (
-                  `See More (${hasMore ? totalTickets - displayedCount : tickets.length - displayedCount} remaining)`
-                )}
+                Previous
+              </Button>
+
+              {pageNumbers.map((page) => (
+                <Button
+                  key={page}
+                  variant={page === currentPage ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => handlePageChange(page)}
+                  disabled={pageLoading}
+                  className="w-auto"
+                >
+                  {page}
+                </Button>
+              ))}
+
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handlePageChange(currentPage + 1)}
+                disabled={currentPage === totalPages || pageLoading}
+                className="w-auto"
+              >
+                Next
               </Button>
             </div>
           ) : null}

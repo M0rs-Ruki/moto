@@ -113,10 +113,12 @@ export default function DigitalEnquiryPage() {
     );
   }
 
+  const PAGE_SIZE = 10;
+
   const [enquiries, setEnquiries] = useState<DigitalEnquiry[]>([]);
   const [loading, setLoading] = useState(true);
-  const [displayedCount, setDisplayedCount] = useState(20); // Show 20 initially
-  const [loadingMore, setLoadingMore] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageLoading, setPageLoading] = useState(false);
   const [hasMore, setHasMore] = useState(false);
   const [totalEnquiries, setTotalEnquiries] = useState(0);
   const [phoneLookups, setPhoneLookups] = useState<Record<string, PhoneLookup>>(
@@ -228,11 +230,11 @@ export default function DigitalEnquiryPage() {
       if (!append && !background) {
         setLoading(true);
       } else if (append) {
-        setLoadingMore(true);
+        setPageLoading(true);
       }
 
       const response = await apiClient.get(
-        `/digital-enquiry?limit=20&skip=${skip}`,
+        `/digital-enquiry?limit=${PAGE_SIZE}&skip=${skip}`,
       );
 
       // Append or replace enquiries
@@ -240,7 +242,7 @@ export default function DigitalEnquiryPage() {
         setEnquiries([...enquiries, ...response.data.enquiries]);
       } else {
         setEnquiries(response.data.enquiries);
-        setDisplayedCount(20);
+        setCurrentPage(1);
         // Cache the data
         setCachedData("cache_digital_enquiry", response.data.enquiries);
       }
@@ -281,23 +283,46 @@ export default function DigitalEnquiryPage() {
       if (!append) fetchingRef.current = false;
       if (mountedRef.current) {
         setLoading(false);
-        setLoadingMore(false);
+        setPageLoading(false);
       }
     }
   };
 
-  const handleLoadMore = async () => {
-    // If we have more enquiries than displayed, just show more from what we already have
-    if (enquiries.length > displayedCount) {
-      setDisplayedCount(Math.min(displayedCount + 20, enquiries.length));
+  const handlePageChange = async (page: number) => {
+    const totalPages = Math.max(1, Math.ceil(totalEnquiries / PAGE_SIZE));
+    const targetPage = Math.min(Math.max(page, 1), totalPages);
+
+    if (targetPage * PAGE_SIZE <= enquiries.length || !hasMore) {
+      setCurrentPage(targetPage);
+      return;
     }
-    // Otherwise, fetch more from backend if available
-    else if (hasMore) {
-      const currentSkip = enquiries.length;
-      await fetchData(currentSkip, true);
-      // Increase displayed count after new data is loaded
-      setDisplayedCount(displayedCount + 20);
+
+    if (hasMore && !pageLoading) {
+      await fetchData(enquiries.length, true);
+      setCurrentPage(targetPage);
     }
+  };
+
+  const getVisiblePages = (totalPages: number, page: number) => {
+    const maxVisible = 5;
+    const pages: number[] = [];
+
+    let start = Math.max(1, page - 2);
+    let end = Math.min(totalPages, page + 2);
+
+    if (page <= 3) {
+      start = 1;
+      end = Math.min(totalPages, maxVisible);
+    } else if (page >= totalPages - 2) {
+      end = totalPages;
+      start = Math.max(1, totalPages - (maxVisible - 1));
+    }
+
+    for (let i = start; i <= end; i += 1) {
+      pages.push(i);
+    }
+
+    return pages;
   };
 
   const fetchCreateFormData = async () => {
@@ -331,6 +356,9 @@ export default function DigitalEnquiryPage() {
 
         // 1. IMMEDIATE UI UPDATE - Add enquiry to list immediately
         setEnquiries((prev) => [newEnquiry, ...prev]);
+        setTotalEnquiries((prev) => prev + 1);
+        setCurrentPage(1);
+        setHasMore(true);
 
         // 2. UPDATE CACHE
         const cachedEnquiries = getCachedData<DigitalEnquiry[]>(
@@ -531,6 +559,13 @@ export default function DigitalEnquiryPage() {
     );
   }
 
+  const totalPages = Math.max(1, Math.ceil(totalEnquiries / PAGE_SIZE));
+  const paginatedEnquiries = enquiries.slice(
+    (currentPage - 1) * PAGE_SIZE,
+    currentPage * PAGE_SIZE,
+  );
+  const pageNumbers = getVisiblePages(totalPages, currentPage);
+
   return (
     <div className="space-y-6 sm:space-y-8">
       <div className="pb-2 border-b">
@@ -609,7 +644,7 @@ export default function DigitalEnquiryPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {enquiries.slice(0, displayedCount).map((enquiry) => {
+                    {paginatedEnquiries.map((enquiry) => {
                       const initials = `${enquiry.firstName.charAt(
                         0,
                       )}${enquiry.lastName.charAt(0)}`.toUpperCase();
@@ -782,26 +817,39 @@ export default function DigitalEnquiryPage() {
               </div>
             </CardContent>
           </Card>
-          {hasMore || enquiries.length > displayedCount ? (
-            <div className="flex justify-center pt-4">
+          {totalPages > 1 ? (
+            <div className="flex flex-wrap items-center justify-center gap-2 pt-4">
               <Button
                 variant="outline"
-                onClick={handleLoadMore}
-                disabled={loadingMore}
-                className="w-full sm:w-auto"
+                size="sm"
+                onClick={() => handlePageChange(currentPage - 1)}
+                disabled={currentPage === 1 || pageLoading}
+                className="w-auto"
               >
-                {loadingMore ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Loading...
-                  </>
-                ) : (
-                  `See More (${
-                    hasMore
-                      ? totalEnquiries - displayedCount
-                      : enquiries.length - displayedCount
-                  } remaining)`
-                )}
+                Previous
+              </Button>
+
+              {pageNumbers.map((page) => (
+                <Button
+                  key={page}
+                  variant={page === currentPage ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => handlePageChange(page)}
+                  disabled={pageLoading}
+                  className="w-auto"
+                >
+                  {page}
+                </Button>
+              ))}
+
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handlePageChange(currentPage + 1)}
+                disabled={currentPage === totalPages || pageLoading}
+                className="w-auto"
+              >
+                Next
               </Button>
             </div>
           ) : null}
@@ -1169,22 +1217,7 @@ export default function DigitalEnquiryPage() {
               </Button>
             </div>
           </form>
-        </DialogContent>
-      </Dialog>
 
-      {/* Bulk Upload Dialog */}
-      <Dialog
-        open={bulkUploadDialogOpen}
-        onOpenChange={setBulkUploadDialogOpen}
-      >
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Bulk Upload Digital Enquiries</DialogTitle>
-            <DialogDescription>
-              Upload an Excel file (.xlsx or .xls) with columns: Date, Name,
-              WhatsApp Number, Location, Model, Source
-            </DialogDescription>
-          </DialogHeader>
           <form onSubmit={handleBulkUpload} className="space-y-4 mt-4">
             {uploadError && (
               <div className="bg-destructive/10 text-destructive text-xs sm:text-sm p-3 rounded">

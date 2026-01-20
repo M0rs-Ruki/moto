@@ -29,7 +29,14 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Plus, Loader2, MapPin, ChevronDown, Upload, FileSpreadsheet } from "lucide-react";
+import {
+  Plus,
+  Loader2,
+  MapPin,
+  ChevronDown,
+  Upload,
+  FileSpreadsheet,
+} from "lucide-react";
 import Link from "next/link";
 import * as XLSX from "xlsx";
 
@@ -97,7 +104,9 @@ export default function FieldInquiryPage() {
         <Card>
           <CardContent className="pt-6">
             <div className="text-center py-12 text-muted-foreground">
-              <p className="text-base">You don't have permission to access this page.</p>
+              <p className="text-base">
+                You don't have permission to access this page.
+              </p>
             </div>
           </CardContent>
         </Card>
@@ -105,14 +114,16 @@ export default function FieldInquiryPage() {
     );
   }
 
+  const PAGE_SIZE = 10;
+
   const [enquiries, setEnquiries] = useState<FieldInquiry[]>([]);
   const [loading, setLoading] = useState(true);
-  const [displayedCount, setDisplayedCount] = useState(20); // Show 20 initially
-  const [loadingMore, setLoadingMore] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageLoading, setPageLoading] = useState(false);
   const [hasMore, setHasMore] = useState(false);
   const [totalEnquiries, setTotalEnquiries] = useState(0);
   const [phoneLookups, setPhoneLookups] = useState<Record<string, PhoneLookup>>(
-    {}
+    {},
   );
   const fetchingRef = useRef(false);
   const mountedRef = useRef(true);
@@ -128,15 +139,20 @@ export default function FieldInquiryPage() {
   const [uploadError, setUploadError] = useState("");
   const [uploadResults, setUploadResults] = useState<{
     summary: { total: number; success: number; errors: number };
-    results: Array<{ success: boolean; rowNumber: number; enquiryId?: string; error?: string }>;
+    results: Array<{
+      success: boolean;
+      rowNumber: number;
+      enquiryId?: string;
+      error?: string;
+    }>;
   } | null>(null);
   const [leadSources, setLeadSources] = useState<LeadSource[]>([]);
   const [categories, setCategories] = useState<VehicleCategory[]>([]);
   const [openModelCategories, setOpenModelCategories] = useState<Set<string>>(
-    new Set()
+    new Set(),
   );
   const [expandedVariants, setExpandedVariants] = useState<Set<string>>(
-    new Set()
+    new Set(),
   );
 
   const [formData, setFormData] = useState({
@@ -154,18 +170,20 @@ export default function FieldInquiryPage() {
 
   useEffect(() => {
     mountedRef.current = true;
-    
+
     // Try to load from cache first - use longer cache duration
     const cached = getCachedData<FieldInquiry[]>("cache_field_inquiry", 120000); // 2 minutes
     if (cached) {
       setEnquiries(cached);
       setLoading(false);
-      
+
       // Check cache age to decide if we need to refresh
       try {
-        const cacheEntry = JSON.parse(sessionStorage.getItem("cache_field_inquiry") || '{}');
+        const cacheEntry = JSON.parse(
+          sessionStorage.getItem("cache_field_inquiry") || "{}",
+        );
         const cacheAge = Date.now() - (cacheEntry.timestamp || 0);
-        
+
         // If cache is fresh (< 30 seconds), don't fetch
         if (cacheAge < 30000) {
           // Cache is fresh, no need to fetch
@@ -187,36 +205,42 @@ export default function FieldInquiryPage() {
       // No cache, fetch normally
       fetchData(0, false);
     }
-    
+
     return () => {
       mountedRef.current = false;
     };
   }, []);
 
-  const fetchData = async (skip: number = 0, append: boolean = false, background: boolean = false) => {
+  const fetchData = async (
+    skip: number = 0,
+    append: boolean = false,
+    background: boolean = false,
+  ) => {
     // Prevent duplicate fetches
     if (fetchingRef.current && !append) return;
     if (!append) fetchingRef.current = true;
-    
+
     try {
       if (!append && !background) {
         setLoading(true);
       } else if (append) {
-        setLoadingMore(true);
+        setPageLoading(true);
       }
 
-      const response = await apiClient.get(`/field-inquiry?limit=20&skip=${skip}`);
-      
+      const response = await apiClient.get(
+        `/field-inquiry?limit=${PAGE_SIZE}&skip=${skip}`,
+      );
+
       // Append or replace enquiries
       if (append) {
         setEnquiries([...enquiries, ...response.data.enquiries]);
       } else {
         setEnquiries(response.data.enquiries);
-        setDisplayedCount(20);
+        setCurrentPage(1);
         // Cache the data
         setCachedData("cache_field_inquiry", response.data.enquiries);
       }
-      
+
       setHasMore(response.data.hasMore || false);
       setTotalEnquiries(response.data.total || response.data.enquiries.length);
 
@@ -225,21 +249,23 @@ export default function FieldInquiryPage() {
       if (append && response.data.enquiries.length > 0) {
         const newEnquiries = response.data.enquiries;
         const lookups: Record<string, PhoneLookup> = { ...phoneLookups };
-        
+
         try {
           // Extract unique phone numbers
-          const phoneNumbers = [...new Set(newEnquiries.map((e: FieldInquiry) => e.whatsappNumber))];
-          
+          const phoneNumbers = [
+            ...new Set(newEnquiries.map((e: FieldInquiry) => e.whatsappNumber)),
+          ];
+
           // Batch lookup all phones in one request
-          const lookupRes = await apiClient.post('/phone-lookup', {
-            phones: phoneNumbers
+          const lookupRes = await apiClient.post("/phone-lookup", {
+            phones: phoneNumbers,
           });
-          
+
           // Merge batch results into lookups
           Object.assign(lookups, lookupRes.data);
           setPhoneLookups(lookups);
         } catch (error) {
-          console.error('Failed to batch lookup phones:', error);
+          console.error("Failed to batch lookup phones:", error);
           // Don't break the page if phone lookup fails
         }
       }
@@ -249,23 +275,46 @@ export default function FieldInquiryPage() {
       if (!append) fetchingRef.current = false;
       if (mountedRef.current) {
         setLoading(false);
-        setLoadingMore(false);
+        setPageLoading(false);
       }
     }
   };
 
-  const handleLoadMore = async () => {
-    // If we have more enquiries than displayed, just show more from what we already have
-    if (enquiries.length > displayedCount) {
-      setDisplayedCount(Math.min(displayedCount + 20, enquiries.length));
-    } 
-    // Otherwise, fetch more from backend if available
-    else if (hasMore) {
-      const currentSkip = enquiries.length;
-      await fetchData(currentSkip, true);
-      // Increase displayed count after new data is loaded
-      setDisplayedCount(displayedCount + 20);
+  const handlePageChange = async (page: number) => {
+    const totalPages = Math.max(1, Math.ceil(totalEnquiries / PAGE_SIZE));
+    const targetPage = Math.min(Math.max(page, 1), totalPages);
+
+    if (targetPage * PAGE_SIZE <= enquiries.length || !hasMore) {
+      setCurrentPage(targetPage);
+      return;
     }
+
+    if (hasMore && !pageLoading) {
+      await fetchData(enquiries.length, true);
+      setCurrentPage(targetPage);
+    }
+  };
+
+  const getVisiblePages = (totalPages: number, page: number) => {
+    const maxVisible = 5;
+    const pages: number[] = [];
+
+    let start = Math.max(1, page - 2);
+    let end = Math.min(totalPages, page + 2);
+
+    if (page <= 3) {
+      start = 1;
+      end = Math.min(totalPages, maxVisible);
+    } else if (page >= totalPages - 2) {
+      end = totalPages;
+      start = Math.max(1, totalPages - (maxVisible - 1));
+    }
+
+    for (let i = start; i <= end; i += 1) {
+      pages.push(i);
+    }
+
+    return pages;
   };
 
   const fetchCreateFormData = async () => {
@@ -298,15 +347,21 @@ export default function FieldInquiryPage() {
         const newEnquiry = response.data.enquiry;
 
         // 1. IMMEDIATE UI UPDATE - Add enquiry to list immediately
-        setEnquiries(prev => [newEnquiry, ...prev]);
+        setEnquiries((prev) => [newEnquiry, ...prev]);
+        setTotalEnquiries((prev) => prev + 1);
+        setCurrentPage(1);
+        setHasMore(true);
 
         // 2. UPDATE CACHE
         const cachedEnquiries = getCachedData<FieldInquiry[]>(
           "cache_field_inquiry",
-          120000
+          120000,
         );
         if (cachedEnquiries) {
-          setCachedData("cache_field_inquiry", [newEnquiry, ...cachedEnquiries]);
+          setCachedData("cache_field_inquiry", [
+            newEnquiry,
+            ...cachedEnquiries,
+          ]);
         } else {
           setCachedData("cache_field_inquiry", [newEnquiry]);
         }
@@ -343,7 +398,9 @@ export default function FieldInquiryPage() {
     setUploadError("");
     setUploadResults(null);
 
-    const fileInput = e.currentTarget.querySelector('input[type="file"]') as HTMLInputElement;
+    const fileInput = e.currentTarget.querySelector(
+      'input[type="file"]',
+    ) as HTMLInputElement;
     const file = fileInput?.files?.[0];
 
     if (!file) {
@@ -355,7 +412,9 @@ export default function FieldInquiryPage() {
     // Validate file type
     const fileName = file.name.toLowerCase();
     if (!fileName.endsWith(".xlsx") && !fileName.endsWith(".xls")) {
-      setUploadError("Invalid file type. Please upload an Excel file (.xlsx or .xls)");
+      setUploadError(
+        "Invalid file type. Please upload an Excel file (.xlsx or .xls)",
+      );
       setUploading(false);
       return;
     }
@@ -385,10 +444,14 @@ export default function FieldInquiryPage() {
       // Validate required columns
       const firstRow = rows[0];
       const requiredColumns = ["Date", "Name", "WhatsApp Number", "Model"];
-      const missingColumns = requiredColumns.filter((col) => !(col in firstRow));
+      const missingColumns = requiredColumns.filter(
+        (col) => !(col in firstRow),
+      );
 
       if (missingColumns.length > 0) {
-        setUploadError(`Missing required columns: ${missingColumns.join(", ")}`);
+        setUploadError(
+          `Missing required columns: ${missingColumns.join(", ")}`,
+        );
         setUploading(false);
         return;
       }
@@ -404,9 +467,13 @@ export default function FieldInquiryPage() {
         fetchData(0, false, true); // Background fetch after bulk upload
       }
     } catch (err: unknown) {
-      const error = err as { response?: { data?: { error?: string; details?: string } } };
+      const error = err as {
+        response?: { data?: { error?: string; details?: string } };
+      };
       setUploadError(
-        error.response?.data?.error || error.response?.data?.details || "Failed to upload file"
+        error.response?.data?.error ||
+          error.response?.data?.details ||
+          "Failed to upload file",
       );
     } finally {
       setUploading(false);
@@ -437,6 +504,13 @@ export default function FieldInquiryPage() {
       </div>
     );
   }
+
+  const totalPages = Math.max(1, Math.ceil(totalEnquiries / PAGE_SIZE));
+  const paginatedEnquiries = enquiries.slice(
+    (currentPage - 1) * PAGE_SIZE,
+    currentPage * PAGE_SIZE,
+  );
+  const pageNumbers = getVisiblePages(totalPages, currentPage);
 
   return (
     <div className="space-y-6 sm:space-y-8">
@@ -516,9 +590,10 @@ export default function FieldInquiryPage() {
                     </tr>
                   </thead>
                   <tbody>
-                    {enquiries.slice(0, displayedCount).map((enquiry) => {
-                      const initials = `${enquiry.firstName.charAt(0)}${enquiry.lastName.charAt(0)}`.toUpperCase();
-                      
+                    {paginatedEnquiries.map((enquiry) => {
+                      const initials =
+                        `${enquiry.firstName.charAt(0)}${enquiry.lastName.charAt(0)}`.toUpperCase();
+
                       return (
                         <tr
                           key={enquiry.id}
@@ -574,7 +649,9 @@ export default function FieldInquiryPage() {
                                 {enquiry.leadSource.name}
                               </Badge>
                             ) : (
-                              <span className="text-xs text-muted-foreground">None</span>
+                              <span className="text-xs text-muted-foreground">
+                                None
+                              </span>
                             )}
                           </td>
 
@@ -590,19 +667,24 @@ export default function FieldInquiryPage() {
                                 </p>
                               </div>
                             ) : (
-                              <span className="text-xs text-muted-foreground">None</span>
+                              <span className="text-xs text-muted-foreground">
+                                None
+                              </span>
                             )}
                           </td>
 
                           {/* Created Column */}
                           <td className="py-3 px-4">
-                            <p className="text-sm">{formatDate(enquiry.createdAt)}</p>
+                            <p className="text-sm">
+                              {formatDate(enquiry.createdAt)}
+                            </p>
                           </td>
 
                           {/* Actions Column */}
                           <td className="py-3 px-4">
                             <div className="flex items-center gap-2">
-                              {phoneLookups[enquiry.whatsappNumber]?.dailyWalkins && (
+                              {phoneLookups[enquiry.whatsappNumber]
+                                ?.dailyWalkins && (
                                 <Link
                                   href="/dashboard/daily-walkins"
                                   onClick={(e) => e.stopPropagation()}
@@ -615,7 +697,8 @@ export default function FieldInquiryPage() {
                                   </Badge>
                                 </Link>
                               )}
-                              {phoneLookups[enquiry.whatsappNumber]?.deliveryUpdate && (
+                              {phoneLookups[enquiry.whatsappNumber]
+                                ?.deliveryUpdate && (
                                 <Link
                                   href="/dashboard/delivery-update"
                                   onClick={(e) => e.stopPropagation()}
@@ -638,22 +721,39 @@ export default function FieldInquiryPage() {
               </div>
             </CardContent>
           </Card>
-          {(hasMore || enquiries.length > displayedCount) ? (
-            <div className="flex justify-center pt-4">
+          {totalPages > 1 ? (
+            <div className="flex flex-wrap items-center justify-center gap-2 pt-4">
               <Button
                 variant="outline"
-                onClick={handleLoadMore}
-                disabled={loadingMore}
-                className="w-full sm:w-auto"
+                size="sm"
+                onClick={() => handlePageChange(currentPage - 1)}
+                disabled={currentPage === 1 || pageLoading}
+                className="w-auto"
               >
-                {loadingMore ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Loading...
-                  </>
-                ) : (
-                  `See More (${hasMore ? totalEnquiries - displayedCount : enquiries.length - displayedCount} remaining)`
-                )}
+                Previous
+              </Button>
+
+              {pageNumbers.map((page) => (
+                <Button
+                  key={page}
+                  variant={page === currentPage ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => handlePageChange(page)}
+                  disabled={pageLoading}
+                  className="w-auto"
+                >
+                  {page}
+                </Button>
+              ))}
+
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => handlePageChange(currentPage + 1)}
+                disabled={currentPage === totalPages || pageLoading}
+                className="w-auto"
+              >
+                Next
               </Button>
             </div>
           ) : null}
@@ -1025,12 +1125,16 @@ export default function FieldInquiryPage() {
       </Dialog>
 
       {/* Bulk Upload Dialog */}
-      <Dialog open={bulkUploadDialogOpen} onOpenChange={setBulkUploadDialogOpen}>
+      <Dialog
+        open={bulkUploadDialogOpen}
+        onOpenChange={setBulkUploadDialogOpen}
+      >
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Bulk Upload Field Enquiries</DialogTitle>
             <DialogDescription>
-              Upload an Excel file (.xlsx or .xls) with columns: Date, Name, WhatsApp Number, Location, Model, Source
+              Upload an Excel file (.xlsx or .xls) with columns: Date, Name,
+              WhatsApp Number, Location, Model, Source
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleBulkUpload} className="space-y-4 mt-4">
@@ -1045,9 +1149,14 @@ export default function FieldInquiryPage() {
                 <div className="flex items-center justify-between">
                   <h3 className="font-semibold text-sm">Upload Results</h3>
                   <Badge
-                    variant={uploadResults.summary.errors === 0 ? "default" : "secondary"}
+                    variant={
+                      uploadResults.summary.errors === 0
+                        ? "default"
+                        : "secondary"
+                    }
                   >
-                    {uploadResults.summary.success} / {uploadResults.summary.total} successful
+                    {uploadResults.summary.success} /{" "}
+                    {uploadResults.summary.total} successful
                   </Badge>
                 </div>
                 {uploadResults.summary.errors > 0 && (
@@ -1059,8 +1168,13 @@ export default function FieldInquiryPage() {
                       {uploadResults.results
                         .filter((r) => !r.success)
                         .map((result, idx) => (
-                          <div key={idx} className="p-2 bg-background rounded border-l-2 border-destructive">
-                            <span className="font-medium">Row {result.rowNumber}:</span>{" "}
+                          <div
+                            key={idx}
+                            className="p-2 bg-background rounded border-l-2 border-destructive"
+                          >
+                            <span className="font-medium">
+                              Row {result.rowNumber}:
+                            </span>{" "}
                             {result.error}
                           </div>
                         ))}
@@ -1069,8 +1183,9 @@ export default function FieldInquiryPage() {
                 )}
                 {uploadResults.summary.success > 0 && (
                   <p className="text-xs text-muted-foreground">
-                    {uploadResults.summary.success} enquiries created successfully. All enquiries
-                    have been set to "Cold" lead scope.
+                    {uploadResults.summary.success} enquiries created
+                    successfully. All enquiries have been set to "Cold" lead
+                    scope.
                   </p>
                 )}
               </div>
@@ -1092,7 +1207,8 @@ export default function FieldInquiryPage() {
                 <FileSpreadsheet className="h-5 w-5 text-muted-foreground" />
               </div>
               <p className="text-xs text-muted-foreground">
-                Required columns: Date, Name, WhatsApp Number, Location, Model, Source
+                Required columns: Date, Name, WhatsApp Number, Location, Model,
+                Source
               </p>
             </div>
 
@@ -1111,7 +1227,11 @@ export default function FieldInquiryPage() {
                 {uploadResults ? "Close" : "Cancel"}
               </Button>
               {!uploadResults && (
-                <Button type="submit" disabled={uploading} className="w-full sm:w-auto">
+                <Button
+                  type="submit"
+                  disabled={uploading}
+                  className="w-full sm:w-auto"
+                >
                   {uploading ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />

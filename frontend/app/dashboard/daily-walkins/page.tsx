@@ -137,6 +137,9 @@ interface PhoneLookup {
 }
 
 export default function DailyWalkinsPage() {
+  const VISITOR_PAGE_SIZE = 10;
+  const SESSION_PAGE_SIZE = 10;
+
   const [categories, setCategories] = useState<VehicleCategory[]>([]);
   const [loading, setLoading] = useState(true);
   const fetchingRef = useRef(false);
@@ -145,8 +148,8 @@ export default function DailyWalkinsPage() {
   // Visitors state
   const [visitors, setVisitors] = useState<Visitor[]>([]);
   const [filteredVisitors, setFilteredVisitors] = useState<Visitor[]>([]);
-  const [displayedCount, setDisplayedCount] = useState(20); // Show 20 initially
-  const [loadingMore, setLoadingMore] = useState(false);
+  const [visitorPage, setVisitorPage] = useState(1);
+  const [visitorPageLoading, setVisitorPageLoading] = useState(false);
   const [hasMore, setHasMore] = useState(false);
   const [totalVisitors, setTotalVisitors] = useState(0);
   const [searchQuery, setSearchQuery] = useState("");
@@ -180,8 +183,8 @@ export default function DailyWalkinsPage() {
   // Sessions state
   const [allSessions, setAllSessions] = useState<Session[]>([]);
   const [loadingSessions, setLoadingSessions] = useState(false);
-  const [sessionsDisplayedCount, setSessionsDisplayedCount] = useState(20); // Show 20 initially
-  const [sessionsLoadingMore, setSessionsLoadingMore] = useState(false);
+  const [sessionPage, setSessionPage] = useState(1);
+  const [sessionPageLoading, setSessionPageLoading] = useState(false);
   const [sessionsHasMore, setSessionsHasMore] = useState(false);
   const [sessionsTotal, setSessionsTotal] = useState(0);
   const [expandedSessions, setExpandedSessions] = useState<Set<string>>(
@@ -325,8 +328,8 @@ export default function DailyWalkinsPage() {
     }
 
     setFilteredVisitors(filteredV);
-    // Reset displayed count when filters change
-    setDisplayedCount(30);
+    // Reset pagination when filters change
+    setVisitorPage(1);
   }, [dateFilter, visitors, searchQuery]);
 
   // Apply date filter and search
@@ -347,17 +350,21 @@ export default function DailyWalkinsPage() {
       if (!append && !background) {
         setLoading(true);
       } else if (append) {
-        setLoadingMore(true);
+        setVisitorPageLoading(true);
       }
 
       const promises: Promise<any>[] = [apiClient.get("/categories")];
 
       if (canViewVisitors) {
-        promises.push(apiClient.get(`/visitors?limit=20&skip=${skip}`));
+        promises.push(
+          apiClient.get(`/visitors?limit=${VISITOR_PAGE_SIZE}&skip=${skip}`),
+        );
       }
 
       if (canViewSessions) {
-        promises.push(apiClient.get(`/sessions?limit=20&skip=0`));
+        promises.push(
+          apiClient.get(`/sessions?limit=${SESSION_PAGE_SIZE}&skip=0`),
+        );
       }
 
       const results = await Promise.all(promises);
@@ -391,7 +398,7 @@ export default function DailyWalkinsPage() {
           setVisitors([...visitors, ...newVisitors]);
         } else {
           setVisitors(visitorsRes.data.visitors);
-          setDisplayedCount(20);
+          setVisitorPage(1);
         }
 
         setHasMore(visitorsRes.data.hasMore || false);
@@ -414,7 +421,7 @@ export default function DailyWalkinsPage() {
           setSessionsTotal(
             sessionsRes.data.total || sessionsRes.data.sessions?.length || 0,
           );
-          setSessionsDisplayedCount(20);
+          setSessionPage(1);
         }
       }
 
@@ -462,48 +469,57 @@ export default function DailyWalkinsPage() {
       if (!append) fetchingRef.current = false;
       if (mountedRef.current) {
         setLoading(false);
-        setLoadingMore(false);
+        setVisitorPageLoading(false);
       }
     }
   };
 
-  const handleLoadMore = async () => {
-    // If we have more filtered visitors than displayed, just show more from what we already have
-    if (filteredVisitors.length > displayedCount) {
-      setDisplayedCount(Math.min(displayedCount + 20, filteredVisitors.length));
+  const handleVisitorPageChange = async (page: number) => {
+    const totalPages = Math.max(
+      1,
+      Math.ceil(
+        (hasMore
+          ? Math.max(totalVisitors, filteredVisitors.length)
+          : filteredVisitors.length) / VISITOR_PAGE_SIZE,
+      ),
+    );
+    const targetPage = Math.min(Math.max(page, 1), totalPages);
+
+    if (targetPage * VISITOR_PAGE_SIZE <= visitors.length || !hasMore) {
+      setVisitorPage(targetPage);
+      return;
     }
-    // Otherwise, fetch more from backend if available
-    else if (hasMore) {
-      const currentSkip = visitors.length;
-      await fetchData(currentSkip, true);
-      // Increase displayed count after new data is loaded
-      setDisplayedCount(displayedCount + 20);
+
+    if (hasMore && !visitorPageLoading) {
+      await fetchData(visitors.length, true);
+      setVisitorPage(targetPage);
     }
   };
 
   const fetchAllSessions = async (
     skip: number = 0,
     append: boolean = false,
+    visitorIdOverride?: string | null,
   ) => {
     if (!append) {
       setLoadingSessions(true);
     } else {
-      setSessionsLoadingMore(true);
+      setSessionPageLoading(true);
     }
 
     try {
-      const visitorIdParam = selectedVisitorId
-        ? `&visitorId=${selectedVisitorId}`
-        : "";
+      const visitorId =
+        visitorIdOverride !== undefined ? visitorIdOverride : selectedVisitorId;
+      const visitorIdParam = visitorId ? `&visitorId=${visitorId}` : "";
       const response = await apiClient.get(
-        `/sessions?limit=20&skip=${skip}${visitorIdParam}`,
+        `/sessions?limit=${SESSION_PAGE_SIZE}&skip=${skip}${visitorIdParam}`,
       );
 
       if (append) {
         setAllSessions([...allSessions, ...(response.data.sessions || [])]);
       } else {
         setAllSessions(response.data.sessions || []);
-        setSessionsDisplayedCount(20);
+        setSessionPage(1);
       }
 
       setSessionsHasMore(response.data.hasMore || false);
@@ -517,25 +533,36 @@ export default function DailyWalkinsPage() {
       }
     } finally {
       setLoadingSessions(false);
-      setSessionsLoadingMore(false);
+      setSessionPageLoading(false);
     }
   };
 
-  const handleLoadMoreSessions = async () => {
-    // If we have more sessions than displayed, just show more
-    const displayedSessions = selectedVisitorId
+  const handleSessionPageChange = async (page: number) => {
+    const currentSessions = selectedVisitorId
       ? allSessions.filter((s: Session) => s.visitor.id === selectedVisitorId)
       : allSessions;
 
-    if (displayedSessions.length > sessionsDisplayedCount) {
-      setSessionsDisplayedCount(
-        Math.min(sessionsDisplayedCount + 20, displayedSessions.length),
-      );
+    const totalPages = Math.max(
+      1,
+      Math.ceil(
+        (sessionsHasMore
+          ? Math.max(sessionsTotal, currentSessions.length)
+          : currentSessions.length) / SESSION_PAGE_SIZE,
+      ),
+    );
+    const targetPage = Math.min(Math.max(page, 1), totalPages);
+
+    if (
+      targetPage * SESSION_PAGE_SIZE <= currentSessions.length ||
+      !sessionsHasMore
+    ) {
+      setSessionPage(targetPage);
+      return;
     }
-    // Otherwise, fetch more from backend if available
-    else if (sessionsHasMore) {
+
+    if (sessionsHasMore && !sessionPageLoading) {
       await fetchAllSessions(allSessions.length, true);
-      setSessionsDisplayedCount(sessionsDisplayedCount + 20);
+      setSessionPage(targetPage);
     }
   };
 
@@ -567,12 +594,34 @@ export default function DailyWalkinsPage() {
     });
   };
 
+  const getVisiblePages = (totalPages: number, page: number) => {
+    const maxVisible = 5;
+    const pages: number[] = [];
+
+    let start = Math.max(1, page - 2);
+    let end = Math.min(totalPages, page + 2);
+
+    if (page <= 3) {
+      start = 1;
+      end = Math.min(totalPages, maxVisible);
+    } else if (page >= totalPages - 2) {
+      end = totalPages;
+      start = Math.max(1, totalPages - (maxVisible - 1));
+    }
+
+    for (let i = start; i <= end; i += 1) {
+      pages.push(i);
+    }
+
+    return pages;
+  };
+
   const handleViewSessions = async (visitor: Visitor) => {
     setSelectedVisitorId(visitor.id);
     setActiveTab("sessions");
 
     // Reset sessions pagination and fetch sessions for this visitor
-    setSessionsDisplayedCount(20);
+    setSessionPage(1);
     await fetchAllSessions(0, false);
 
     // Find and expand the latest session for this visitor
@@ -747,6 +796,9 @@ export default function DailyWalkinsPage() {
           const exists = prev.some((v) => v.id === newVisitor.id);
           return exists ? prev : [newVisitor, ...prev];
         });
+        setTotalVisitors((prev) => prev + 1);
+        setVisitorPage(1);
+        setHasMore(true);
 
         // 2. UPDATE CACHE - Update cache with new visitor
         const cachedVisitors = getCachedData<Visitor[]>(
@@ -805,6 +857,35 @@ export default function DailyWalkinsPage() {
       </div>
     );
   }
+
+  const visitorTotalItems = hasMore
+    ? Math.max(totalVisitors, filteredVisitors.length)
+    : filteredVisitors.length;
+  const visitorTotalPages = Math.max(
+    1,
+    Math.ceil(visitorTotalItems / VISITOR_PAGE_SIZE),
+  );
+  const paginatedVisitors = filteredVisitors.slice(
+    (visitorPage - 1) * VISITOR_PAGE_SIZE,
+    visitorPage * VISITOR_PAGE_SIZE,
+  );
+  const visitorPageNumbers = getVisiblePages(visitorTotalPages, visitorPage);
+
+  const sessionsForView = selectedVisitorId
+    ? allSessions.filter((s) => s.visitor.id === selectedVisitorId)
+    : allSessions;
+  const sessionTotalItems = sessionsHasMore
+    ? Math.max(sessionsTotal, sessionsForView.length)
+    : sessionsForView.length;
+  const sessionTotalPages = Math.max(
+    1,
+    Math.ceil(sessionTotalItems / SESSION_PAGE_SIZE),
+  );
+  const paginatedSessions = sessionsForView.slice(
+    (sessionPage - 1) * SESSION_PAGE_SIZE,
+    sessionPage * SESSION_PAGE_SIZE,
+  );
+  const sessionPageNumbers = getVisiblePages(sessionTotalPages, sessionPage);
 
   return (
     <div className="space-y-6 sm:space-y-8">
@@ -1353,176 +1434,189 @@ export default function DailyWalkinsPage() {
                           </tr>
                         </thead>
                         <tbody>
-                          {filteredVisitors
-                            .slice(0, displayedCount)
-                            .map((visitor) => {
-                              const initials = `${visitor.firstName.charAt(
-                                0,
-                              )}${visitor.lastName.charAt(0)}`.toUpperCase();
-                              const lastVisit =
-                                visitor.sessions && visitor.sessions.length > 0
-                                  ? formatDate(
-                                      visitor.sessions.sort(
-                                        (a, b) =>
-                                          new Date(b.createdAt).getTime() -
-                                          new Date(a.createdAt).getTime(),
-                                      )[0].createdAt,
-                                    )
-                                  : formatDate(visitor.createdAt);
+                          {paginatedVisitors.map((visitor) => {
+                            const initials = `${visitor.firstName.charAt(
+                              0,
+                            )}${visitor.lastName.charAt(0)}`.toUpperCase();
+                            const lastVisit =
+                              visitor.sessions && visitor.sessions.length > 0
+                                ? formatDate(
+                                    visitor.sessions.sort(
+                                      (a, b) =>
+                                        new Date(b.createdAt).getTime() -
+                                        new Date(a.createdAt).getTime(),
+                                    )[0].createdAt,
+                                  )
+                                : formatDate(visitor.createdAt);
 
-                              return (
-                                <tr
-                                  key={visitor.id}
-                                  className="border-b hover:bg-muted/30 transition-colors cursor-pointer"
-                                  onClick={() => handleViewSessions(visitor)}
-                                >
-                                  {/* Visitor Column */}
-                                  <td className="py-3 px-4">
-                                    <div className="flex items-center gap-3">
-                                      <div className="w-10 h-10 rounded-full bg-primary flex items-center justify-center text-primary-foreground font-semibold text-sm flex-shrink-0">
-                                        {initials}
-                                      </div>
-                                      <div className="min-w-0">
-                                        <p className="text-sm font-medium truncate">
-                                          {visitor.firstName} {visitor.lastName}
-                                        </p>
-                                        {visitor.email && (
-                                          <p className="text-xs text-muted-foreground truncate">
-                                            {visitor.email}
-                                          </p>
-                                        )}
-                                      </div>
+                            return (
+                              <tr
+                                key={visitor.id}
+                                className="border-b hover:bg-muted/30 transition-colors cursor-pointer"
+                                onClick={() => handleViewSessions(visitor)}
+                              >
+                                {/* Visitor Column */}
+                                <td className="py-3 px-4">
+                                  <div className="flex items-center gap-3">
+                                    <div className="w-10 h-10 rounded-full bg-primary flex items-center justify-center text-primary-foreground font-semibold text-sm flex-shrink-0">
+                                      {initials}
                                     </div>
-                                  </td>
-
-                                  {/* Contact Column */}
-                                  <td className="py-3 px-4">
-                                    <div className="space-y-1">
-                                      <p className="text-sm">
-                                        {visitor.whatsappNumber || "No phone"}
+                                    <div className="min-w-0">
+                                      <p className="text-sm font-medium truncate">
+                                        {visitor.firstName} {visitor.lastName}
                                       </p>
+                                      {visitor.email && (
+                                        <p className="text-xs text-muted-foreground truncate">
+                                          {visitor.email}
+                                        </p>
+                                      )}
                                     </div>
-                                  </td>
+                                  </div>
+                                </td>
 
-                                  {/* Last Visit Column */}
-                                  <td className="py-3 px-4">
-                                    <p className="text-sm">{lastVisit}</p>
-                                  </td>
+                                {/* Contact Column */}
+                                <td className="py-3 px-4">
+                                  <div className="space-y-1">
+                                    <p className="text-sm">
+                                      {visitor.whatsappNumber || "No phone"}
+                                    </p>
+                                  </div>
+                                </td>
 
-                                  {/* Sessions Column */}
-                                  <td className="py-3 px-4">
-                                    <Badge
-                                      variant="secondary"
-                                      className="text-xs font-medium"
-                                    >
-                                      {visitor.sessions?.length || 0} session
-                                      {(visitor.sessions?.length || 0) !== 1
-                                        ? "s"
-                                        : ""}
-                                    </Badge>
-                                  </td>
+                                {/* Last Visit Column */}
+                                <td className="py-3 px-4">
+                                  <p className="text-sm">{lastVisit}</p>
+                                </td>
 
-                                  {/* Interested Models Column */}
-                                  <td className="py-3 px-4">
-                                    {visitor.interests &&
-                                    visitor.interests.length > 0 ? (
-                                      <div className="space-y-1">
-                                        {visitor.interests
-                                          .slice(0, 2)
-                                          .map((interest, idx) => (
-                                            <p
-                                              key={idx}
-                                              className="text-xs text-muted-foreground"
-                                            >
-                                              {interest.model.category.name} -{" "}
-                                              {interest.model.name}
-                                            </p>
-                                          ))}
-                                        {visitor.interests.length > 2 && (
-                                          <p className="text-xs text-muted-foreground">
-                                            +{visitor.interests.length - 2} more
+                                {/* Sessions Column */}
+                                <td className="py-3 px-4">
+                                  <Badge
+                                    variant="secondary"
+                                    className="text-xs font-medium"
+                                  >
+                                    {visitor.sessions?.length || 0} session
+                                    {(visitor.sessions?.length || 0) !== 1
+                                      ? "s"
+                                      : ""}
+                                  </Badge>
+                                </td>
+
+                                {/* Interested Models Column */}
+                                <td className="py-3 px-4">
+                                  {visitor.interests &&
+                                  visitor.interests.length > 0 ? (
+                                    <div className="space-y-1">
+                                      {visitor.interests
+                                        .slice(0, 2)
+                                        .map((interest, idx) => (
+                                          <p
+                                            key={idx}
+                                            className="text-xs text-muted-foreground"
+                                          >
+                                            {interest.model.category.name} -{" "}
+                                            {interest.model.name}
                                           </p>
-                                        )}
-                                      </div>
-                                    ) : (
-                                      <span className="text-xs text-muted-foreground">
-                                        None
-                                      </span>
-                                    )}
-                                  </td>
-
-                                  {/* Actions Column */}
-                                  <td className="py-3 px-4">
-                                    <div className="flex items-center gap-2">
-                                      {phoneLookups[visitor.whatsappNumber]
-                                        ?.digitalEnquiry && (
-                                        <Link
-                                          href="/dashboard/digital-enquiry"
-                                          onClick={(e) => e.stopPropagation()}
-                                        >
-                                          <Badge
-                                            variant="outline"
-                                            className="text-xs cursor-pointer hover:bg-primary/10 transition-colors"
-                                          >
-                                            Digital
-                                          </Badge>
-                                        </Link>
+                                        ))}
+                                      {visitor.interests.length > 2 && (
+                                        <p className="text-xs text-muted-foreground">
+                                          +{visitor.interests.length - 2} more
+                                        </p>
                                       )}
-                                      {phoneLookups[visitor.whatsappNumber]
-                                        ?.deliveryUpdate && (
-                                        <Link
-                                          href="/dashboard/delivery-update"
-                                          onClick={(e) => e.stopPropagation()}
-                                        >
-                                          <Badge
-                                            variant="outline"
-                                            className="text-xs cursor-pointer hover:bg-primary/10 transition-colors"
-                                          >
-                                            Delivery
-                                          </Badge>
-                                        </Link>
-                                      )}
-                                      <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        className="h-8 w-8 p-0"
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          handleViewSessions(visitor);
-                                        }}
-                                      >
-                                        <UserCheck className="h-4 w-4" />
-                                      </Button>
                                     </div>
-                                  </td>
-                                </tr>
-                              );
-                            })}
+                                  ) : (
+                                    <span className="text-xs text-muted-foreground">
+                                      None
+                                    </span>
+                                  )}
+                                </td>
+
+                                {/* Actions Column */}
+                                <td className="py-3 px-4">
+                                  <div className="flex items-center gap-2">
+                                    {phoneLookups[visitor.whatsappNumber]
+                                      ?.digitalEnquiry && (
+                                      <Link
+                                        href="/dashboard/digital-enquiry"
+                                        onClick={(e) => e.stopPropagation()}
+                                      >
+                                        <Badge
+                                          variant="outline"
+                                          className="text-xs cursor-pointer hover:bg-primary/10 transition-colors"
+                                        >
+                                          Digital
+                                        </Badge>
+                                      </Link>
+                                    )}
+                                    {phoneLookups[visitor.whatsappNumber]
+                                      ?.deliveryUpdate && (
+                                      <Link
+                                        href="/dashboard/delivery-update"
+                                        onClick={(e) => e.stopPropagation()}
+                                      >
+                                        <Badge
+                                          variant="outline"
+                                          className="text-xs cursor-pointer hover:bg-primary/10 transition-colors"
+                                        >
+                                          Delivery
+                                        </Badge>
+                                      </Link>
+                                    )}
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      className="h-8 w-8 p-0"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleViewSessions(visitor);
+                                      }}
+                                    >
+                                      <UserCheck className="h-4 w-4" />
+                                    </Button>
+                                  </div>
+                                </td>
+                              </tr>
+                            );
+                          })}
                         </tbody>
                       </table>
                     </div>
                   </CardContent>
                 </Card>
-                {(hasMore || filteredVisitors.length > displayedCount) && (
-                  <div className="flex justify-center pt-4">
+                {visitorTotalPages > 1 && (
+                  <div className="flex flex-wrap items-center justify-center gap-2 pt-4">
                     <Button
                       variant="outline"
-                      onClick={handleLoadMore}
-                      disabled={loadingMore}
-                      className="w-full sm:w-auto"
+                      size="sm"
+                      onClick={() => handleVisitorPageChange(visitorPage - 1)}
+                      disabled={visitorPage === 1 || visitorPageLoading}
+                      className="w-auto"
                     >
-                      {loadingMore ? (
-                        <>
-                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                          Loading...
-                        </>
-                      ) : (
-                        `See More (${
-                          hasMore
-                            ? totalVisitors - displayedCount
-                            : filteredVisitors.length - displayedCount
-                        } remaining)`
-                      )}
+                      Previous
+                    </Button>
+
+                    {visitorPageNumbers.map((page) => (
+                      <Button
+                        key={page}
+                        variant={page === visitorPage ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => handleVisitorPageChange(page)}
+                        disabled={visitorPageLoading}
+                        className="w-auto"
+                      >
+                        {page}
+                      </Button>
+                    ))}
+
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleVisitorPageChange(visitorPage + 1)}
+                      disabled={
+                        visitorPage === visitorTotalPages || visitorPageLoading
+                      }
+                      className="w-auto"
+                    >
+                      Next
                     </Button>
                   </div>
                 )}
@@ -1545,17 +1639,17 @@ export default function DailyWalkinsPage() {
                   (s: Session) => s.visitor.id === selectedVisitorId,
                 );
                 return (
-                  <Card className="bg-muted/30">
-                    <CardContent className="pt-6">
-                      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                        <div>
-                          <h3 className="text-lg font-semibold">
+                  <Card className="bg-muted/30 border-primary/30">
+                    <CardContent className="py-3 px-4">
+                      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
+                        <div className="flex-1">
+                          <h3 className="text-base font-semibold">
                             {visitor.firstName} {visitor.lastName}
                           </h3>
-                          <p className="text-sm text-muted-foreground mt-1">
+                          <p className="text-xs text-muted-foreground mt-0.5">
                             {visitor.whatsappNumber}
                           </p>
-                          <p className="text-xs text-muted-foreground mt-1">
+                          <p className="text-xs text-muted-foreground mt-0.5">
                             {visitorSessions.length} session
                             {visitorSessions.length !== 1 ? "s" : ""} •{" "}
                             {visitorSessions.length} visit
@@ -1563,17 +1657,32 @@ export default function DailyWalkinsPage() {
                             showroom
                           </p>
                         </div>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => {
-                            setSelectedVisitorId(null);
-                            setSessionsDisplayedCount(20);
-                            fetchAllSessions(0, false);
-                          }}
-                        >
-                          Clear Filter
-                        </Button>
+                        <div className="flex gap-1">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              setSelectedVisitorId(null);
+                              setSessionPage(1);
+                              fetchAllSessions(0, false, null);
+                            }}
+                          >
+                            Show All Sessions
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => {
+                              setSelectedVisitorId(null);
+                              setSessionPage(1);
+                              fetchAllSessions(0, false, null);
+                            }}
+                            className="px-2"
+                            title="Close filter"
+                          >
+                            ✕
+                          </Button>
+                        </div>
                       </div>
                     </CardContent>
                   </Card>
@@ -1596,213 +1705,205 @@ export default function DailyWalkinsPage() {
             ) : (
               <>
                 <div className="space-y-4">
-                  {(selectedVisitorId
-                    ? allSessions.filter(
-                        (s: Session) => s.visitor.id === selectedVisitorId,
-                      )
-                    : allSessions
-                  )
-                    .slice(0, sessionsDisplayedCount)
-                    .map((session: Session) => {
-                      const isExited = session.status === "exited";
-                      const hasTestDrives = session.testDrives.length > 0;
-                      const isExpanded = expandedSessions.has(session.id);
+                  {paginatedSessions.map((session: Session) => {
+                    const isExited = session.status === "exited";
+                    const hasTestDrives = session.testDrives.length > 0;
+                    const isExpanded = expandedSessions.has(session.id);
 
-                      return (
-                        <Card key={session.id} className="overflow-hidden">
-                          <Collapsible
-                            open={isExpanded}
-                            onOpenChange={(open) => {
-                              setExpandedSessions((prev) => {
-                                const newSet = new Set(prev);
-                                if (open) {
-                                  newSet.add(session.id);
-                                } else {
-                                  newSet.delete(session.id);
-                                }
-                                return newSet;
-                              });
-                            }}
-                          >
-                            <CollapsibleTrigger asChild>
-                              <CardHeader className="pb-3 border-b cursor-pointer hover:bg-muted/30 transition-colors">
-                                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-                                  <div className="flex items-center gap-2 flex-1">
-                                    <ChevronDown
-                                      className={`h-4 w-4 text-muted-foreground transition-transform flex-shrink-0 ${
-                                        isExpanded ? "rotate-180" : ""
-                                      }`}
-                                    />
-                                    <div className="flex-1 min-w-0">
-                                      <CardTitle className="text-sm sm:text-base">
-                                        {session.visitor.firstName}{" "}
-                                        {session.visitor.lastName} - Session{" "}
-                                        {formatDateTime(session.createdAt)}
-                                      </CardTitle>
-                                      <CardDescription className="text-xs mt-1">
-                                        Status: {session.status}
-                                        {!isExpanded && (
-                                          <span className="ml-2">
-                                            •{" "}
-                                            {session.reason.length > 40
-                                              ? session.reason.substring(
-                                                  0,
-                                                  40,
-                                                ) + "..."
-                                              : session.reason}
-                                          </span>
-                                        )}
-                                      </CardDescription>
-                                    </div>
+                    return (
+                      <Card key={session.id} className="overflow-hidden">
+                        <Collapsible
+                          open={isExpanded}
+                          onOpenChange={(open) => {
+                            setExpandedSessions((prev) => {
+                              const newSet = new Set(prev);
+                              if (open) {
+                                newSet.add(session.id);
+                              } else {
+                                newSet.delete(session.id);
+                              }
+                              return newSet;
+                            });
+                          }}
+                        >
+                          <CollapsibleTrigger asChild>
+                            <CardHeader className="pb-3 border-b cursor-pointer hover:bg-muted/30 transition-colors">
+                              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                                <div className="flex items-center gap-2 flex-1">
+                                  <ChevronDown
+                                    className={`h-4 w-4 text-muted-foreground transition-transform flex-shrink-0 ${
+                                      isExpanded ? "rotate-180" : ""
+                                    }`}
+                                  />
+                                  <div className="flex-1 min-w-0">
+                                    <CardTitle className="text-sm sm:text-base">
+                                      {session.visitor.firstName}{" "}
+                                      {session.visitor.lastName} - Session{" "}
+                                      {formatDateTime(session.createdAt)}
+                                    </CardTitle>
+                                    <CardDescription className="text-xs mt-1">
+                                      Status: {session.status}
+                                      {!isExpanded && (
+                                        <span className="ml-2">
+                                          •{" "}
+                                          {session.reason.length > 40
+                                            ? session.reason.substring(0, 40) +
+                                              "..."
+                                            : session.reason}
+                                        </span>
+                                      )}
+                                    </CardDescription>
                                   </div>
-                                  <Badge
-                                    variant={
-                                      isExited
-                                        ? "default"
-                                        : session.status === "test_drive"
-                                          ? "secondary"
-                                          : "outline"
-                                    }
-                                    className="text-xs flex-shrink-0"
-                                  >
-                                    {session.status}
-                                  </Badge>
                                 </div>
-                              </CardHeader>
-                            </CollapsibleTrigger>
-                            <CollapsibleContent>
-                              <CardContent className="space-y-4 pt-4">
-                                <div className="flex items-start gap-3 p-3 bg-muted/30 rounded-lg">
-                                  <span className="text-xs font-semibold text-muted-foreground uppercase min-w-fit">
-                                    Reason:
-                                  </span>
-                                  <p className="text-xs sm:text-sm text-muted-foreground break-words flex-1">
-                                    {session.reason}
-                                  </p>
-                                </div>
+                                <Badge
+                                  variant={
+                                    isExited
+                                      ? "default"
+                                      : session.status === "test_drive"
+                                        ? "secondary"
+                                        : "outline"
+                                  }
+                                  className="text-xs flex-shrink-0"
+                                >
+                                  {session.status}
+                                </Badge>
+                              </div>
+                            </CardHeader>
+                          </CollapsibleTrigger>
+                          <CollapsibleContent>
+                            <CardContent className="space-y-4 pt-4">
+                              <div className="flex items-start gap-3 p-3 bg-muted/30 rounded-lg">
+                                <span className="text-xs font-semibold text-muted-foreground uppercase min-w-fit">
+                                  Reason:
+                                </span>
+                                <p className="text-xs sm:text-sm text-muted-foreground break-words flex-1">
+                                  {session.reason}
+                                </p>
+                              </div>
 
-                                {session.visitorInterests &&
-                                  session.visitorInterests.length > 0 && (
-                                    <div>
-                                      <p className="text-xs sm:text-sm font-semibold mb-2">
-                                        Vehicle Interests:
-                                      </p>
-                                      <div className="flex flex-wrap gap-2">
-                                        {session.visitorInterests.map(
-                                          (interest) => (
-                                            <Badge
-                                              key={interest.id}
-                                              variant="secondary"
-                                              className="text-xs"
-                                            >
-                                              {interest.model.category.name} -{" "}
-                                              {interest.model.name}
-                                            </Badge>
-                                          ),
-                                        )}
-                                      </div>
-                                    </div>
-                                  )}
-
-                                {hasTestDrives && (
+                              {session.visitorInterests &&
+                                session.visitorInterests.length > 0 && (
                                   <div>
                                     <p className="text-xs sm:text-sm font-semibold mb-2">
-                                      Test Drives ({session.testDrives.length}):
+                                      Vehicle Interests:
                                     </p>
-                                    <div className="space-y-2">
-                                      {session.testDrives.map((td) => (
-                                        <div
-                                          key={td.id}
-                                          className="text-xs sm:text-sm pl-4 border-l-2 border-primary/30"
-                                        >
-                                          <p className="font-medium">
-                                            {td.model.category.name} -{" "}
-                                            {td.model.name}
-                                          </p>
-                                        </div>
-                                      ))}
+                                    <div className="flex flex-wrap gap-2">
+                                      {session.visitorInterests.map(
+                                        (interest) => (
+                                          <Badge
+                                            key={interest.id}
+                                            variant="secondary"
+                                            className="text-xs"
+                                          >
+                                            {interest.model.category.name} -{" "}
+                                            {interest.model.name}
+                                          </Badge>
+                                        ),
+                                      )}
                                     </div>
                                   </div>
                                 )}
 
-                                {!isExited && (
-                                  <div className="flex flex-col sm:flex-row gap-2 pt-2 border-t">
-                                    <Button
-                                      variant="outline"
-                                      size="sm"
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        setSelectedSession(session);
-                                        setTestDriveDialogOpen(true);
-                                      }}
-                                      className="w-full sm:w-auto text-xs sm:text-sm"
-                                    >
-                                      <Car className="mr-2 h-3 w-3 sm:h-4 sm:w-4" />
-                                      Add Test Drive
-                                    </Button>
-                                    <Button
-                                      variant="outline"
-                                      size="sm"
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        handleExitSession(session);
-                                      }}
-                                      disabled={sessionSubmitting}
-                                      className="w-full sm:w-auto text-xs sm:text-sm"
-                                    >
-                                      {sessionSubmitting ? (
-                                        <Loader2 className="mr-2 h-3 w-3 sm:h-4 sm:w-4 animate-spin" />
-                                      ) : (
-                                        <LogOut className="mr-2 h-3 w-3 sm:h-4 sm:w-4" />
-                                      )}
-                                      Exit Session
-                                    </Button>
+                              {hasTestDrives && (
+                                <div>
+                                  <p className="text-xs sm:text-sm font-semibold mb-2">
+                                    Test Drives ({session.testDrives.length}):
+                                  </p>
+                                  <div className="space-y-2">
+                                    {session.testDrives.map((td) => (
+                                      <div
+                                        key={td.id}
+                                        className="text-xs sm:text-sm pl-4 border-l-2 border-primary/30"
+                                      >
+                                        <p className="font-medium">
+                                          {td.model.category.name} -{" "}
+                                          {td.model.name}
+                                        </p>
+                                      </div>
+                                    ))}
                                   </div>
-                                )}
-                              </CardContent>
-                            </CollapsibleContent>
-                          </Collapsible>
-                        </Card>
-                      );
-                    })}
-                </div>
-                {(() => {
-                  const displayedSessions = selectedVisitorId
-                    ? allSessions.filter(
-                        (s: Session) => s.visitor.id === selectedVisitorId,
-                      )
-                    : allSessions;
-                  const hasMoreToShow =
-                    displayedSessions.length > sessionsDisplayedCount ||
-                    sessionsHasMore;
+                                </div>
+                              )}
 
-                  return (
-                    hasMoreToShow && (
-                      <div className="flex justify-center pt-4">
-                        <Button
-                          variant="outline"
-                          onClick={handleLoadMoreSessions}
-                          disabled={sessionsLoadingMore}
-                          className="w-full sm:w-auto"
-                        >
-                          {sessionsLoadingMore ? (
-                            <>
-                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                              Loading...
-                            </>
-                          ) : (
-                            `See More (${
-                              sessionsHasMore
-                                ? sessionsTotal - sessionsDisplayedCount
-                                : displayedSessions.length -
-                                  sessionsDisplayedCount
-                            } remaining)`
-                          )}
-                        </Button>
-                      </div>
-                    )
-                  );
-                })()}
+                              {!isExited && (
+                                <div className="flex flex-col sm:flex-row gap-2 pt-2 border-t">
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setSelectedSession(session);
+                                      setTestDriveDialogOpen(true);
+                                    }}
+                                    className="w-full sm:w-auto text-xs sm:text-sm"
+                                  >
+                                    <Car className="mr-2 h-3 w-3 sm:h-4 sm:w-4" />
+                                    Add Test Drive
+                                  </Button>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleExitSession(session);
+                                    }}
+                                    disabled={sessionSubmitting}
+                                    className="w-full sm:w-auto text-xs sm:text-sm"
+                                  >
+                                    {sessionSubmitting ? (
+                                      <Loader2 className="mr-2 h-3 w-3 sm:h-4 sm:w-4 animate-spin" />
+                                    ) : (
+                                      <LogOut className="mr-2 h-3 w-3 sm:h-4 sm:w-4" />
+                                    )}
+                                    Exit Session
+                                  </Button>
+                                </div>
+                              )}
+                            </CardContent>
+                          </CollapsibleContent>
+                        </Collapsible>
+                      </Card>
+                    );
+                  })}
+                </div>
+                {sessionTotalPages > 1 && (
+                  <div className="flex flex-wrap items-center justify-center gap-2 pt-4">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleSessionPageChange(sessionPage - 1)}
+                      disabled={sessionPage === 1 || sessionPageLoading}
+                      className="w-auto"
+                    >
+                      Previous
+                    </Button>
+
+                    {sessionPageNumbers.map((page) => (
+                      <Button
+                        key={page}
+                        variant={page === sessionPage ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => handleSessionPageChange(page)}
+                        disabled={sessionPageLoading}
+                        className="w-auto"
+                      >
+                        {page}
+                      </Button>
+                    ))}
+
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleSessionPageChange(sessionPage + 1)}
+                      disabled={
+                        sessionPage === sessionTotalPages || sessionPageLoading
+                      }
+                      className="w-auto"
+                    >
+                      Next
+                    </Button>
+                  </div>
+                )}
               </>
             )}
           </TabsContent>
