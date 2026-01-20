@@ -1217,8 +1217,22 @@ export default function DigitalEnquiryPage() {
               </Button>
             </div>
           </form>
+        </DialogContent>
+      </Dialog>
 
-          <form onSubmit={handleBulkUpload} className="space-y-4 mt-4">
+      <Dialog
+        open={bulkUploadDialogOpen}
+        onOpenChange={setBulkUploadDialogOpen}
+      >
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Bulk Upload Digital Enquiries</DialogTitle>
+            <DialogDescription>
+              Upload multiple enquiries at once using an Excel file
+            </DialogDescription>
+          </DialogHeader>
+
+          <form onSubmit={handleBulkUpload} className="space-y-4">
             {uploadError && (
               <div className="bg-destructive/10 text-destructive text-xs sm:text-sm p-3 rounded">
                 {uploadError}
@@ -1319,10 +1333,7 @@ export default function DigitalEnquiryPage() {
                       Uploading...
                     </>
                   ) : (
-                    <>
-                      <Upload className="mr-2 h-4 w-4" />
-                      Upload & Process
-                    </>
+                    "Upload Enquiries"
                   )}
                 </Button>
               )}
