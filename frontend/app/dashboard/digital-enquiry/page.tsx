@@ -103,7 +103,9 @@ export default function DigitalEnquiryPage() {
         <Card>
           <CardContent className="pt-6">
             <div className="text-center py-12 text-muted-foreground">
-              <p className="text-base">You don't have permission to access this page.</p>
+              <p className="text-base">
+                You don't have permission to access this page.
+              </p>
             </div>
           </CardContent>
         </Card>
@@ -118,7 +120,7 @@ export default function DigitalEnquiryPage() {
   const [hasMore, setHasMore] = useState(false);
   const [totalEnquiries, setTotalEnquiries] = useState(0);
   const [phoneLookups, setPhoneLookups] = useState<Record<string, PhoneLookup>>(
-    {}
+    {},
   );
   const fetchingRef = useRef(false);
   const mountedRef = useRef(true);
@@ -148,10 +150,10 @@ export default function DigitalEnquiryPage() {
   const [leadSources, setLeadSources] = useState<LeadSource[]>([]);
   const [categories, setCategories] = useState<VehicleCategory[]>([]);
   const [openModelCategories, setOpenModelCategories] = useState<Set<string>>(
-    new Set()
+    new Set(),
   );
   const [expandedVariants, setExpandedVariants] = useState<Set<string>>(
-    new Set()
+    new Set(),
   );
 
   const [formData, setFormData] = useState({
@@ -173,19 +175,19 @@ export default function DigitalEnquiryPage() {
     // Try to load from cache first - use longer cache duration
     const cached = getCachedData<DigitalEnquiry[]>(
       "cache_digital_enquiry",
-      120000 // 2 minutes
+      120000, // 2 minutes
     );
     if (cached) {
       setEnquiries(cached);
       setLoading(false);
-      
+
       // Check cache age to decide if we need to refresh
       try {
         const cacheEntry = JSON.parse(
-          sessionStorage.getItem("cache_digital_enquiry") || "{}"
+          sessionStorage.getItem("cache_digital_enquiry") || "{}",
         );
         const cacheAge = Date.now() - (cacheEntry.timestamp || 0);
-        
+
         // If cache is fresh (< 30 seconds), don't fetch
         if (cacheAge < 30000) {
           // Cache is fresh, no need to fetch
@@ -216,7 +218,7 @@ export default function DigitalEnquiryPage() {
   const fetchData = async (
     skip: number = 0,
     append: boolean = false,
-    background: boolean = false
+    background: boolean = false,
   ) => {
     // Prevent duplicate fetches
     if (fetchingRef.current && !append) return;
@@ -230,7 +232,7 @@ export default function DigitalEnquiryPage() {
       }
 
       const response = await apiClient.get(
-        `/digital-enquiry?limit=20&skip=${skip}`
+        `/digital-enquiry?limit=20&skip=${skip}`,
       );
 
       // Append or replace enquiries
@@ -256,7 +258,7 @@ export default function DigitalEnquiryPage() {
           // Extract unique phone numbers
           const phoneNumbers = [
             ...new Set(
-              newEnquiries.map((e: DigitalEnquiry) => e.whatsappNumber)
+              newEnquiries.map((e: DigitalEnquiry) => e.whatsappNumber),
             ),
           ];
 
@@ -328,15 +330,18 @@ export default function DigitalEnquiryPage() {
         const newEnquiry = response.data.enquiry;
 
         // 1. IMMEDIATE UI UPDATE - Add enquiry to list immediately
-        setEnquiries(prev => [newEnquiry, ...prev]);
+        setEnquiries((prev) => [newEnquiry, ...prev]);
 
         // 2. UPDATE CACHE
         const cachedEnquiries = getCachedData<DigitalEnquiry[]>(
           "cache_digital_enquiry",
-          120000
+          120000,
         );
         if (cachedEnquiries) {
-          setCachedData("cache_digital_enquiry", [newEnquiry, ...cachedEnquiries]);
+          setCachedData("cache_digital_enquiry", [
+            newEnquiry,
+            ...cachedEnquiries,
+          ]);
         } else {
           setCachedData("cache_digital_enquiry", [newEnquiry]);
         }
@@ -374,7 +379,7 @@ export default function DigitalEnquiryPage() {
     setUploadResults(null);
 
     const fileInput = e.currentTarget.querySelector(
-      'input[type="file"]'
+      'input[type="file"]',
     ) as HTMLInputElement;
     const file = fileInput?.files?.[0];
 
@@ -388,7 +393,7 @@ export default function DigitalEnquiryPage() {
     const fileName = file.name.toLowerCase();
     if (!fileName.endsWith(".xlsx") && !fileName.endsWith(".xls")) {
       setUploadError(
-        "Invalid file type. Please upload an Excel file (.xlsx or .xls)"
+        "Invalid file type. Please upload an Excel file (.xlsx or .xls)",
       );
       setUploading(false);
       return;
@@ -420,12 +425,12 @@ export default function DigitalEnquiryPage() {
       const firstRow = rows[0];
       const requiredColumns = ["Date", "Name", "WhatsApp Number", "Model"];
       const missingColumns = requiredColumns.filter(
-        (col) => !(col in firstRow)
+        (col) => !(col in firstRow),
       );
 
       if (missingColumns.length > 0) {
         setUploadError(
-          `Missing required columns: ${missingColumns.join(", ")}`
+          `Missing required columns: ${missingColumns.join(", ")}`,
         );
         setUploading(false);
         return;
@@ -448,7 +453,7 @@ export default function DigitalEnquiryPage() {
       setUploadError(
         error.response?.data?.error ||
           error.response?.data?.details ||
-          "Failed to upload file"
+          "Failed to upload file",
       );
     } finally {
       setUploading(false);
@@ -474,7 +479,7 @@ export default function DigitalEnquiryPage() {
 
   const handleUpdateLeadScope = async (
     enquiryId: string,
-    newLeadScope: string
+    newLeadScope: string,
   ) => {
     if (updatingLeadScope) return;
 
@@ -490,20 +495,20 @@ export default function DigitalEnquiryPage() {
           prev.map((enquiry) =>
             enquiry.id === enquiryId
               ? { ...enquiry, leadScope: newLeadScope }
-              : enquiry
-          )
+              : enquiry,
+          ),
         );
 
         // 2. UPDATE CACHE
         const cachedEnquiries = getCachedData<DigitalEnquiry[]>(
           "cache_digital_enquiry",
-          120000
+          120000,
         );
         if (cachedEnquiries) {
-          const updatedCache = cachedEnquiries.map(enquiry =>
+          const updatedCache = cachedEnquiries.map((enquiry) =>
             enquiry.id === enquiryId
               ? { ...enquiry, leadScope: newLeadScope }
-              : enquiry
+              : enquiry,
           );
           setCachedData("cache_digital_enquiry", updatedCache);
         }
@@ -606,7 +611,7 @@ export default function DigitalEnquiryPage() {
                   <tbody>
                     {enquiries.slice(0, displayedCount).map((enquiry) => {
                       const initials = `${enquiry.firstName.charAt(
-                        0
+                        0,
                       )}${enquiry.lastName.charAt(0)}`.toUpperCase();
 
                       return (
@@ -671,11 +676,11 @@ export default function DigitalEnquiryPage() {
                                 <>
                                   <Badge
                                     className={getLeadScopeColor(
-                                      enquiry.leadScope
+                                      enquiry.leadScope,
                                     )}
                                     variant="secondary"
                                   >
-                                    {enquiry.leadScope.toUpperCase()}
+                                    {enquiry.leadScope?.toUpperCase() || "N/A"}
                                   </Badge>
                                   <Button
                                     variant="ghost"

@@ -60,6 +60,7 @@ export default function UserManagementPage() {
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [userToDelete, setUserToDelete] = useState<string | null>(null);
+  const [resetPassword, setResetPassword] = useState<string>("");
 
   const [newUser, setNewUser] = useState({
     email: "",
@@ -107,12 +108,12 @@ export default function UserManagementPage() {
         ...newUser,
         permissions: editPermissions,
       });
-      
+
       if (response.data.success) {
         const newUserData = response.data.user;
 
         // 1. IMMEDIATE UI UPDATE - Add user to list immediately
-        setUsers(prev => [newUserData, ...prev]);
+        setUsers((prev) => [newUserData, ...prev]);
 
         // Reset form
         setNewUser({ email: "", password: "", role: "user" });
@@ -143,18 +144,21 @@ export default function UserManagementPage() {
 
   const handleEditUser = (user: User) => {
     setSelectedUser(user);
-    setEditPermissions(user.permissions || {
-      dashboard: false,
-      dailyWalkinsVisitors: false,
-      dailyWalkinsSessions: false,
-      digitalEnquiry: false,
-      fieldInquiry: false,
-      deliveryUpdate: false,
-      settingsProfile: false,
-      settingsVehicleModels: false,
-      settingsLeadSources: false,
-      settingsWhatsApp: false,
-    });
+    setResetPassword("");
+    setEditPermissions(
+      user.permissions || {
+        dashboard: false,
+        dailyWalkinsVisitors: false,
+        dailyWalkinsSessions: false,
+        digitalEnquiry: false,
+        fieldInquiry: false,
+        deliveryUpdate: false,
+        settingsProfile: false,
+        settingsVehicleModels: false,
+        settingsLeadSources: false,
+        settingsWhatsApp: false,
+      },
+    );
     setEditDialogOpen(true);
   };
 
@@ -162,25 +166,35 @@ export default function UserManagementPage() {
     if (!selectedUser) return;
     setSaving(true);
     try {
-      const response = await apiClient.put(`/auth/users/${selectedUser.id}`, {
+      const updatePayload: any = {
         isActive: selectedUser.isActive,
         permissions: editPermissions,
-      });
-      
+      };
+
+      // Include password only if it's being reset
+      if (resetPassword.trim()) {
+        updatePayload.password = resetPassword;
+      }
+
+      const response = await apiClient.put(
+        `/auth/users/${selectedUser.id}`,
+        updatePayload,
+      );
+
       if (response.data.success) {
         const updatedUser = response.data.user;
 
         // 1. IMMEDIATE UI UPDATE - Update user in list immediately
-        setUsers(prev =>
-          prev.map(u => u.id === selectedUser.id ? updatedUser : u)
+        setUsers((prev) =>
+          prev.map((u) => (u.id === selectedUser.id ? updatedUser : u)),
         );
 
         setEditDialogOpen(false);
         setSelectedUser(null);
-        
+
         // Refresh permissions if current user was updated
         refreshPermissions();
-        
+
         // 2. BACKGROUND REFETCH - Ensure consistency
         fetchUsers();
       }
@@ -197,13 +211,13 @@ export default function UserManagementPage() {
     setSaving(true);
     try {
       await apiClient.delete(`/auth/users/${userToDelete}`);
-      
+
       // 1. IMMEDIATE UI UPDATE - Remove user from list immediately
-      setUsers(prev => prev.filter(u => u.id !== userToDelete));
+      setUsers((prev) => prev.filter((u) => u.id !== userToDelete));
 
       setDeleteDialogOpen(false);
       setUserToDelete(null);
-      
+
       // 2. BACKGROUND REFETCH - Ensure consistency
       fetchUsers();
     } catch (error) {
@@ -234,40 +248,44 @@ export default function UserManagementPage() {
   }
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6 md:space-y-8 px-2 sm:px-4 md:px-6 lg:px-8">
       <div className="pb-2 border-b">
-        <h1 className="text-3xl sm:text-4xl font-bold bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent">
+        <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent">
           User Management
         </h1>
-        <p className="text-sm sm:text-base text-muted-foreground mt-2">
+        <p className="text-xs sm:text-sm md:text-base text-muted-foreground mt-2">
           Manage users, roles, and permissions
         </p>
       </div>
 
-      <Card>
+      <Card className="mx-2 sm:mx-0">
         <CardHeader>
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
-              <CardTitle>Users</CardTitle>
-              <CardDescription>Manage all system users</CardDescription>
+              <CardTitle className="text-lg sm:text-xl">Users</CardTitle>
+              <CardDescription className="text-xs sm:text-sm">
+                Manage all system users
+              </CardDescription>
             </div>
             <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
               <DialogTrigger asChild>
-                <Button>
+                <Button className="w-full sm:w-auto">
                   <Plus className="mr-2 h-4 w-4" />
                   Create User
                 </Button>
               </DialogTrigger>
-              <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+              <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto p-4 sm:p-6">
                 <DialogHeader>
-                  <DialogTitle>Create New User</DialogTitle>
-                  <DialogDescription>
+                  <DialogTitle className="text-lg sm:text-xl">
+                    Create New User
+                  </DialogTitle>
+                  <DialogDescription className="text-xs sm:text-sm">
                     Create a new user account with custom permissions
                   </DialogDescription>
                 </DialogHeader>
                 <form onSubmit={handleCreateUser} className="space-y-4 mt-4">
                   <div className="space-y-2">
-                    <Label>Email</Label>
+                    <Label className="text-sm sm:text-base">Email</Label>
                     <Input
                       type="email"
                       value={newUser.email}
@@ -275,10 +293,11 @@ export default function UserManagementPage() {
                         setNewUser({ ...newUser, email: e.target.value })
                       }
                       required
+                      className="text-sm"
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label>Password</Label>
+                    <Label className="text-sm sm:text-base">Password</Label>
                     <Input
                       type="password"
                       value={newUser.password}
@@ -286,12 +305,13 @@ export default function UserManagementPage() {
                         setNewUser({ ...newUser, password: e.target.value })
                       }
                       required
+                      className="text-sm"
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label>Role</Label>
+                    <Label className="text-sm sm:text-base">Role</Label>
                     <select
-                      className="w-full p-2 border rounded"
+                      className="w-full p-2 border rounded text-sm"
                       value={newUser.role}
                       onChange={(e) =>
                         setNewUser({ ...newUser, role: e.target.value })
@@ -302,18 +322,26 @@ export default function UserManagementPage() {
                     </select>
                   </div>
                   <div className="space-y-4 pt-4 border-t">
-                    <Label className="text-lg font-semibold">Permissions</Label>
-                    <div className="grid grid-cols-2 gap-4">
+                    <Label className="text-base sm:text-lg font-semibold">
+                      Permissions
+                    </Label>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div className="space-y-3">
                         <div className="flex items-center justify-between">
-                          <Label>Dashboard</Label>
+                          <Label className="text-sm sm:text-base">
+                            Dashboard
+                          </Label>
                           <Switch
                             checked={editPermissions.dashboard}
-                            onCheckedChange={() => togglePermission("dashboard")}
+                            onCheckedChange={() =>
+                              togglePermission("dashboard")
+                            }
                           />
                         </div>
                         <div className="flex items-center justify-between">
-                          <Label>Daily Walkins - Visitors</Label>
+                          <Label className="text-sm sm:text-base">
+                            Daily Walkins - Visitors
+                          </Label>
                           <Switch
                             checked={editPermissions.dailyWalkinsVisitors}
                             onCheckedChange={() =>
@@ -322,7 +350,9 @@ export default function UserManagementPage() {
                           />
                         </div>
                         <div className="flex items-center justify-between">
-                          <Label>Daily Walkins - Sessions</Label>
+                          <Label className="text-sm sm:text-base">
+                            Daily Walkins - Sessions
+                          </Label>
                           <Switch
                             checked={editPermissions.dailyWalkinsSessions}
                             onCheckedChange={() =>
@@ -331,7 +361,9 @@ export default function UserManagementPage() {
                           />
                         </div>
                         <div className="flex items-center justify-between">
-                          <Label>Digital Enquiry</Label>
+                          <Label className="text-sm sm:text-base">
+                            Digital Enquiry
+                          </Label>
                           <Switch
                             checked={editPermissions.digitalEnquiry}
                             onCheckedChange={() =>
@@ -340,7 +372,9 @@ export default function UserManagementPage() {
                           />
                         </div>
                         <div className="flex items-center justify-between">
-                          <Label>Field Inquiry</Label>
+                          <Label className="text-sm sm:text-base">
+                            Field Inquiry
+                          </Label>
                           <Switch
                             checked={editPermissions.fieldInquiry}
                             onCheckedChange={() =>
@@ -349,7 +383,9 @@ export default function UserManagementPage() {
                           />
                         </div>
                         <div className="flex items-center justify-between">
-                          <Label>Delivery Update</Label>
+                          <Label className="text-sm sm:text-base">
+                            Delivery Update
+                          </Label>
                           <Switch
                             checked={editPermissions.deliveryUpdate}
                             onCheckedChange={() =>
@@ -360,7 +396,9 @@ export default function UserManagementPage() {
                       </div>
                       <div className="space-y-3">
                         <div className="flex items-center justify-between">
-                          <Label>Settings - Profile</Label>
+                          <Label className="text-sm sm:text-base">
+                            Settings - Profile
+                          </Label>
                           <Switch
                             checked={editPermissions.settingsProfile}
                             onCheckedChange={() =>
@@ -369,7 +407,9 @@ export default function UserManagementPage() {
                           />
                         </div>
                         <div className="flex items-center justify-between">
-                          <Label>Settings - Vehicle Models</Label>
+                          <Label className="text-sm sm:text-base">
+                            Settings - Vehicle Models
+                          </Label>
                           <Switch
                             checked={editPermissions.settingsVehicleModels}
                             onCheckedChange={() =>
@@ -378,7 +418,9 @@ export default function UserManagementPage() {
                           />
                         </div>
                         <div className="flex items-center justify-between">
-                          <Label>Settings - Lead Sources</Label>
+                          <Label className="text-sm sm:text-base">
+                            Settings - Lead Sources
+                          </Label>
                           <Switch
                             checked={editPermissions.settingsLeadSources}
                             onCheckedChange={() =>
@@ -387,7 +429,9 @@ export default function UserManagementPage() {
                           />
                         </div>
                         <div className="flex items-center justify-between">
-                          <Label>Settings - WhatsApp</Label>
+                          <Label className="text-sm sm:text-base">
+                            Settings - WhatsApp
+                          </Label>
                           <Switch
                             checked={editPermissions.settingsWhatsApp}
                             onCheckedChange={() =>
@@ -398,15 +442,21 @@ export default function UserManagementPage() {
                       </div>
                     </div>
                   </div>
-                  <div className="flex justify-end gap-2 pt-4">
+                  <div className="flex flex-col sm:flex-row justify-end gap-2 pt-4">
                     <Button
                       type="button"
                       variant="outline"
                       onClick={() => setCreateDialogOpen(false)}
+                      className="w-full sm:w-auto"
                     >
                       Cancel
                     </Button>
-                    <Button type="submit" disabled={saving}>
+                    <Button
+                      type="submit"
+                      disabled={saving}
+                      className="w-full sm:w-auto"
+                    >
+                      \
                       {saving ? (
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                       ) : (
@@ -420,74 +470,103 @@ export default function UserManagementPage() {
             </Dialog>
           </div>
         </CardHeader>
-        <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Email</TableHead>
-                <TableHead>Role</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Dealership</TableHead>
-                <TableHead>Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {users.map((user) => (
-                <TableRow key={user.id}>
-                  <TableCell>{user.email}</TableCell>
-                  <TableCell>
-                    <Badge variant={user.role === "admin" ? "default" : "secondary"}>
-                      {user.role}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant={user.isActive ? "default" : "destructive"}>
-                      {user.isActive ? "Active" : "Disabled"}
-                    </Badge>
-                  </TableCell>
-                  <TableCell>
-                    {user.dealership?.name || "N/A"}
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex gap-2">
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => handleEditUser(user)}
-                      >
-                        Edit
-                      </Button>
-                      <Button
-                        size="sm"
-                        variant="destructive"
-                        onClick={() => {
-                          setUserToDelete(user.id);
-                          setDeleteDialogOpen(true);
-                        }}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </TableCell>
+        <CardContent className="p-0 sm:p-6">
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="text-xs sm:text-sm">Email</TableHead>
+                  <TableHead className="text-xs sm:text-sm">Role</TableHead>
+                  <TableHead className="text-xs sm:text-sm">Status</TableHead>
+                  <TableHead className="text-xs sm:text-sm hidden md:table-cell">
+                    Dealership
+                  </TableHead>
+                  <TableHead className="text-xs sm:text-sm">Actions</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {users
+                  .sort((a, b) => {
+                    // Sort admins to the top
+                    if (a.role === "admin" && b.role !== "admin") return -1;
+                    if (a.role !== "admin" && b.role === "admin") return 1;
+                    return 0;
+                  })
+                  .map((user) => (
+                    <TableRow key={user.id}>
+                      <TableCell className="text-xs sm:text-sm">
+                        {user.email}
+                      </TableCell>
+                      <TableCell>
+                        <Badge
+                          variant={
+                            user.role === "admin" ? "default" : "secondary"
+                          }
+                          className="text-xs"
+                        >
+                          {user.role}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <Badge
+                          variant={user.isActive ? "default" : "destructive"}
+                          className="text-xs"
+                        >
+                          {user.isActive ? "Active" : "Disabled"}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-xs sm:text-sm hidden md:table-cell">
+                        {user.dealership?.name || "N/A"}
+                      </TableCell>
+                      <TableCell>
+                        {user.role === "admin" ? (
+                          <span className="text-xs text-muted-foreground">
+                            Protected
+                          </span>
+                        ) : (
+                          <div className="flex gap-2">
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => handleEditUser(user)}
+                            >
+                              Edit
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="destructive"
+                              onClick={() => {
+                                setUserToDelete(user.id);
+                                setDeleteDialogOpen(true);
+                              }}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+              </TableBody>
+            </Table>
+          </div>
         </CardContent>
       </Card>
 
       {/* Edit User Dialog */}
       <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto p-4 sm:p-6">
           <DialogHeader>
-            <DialogTitle>Edit User: {selectedUser?.email}</DialogTitle>
-            <DialogDescription>
-              Update user permissions and status
+            <DialogTitle className="text-lg sm:text-xl">
+              Edit User: {selectedUser?.email}
+            </DialogTitle>
+            <DialogDescription className="text-xs sm:text-sm">
+              Update user permissions, status, and reset password
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 mt-4">
             <div className="flex items-center justify-between">
-              <Label>Active Status</Label>
+              <Label className="text-sm sm:text-base">Active Status</Label>
               <Switch
                 checked={selectedUser?.isActive || false}
                 onCheckedChange={(checked) => {
@@ -497,19 +576,45 @@ export default function UserManagementPage() {
                 }}
               />
             </div>
+
+            {/* Password Reset Section */}
+            <div className="space-y-2 pt-2 border-t">
+              <Label
+                htmlFor="resetPassword"
+                className="text-sm sm:text-base font-semibold"
+              >
+                Reset Password (Optional)
+              </Label>
+              <Input
+                id="resetPassword"
+                type="password"
+                placeholder="Enter new password to reset"
+                value={resetPassword}
+                onChange={(e) => setResetPassword(e.target.value)}
+                className="text-sm"
+              />
+              <p className="text-xs text-muted-foreground">
+                Leave blank to keep current password
+              </p>
+            </div>
+
             <div className="space-y-4 pt-4 border-t">
-              <Label className="text-lg font-semibold">Permissions</Label>
-              <div className="grid grid-cols-2 gap-4">
+              <Label className="text-base sm:text-lg font-semibold">
+                Permissions
+              </Label>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
-                    <Label>Dashboard</Label>
+                    <Label className="text-sm sm:text-base">Dashboard</Label>
                     <Switch
                       checked={editPermissions.dashboard}
                       onCheckedChange={() => togglePermission("dashboard")}
                     />
                   </div>
                   <div className="flex items-center justify-between">
-                    <Label>Daily Walkins - Visitors</Label>
+                    <Label className="text-sm sm:text-base">
+                      Daily Walkins - Visitors
+                    </Label>
                     <Switch
                       checked={editPermissions.dailyWalkinsVisitors}
                       onCheckedChange={() =>
@@ -518,7 +623,9 @@ export default function UserManagementPage() {
                     />
                   </div>
                   <div className="flex items-center justify-between">
-                    <Label>Daily Walkins - Sessions</Label>
+                    <Label className="text-sm sm:text-base">
+                      Daily Walkins - Sessions
+                    </Label>
                     <Switch
                       checked={editPermissions.dailyWalkinsSessions}
                       onCheckedChange={() =>
@@ -527,21 +634,27 @@ export default function UserManagementPage() {
                     />
                   </div>
                   <div className="flex items-center justify-between">
-                    <Label>Digital Enquiry</Label>
+                    <Label className="text-sm sm:text-base">
+                      Digital Enquiry
+                    </Label>
                     <Switch
                       checked={editPermissions.digitalEnquiry}
                       onCheckedChange={() => togglePermission("digitalEnquiry")}
                     />
                   </div>
                   <div className="flex items-center justify-between">
-                    <Label>Field Inquiry</Label>
+                    <Label className="text-sm sm:text-base">
+                      Field Inquiry
+                    </Label>
                     <Switch
                       checked={editPermissions.fieldInquiry}
                       onCheckedChange={() => togglePermission("fieldInquiry")}
                     />
                   </div>
                   <div className="flex items-center justify-between">
-                    <Label>Delivery Update</Label>
+                    <Label className="text-sm sm:text-base">
+                      Delivery Update
+                    </Label>
                     <Switch
                       checked={editPermissions.deliveryUpdate}
                       onCheckedChange={() => togglePermission("deliveryUpdate")}
@@ -550,7 +663,9 @@ export default function UserManagementPage() {
                 </div>
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
-                    <Label>Settings - Profile</Label>
+                    <Label className="text-sm sm:text-base">
+                      Settings - Profile
+                    </Label>
                     <Switch
                       checked={editPermissions.settingsProfile}
                       onCheckedChange={() =>
@@ -559,7 +674,9 @@ export default function UserManagementPage() {
                     />
                   </div>
                   <div className="flex items-center justify-between">
-                    <Label>Settings - Vehicle Models</Label>
+                    <Label className="text-sm sm:text-base">
+                      Settings - Vehicle Models
+                    </Label>
                     <Switch
                       checked={editPermissions.settingsVehicleModels}
                       onCheckedChange={() =>
@@ -568,7 +685,9 @@ export default function UserManagementPage() {
                     />
                   </div>
                   <div className="flex items-center justify-between">
-                    <Label>Settings - Lead Sources</Label>
+                    <Label className="text-sm sm:text-base">
+                      Settings - Lead Sources
+                    </Label>
                     <Switch
                       checked={editPermissions.settingsLeadSources}
                       onCheckedChange={() =>
@@ -577,7 +696,9 @@ export default function UserManagementPage() {
                     />
                   </div>
                   <div className="flex items-center justify-between">
-                    <Label>Settings - WhatsApp</Label>
+                    <Label className="text-sm sm:text-base">
+                      Settings - WhatsApp
+                    </Label>
                     <Switch
                       checked={editPermissions.settingsWhatsApp}
                       onCheckedChange={() =>
@@ -588,14 +709,19 @@ export default function UserManagementPage() {
                 </div>
               </div>
             </div>
-            <div className="flex justify-end gap-2 pt-4">
+            <div className="flex flex-col sm:flex-row justify-end gap-2 pt-4">
               <Button
                 variant="outline"
                 onClick={() => setEditDialogOpen(false)}
+                className="w-full sm:w-auto"
               >
                 Cancel
               </Button>
-              <Button onClick={handleUpdateUser} disabled={saving}>
+              <Button
+                onClick={handleUpdateUser}
+                disabled={saving}
+                className="w-full sm:w-auto"
+              >
                 {saving ? (
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                 ) : (
@@ -610,22 +736,30 @@ export default function UserManagementPage() {
 
       {/* Delete Confirmation Dialog */}
       <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
-        <DialogContent>
+        <DialogContent className="p-4 sm:p-6">
           <DialogHeader>
-            <DialogTitle>Delete User</DialogTitle>
-            <DialogDescription>
+            <DialogTitle className="text-lg sm:text-xl">
+              Delete User
+            </DialogTitle>
+            <DialogDescription className="text-xs sm:text-sm">
               Are you sure you want to delete this user? This action cannot be
               undone.
             </DialogDescription>
           </DialogHeader>
-          <div className="flex justify-end gap-2 mt-4">
+          <div className="flex flex-col sm:flex-row justify-end gap-2 mt-4">
             <Button
               variant="outline"
               onClick={() => setDeleteDialogOpen(false)}
+              className="w-full sm:w-auto"
             >
               Cancel
             </Button>
-            <Button variant="destructive" onClick={handleDeleteUser} disabled={saving}>
+            <Button
+              variant="destructive"
+              onClick={handleDeleteUser}
+              disabled={saving}
+              className="w-full sm:w-auto"
+            >
               {saving ? (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               ) : (

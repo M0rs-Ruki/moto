@@ -64,7 +64,7 @@ router.post(
       throw new Error(
         `Failed to generate token: ${
           error instanceof Error ? error.message : String(error)
-        }`
+        }`,
       );
     }
 
@@ -83,7 +83,7 @@ router.post(
         permissions: user.permissions || null,
       },
     });
-  })
+  }),
 );
 
 // Register
@@ -91,7 +91,7 @@ router.post(
   "/register",
   upload.single("profilePicture"),
   asyncHandler(async (req: Request, res: Response) => {
-    const { email, password, dealershipName, dealershipLocation, theme } =
+    const { email, password, dealershipName, dealershipLocation, theme, role } =
       req.body;
     const profilePictureFile = req.file;
 
@@ -117,6 +117,14 @@ router.post(
     // Check if this is the first user (set as admin)
     const userCount = await prisma.user.count();
     const isFirstUser = userCount === 0;
+
+    // Determine role: if role is provided use it, else if first user make admin, else user
+    let userRole: UserRole = UserRole.user;
+    if (role && Object.values(UserRole).includes(role)) {
+      userRole = role;
+    } else if (isFirstUser) {
+      userRole = UserRole.admin;
+    }
 
     // Create dealership and user
     const dealership = await prisma.dealership.create({
@@ -202,7 +210,7 @@ router.post(
           process.cwd(),
           "public",
           "profile-pictures",
-          filename
+          filename,
         );
 
         // Ensure directory exists
@@ -222,7 +230,7 @@ router.post(
       data: {
         email,
         password: hashedPassword,
-        role: isFirstUser ? UserRole.admin : UserRole.user,
+        role: userRole,
         dealershipId: dealership.id,
         theme: theme || "light",
         profilePicture: profilePicturePath,
@@ -277,7 +285,7 @@ router.post(
           process.cwd(),
           "public",
           "profile-pictures",
-          newFilename
+          newFilename,
         );
 
         // Rename file
@@ -412,7 +420,7 @@ router.post(
         permissions: userPermission,
       },
     });
-  })
+  }),
 );
 
 // Get current user
@@ -457,7 +465,7 @@ router.get(
     let userPermissions = fullUser.permissions;
     if (!userPermissions) {
       const isAdmin = fullUser.role === UserRole.admin;
-      
+
       // Create default permissions (all true for admin, all false for regular users)
       const defaultPermissions = isAdmin
         ? {
@@ -497,7 +505,7 @@ router.get(
     // This prevents issues with spread operator or missing fields in production
     // FIXED: 2026-01-18-v2 - Explicitly return role, isActive, and permissions
     // Build verification: This code must be compiled by tsc during Docker build
-    const response = { 
+    const response = {
       user: {
         id: fullUser.id,
         email: fullUser.email,
@@ -507,10 +515,10 @@ router.get(
         profilePicture: fullUser.profilePicture,
         dealership: fullUser.dealership,
         permissions: userPermissions, // Always include permissions (created or existing)
-      }
+      },
     };
     res.json(response);
-  })
+  }),
 );
 
 // Logout
@@ -519,7 +527,7 @@ router.post(
   asyncHandler(async (req: Request, res: Response) => {
     clearAuthCookie(res);
     res.json({ success: true });
-  })
+  }),
 );
 
 // Upload profile picture
@@ -651,7 +659,7 @@ router.post(
         const oldFilePath = join(
           process.cwd(),
           "public",
-          existingUser.profilePicture
+          existingUser.profilePicture,
         );
         if (existsSync(oldFilePath)) {
           try {
@@ -678,7 +686,7 @@ router.post(
       success: true,
       profilePicture: profilePictureUrl,
     });
-  })
+  }),
 );
 
 // User Management Endpoints (Admin only)
@@ -690,7 +698,9 @@ router.get(
   requireAdmin,
   asyncHandler(async (req: Request, res: Response) => {
     if (!req.user || !req.user.dealershipId) {
-      res.status(401).json({ error: "Not authenticated or no dealership assigned" });
+      res
+        .status(401)
+        .json({ error: "Not authenticated or no dealership assigned" });
       return;
     }
 
@@ -721,7 +731,7 @@ router.get(
     });
 
     res.json({ users });
-  })
+  }),
 );
 
 // Create user (automatically assigned to admin's dealership)
@@ -731,7 +741,9 @@ router.post(
   requireAdmin,
   asyncHandler(async (req: Request, res: Response) => {
     if (!req.user || !req.user.dealershipId) {
-      res.status(401).json({ error: "Not authenticated or no dealership assigned" });
+      res
+        .status(401)
+        .json({ error: "Not authenticated or no dealership assigned" });
       return;
     }
 
@@ -795,7 +807,7 @@ router.post(
         permissions: userPermission,
       },
     });
-  })
+  }),
 );
 
 // Update user (only users from admin's dealership)
@@ -805,12 +817,14 @@ router.put(
   requireAdmin,
   asyncHandler(async (req: Request, res: Response) => {
     if (!req.user || !req.user.dealershipId) {
-      res.status(401).json({ error: "Not authenticated or no dealership assigned" });
+      res
+        .status(401)
+        .json({ error: "Not authenticated or no dealership assigned" });
       return;
     }
 
     const { id } = req.params;
-    const { email, role, isActive, permissions } = req.body;
+    const { email, role, isActive, permissions, password } = req.body;
 
     // Check if user exists and belongs to admin's dealership
     const existingUser = await prisma.user.findUnique({
@@ -824,7 +838,9 @@ router.put(
 
     // Ensure user belongs to admin's dealership
     if (existingUser.dealershipId !== req.user.dealershipId) {
-      res.status(403).json({ error: "You can only manage users from your own dealership" });
+      res
+        .status(403)
+        .json({ error: "You can only manage users from your own dealership" });
       return;
     }
 
@@ -833,6 +849,10 @@ router.put(
     if (email !== undefined) updateData.email = email;
     if (role !== undefined) updateData.role = role as UserRole;
     if (isActive !== undefined) updateData.isActive = isActive;
+    // Hash password if provided
+    if (password !== undefined && password.trim()) {
+      updateData.password = await bcrypt.hash(password, 10);
+    }
     // dealershipId is NOT allowed to be changed - users must stay in their dealership
 
     const user = await prisma.user.update({
@@ -865,7 +885,7 @@ router.put(
         permissions: userPermission,
       },
     });
-  })
+  }),
 );
 
 // Delete user (only users from admin's dealership)
@@ -875,7 +895,9 @@ router.delete(
   requireAdmin,
   asyncHandler(async (req: Request, res: Response) => {
     if (!req.user || !req.user.dealershipId) {
-      res.status(401).json({ error: "Not authenticated or no dealership assigned" });
+      res
+        .status(401)
+        .json({ error: "Not authenticated or no dealership assigned" });
       return;
     }
 
@@ -893,7 +915,9 @@ router.delete(
 
     // Ensure user belongs to admin's dealership
     if (existingUser.dealershipId !== req.user.dealershipId) {
-      res.status(403).json({ error: "You can only delete users from your own dealership" });
+      res
+        .status(403)
+        .json({ error: "You can only delete users from your own dealership" });
       return;
     }
 
@@ -909,7 +933,7 @@ router.delete(
     });
 
     res.json({ success: true });
-  })
+  }),
 );
 
 export default router;
