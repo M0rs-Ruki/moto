@@ -92,27 +92,6 @@ interface PhoneLookup {
 export default function DigitalEnquiryPage() {
   const { hasPermission } = usePermissions();
 
-  if (!hasPermission("digitalEnquiry")) {
-    return (
-      <div className="space-y-8">
-        <div className="pb-2 border-b">
-          <h1 className="text-3xl sm:text-4xl font-bold bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent">
-            Digital Enquiry
-          </h1>
-        </div>
-        <Card>
-          <CardContent className="pt-6">
-            <div className="text-center py-12 text-muted-foreground">
-              <p className="text-base">
-                You don't have permission to access this page.
-              </p>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
   const PAGE_SIZE = 10;
 
   const [enquiries, setEnquiries] = useState<DigitalEnquiry[]>([]);
@@ -216,6 +195,27 @@ export default function DigitalEnquiryPage() {
       mountedRef.current = false;
     };
   }, []);
+
+  if (!hasPermission("digitalEnquiry")) {
+    return (
+      <div className="space-y-8">
+        <div className="pb-2 border-b">
+          <h1 className="text-3xl sm:text-4xl font-bold bg-gradient-to-r from-primary to-primary/70 bg-clip-text text-transparent">
+            Digital Enquiry
+          </h1>
+        </div>
+        <Card>
+          <CardContent className="pt-6">
+            <div className="text-center py-12 text-muted-foreground">
+              <p className="text-base">
+                You don&apos;t have permission to access this page.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   const fetchData = async (
     skip: number = 0,
@@ -1279,8 +1279,8 @@ export default function DigitalEnquiryPage() {
                 {uploadResults.summary.success > 0 && (
                   <p className="text-xs text-muted-foreground">
                     {uploadResults.summary.success} enquiries created
-                    successfully. All enquiries have been set to "Cold" lead
-                    scope.
+                    successfully. All enquiries have been set to
+                    &ldquo;Cold&quot; lead scope.
                   </p>
                 )}
               </div>
