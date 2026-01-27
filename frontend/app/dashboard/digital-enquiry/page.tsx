@@ -1282,7 +1282,7 @@ export default function DigitalEnquiryPage() {
                     </p>
                     <div className="space-y-1 text-xs">
                       {uploadResults.results
-                        .filter((r) => !r.success)
+                        ?.filter((r) => !r.success)
                         .map((result, idx) => (
                           <div
                             key={idx}
