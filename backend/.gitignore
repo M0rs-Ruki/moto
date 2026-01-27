@@ -35,11 +35,19 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
+# server logs
+server.log
+*.log
+
 # cron logs
 cron.log
 
 # env files (can opt-in for committing if needed)
 .env
+
+# database backups (store locally, don't commit)
+/BACKUP
+*.sql
 
 # vercel
 .vercel
