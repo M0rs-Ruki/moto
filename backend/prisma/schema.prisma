@@ -348,3 +348,43 @@ model UserPermission {
   
   @@index([userId])
 }
+
+enum BulkUploadJobStatus {
+  QUEUED
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+model BulkUploadJob {
+  id            String                 @id @default(cuid())
+  jobId         String                 @unique
+  type          String                 // "digital_enquiry" | "field_inquiry"
+  status        BulkUploadJobStatus    @default(QUEUED)
+  totalRows     Int
+  processedRows Int                    @default(0)
+  successCount  Int                    @default(0)
+  errorCount    Int                    @default(0)
+  failedRows    Json?                  // Array of failed row details
+  dealershipId  String
+  createdAt     DateTime               @default(now())
+  updatedAt     DateTime               @updatedAt
+  completedAt   DateTime?
+  
+  @@index([dealershipId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+model BulkUploadJobResult {
+  id           String   @id @default(cuid())
+  jobId        String
+  rowNumber    Int
+  success      Boolean
+  data         Json?    // Created record data
+  error        String?  // Error message if failed
+  createdAt    DateTime @default(now())
+  
+  @@index([jobId])
+  @@index([createdAt])
+}

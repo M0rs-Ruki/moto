@@ -116,8 +116,13 @@ export default function DigitalEnquiryPage() {
   const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState("");
   const [uploadResults, setUploadResults] = useState<{
-    summary: { total: number; success: number; errors: number };
-    results: Array<{
+    success: boolean;
+    jobId?: string;
+    totalRows?: number;
+    status?: string;
+    message?: string;
+    summary?: { total: number; success: number; errors: number };
+    results?: Array<{
       success: boolean;
       rowNumber: number;
       enquiryId?: string;
@@ -1242,19 +1247,35 @@ export default function DigitalEnquiryPage() {
             {uploadResults && (
               <div className="space-y-3 p-4 bg-muted/50 rounded-lg">
                 <div className="flex items-center justify-between">
-                  <h3 className="font-semibold text-sm">Upload Results</h3>
-                  <Badge
-                    variant={
-                      uploadResults.summary.errors === 0
-                        ? "default"
-                        : "secondary"
-                    }
-                  >
-                    {uploadResults.summary.success} /{" "}
-                    {uploadResults.summary.total} successful
-                  </Badge>
+                  <h3 className="font-semibold text-sm">
+                    {uploadResults.jobId ? "Upload Queued" : "Upload Results"}
+                  </h3>
+                  {uploadResults.jobId ? (
+                    <Badge variant="outline">
+                      Processing {uploadResults.totalRows} rows...
+                    </Badge>
+                  ) : (
+                    <Badge
+                      variant={
+                        uploadResults.summary?.errors === 0
+                          ? "default"
+                          : "secondary"
+                      }
+                    >
+                      {uploadResults.summary?.success} /{" "}
+                      {uploadResults.summary?.total} successful
+                    </Badge>
+                  )}
                 </div>
-                {uploadResults.summary.errors > 0 && (
+                {uploadResults.jobId && (
+                  <p className="text-xs text-muted-foreground">
+                    Job ID: {uploadResults.jobId}
+                    <br />
+                    Your upload is being processed in the background. You can
+                    close this dialog and continue working.
+                  </p>
+                )}
+                {uploadResults.summary && uploadResults.summary.errors > 0 && (
                   <div className="space-y-2 max-h-60 overflow-y-auto">
                     <p className="text-xs font-medium text-destructive">
                       Errors ({uploadResults.summary.errors}):
@@ -1276,7 +1297,7 @@ export default function DigitalEnquiryPage() {
                     </div>
                   </div>
                 )}
-                {uploadResults.summary.success > 0 && (
+                {uploadResults.summary && uploadResults.summary.success > 0 && (
                   <p className="text-xs text-muted-foreground">
                     {uploadResults.summary.success} enquiries created
                     successfully. All enquiries have been set to

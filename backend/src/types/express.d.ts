@@ -1,11 +1,9 @@
-import { User } from "@prisma/client";
+import type { JWTPayload } from "../lib/auth";
 
 declare global {
   namespace Express {
     interface Request {
-      user?: User & {
-        dealershipId: string;
-      };
+      user?: JWTPayload;
     }
   }
 }

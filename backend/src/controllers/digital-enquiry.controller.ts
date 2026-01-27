@@ -3,6 +3,9 @@ import { DigitalEnquiryService } from "../services/digital-enquiry.service";
 import { CreateDigitalEnquiryDto } from "../dto/request/create-digital-enquiry.dto";
 import { UpdateLeadScopeDto } from "../dto/request/update-lead-scope.dto";
 import { PAGINATION } from "../config/constants";
+import { RabbitMQPublisherService } from "../services/rabbitmq-publisher.service";
+import { bulkUploadJobRepository } from "../repositories/bulk-upload-job.repository";
+import { v4 as uuidv4 } from "uuid";
 
 export class DigitalEnquiryController {
   private service: DigitalEnquiryService;
@@ -24,13 +27,21 @@ export class DigitalEnquiryController {
     const data: CreateDigitalEnquiryDto = req.body;
 
     // Validate required fields
-    if (!data.firstName || !data.lastName || !data.whatsappNumber || !data.reason) {
+    if (
+      !data.firstName ||
+      !data.lastName ||
+      !data.whatsappNumber ||
+      !data.reason
+    ) {
       res.status(400).json({ error: "Missing required fields" });
       return;
     }
 
     try {
-      const result = await this.service.createEnquiry(data, req.user.dealershipId);
+      const result = await this.service.createEnquiry(
+        data,
+        req.user.dealershipId,
+      );
       res.json(result);
     } catch (error) {
       const errorMessage = (error as Error).message;
@@ -55,14 +66,20 @@ export class DigitalEnquiryController {
       return;
     }
 
-    const limit = parseInt((req.query.limit as string) || String(PAGINATION.DEFAULT_LIMIT), 10);
-    const skip = parseInt((req.query.skip as string) || String(PAGINATION.DEFAULT_SKIP), 10);
+    const limit = parseInt(
+      (req.query.limit as string) || String(PAGINATION.DEFAULT_LIMIT),
+      10,
+    );
+    const skip = parseInt(
+      (req.query.skip as string) || String(PAGINATION.DEFAULT_SKIP),
+      10,
+    );
 
     try {
       const result = await this.service.getEnquiries(
         req.user.dealershipId,
         limit,
-        skip
+        skip,
       );
       res.json(result);
     } catch (error) {
@@ -87,7 +104,7 @@ export class DigitalEnquiryController {
       const result = await this.service.updateLeadScope(
         id,
         data,
-        req.user.dealershipId
+        req.user.dealershipId,
       );
       res.json(result);
     } catch (error) {
@@ -113,6 +130,7 @@ export class DigitalEnquiryController {
     }
 
     const { rows } = req.body;
+    const userId = req.user.userId;
 
     if (!rows || !Array.isArray(rows) || rows.length === 0) {
       res.status(400).json({ error: "No data provided or invalid format" });
@@ -120,17 +138,45 @@ export class DigitalEnquiryController {
     }
 
     try {
-      const result = await this.service.bulkUpload({ rows }, req.user.dealershipId);
-      res.json(result);
+      // Create unique job ID
+      const jobId = uuidv4();
+
+      // Save job record in database
+      await bulkUploadJobRepository.createJob({
+        jobId,
+        type: "digital_enquiry",
+        totalRows: rows.length,
+        dealershipId: req.user.dealershipId,
+      });
+
+      // Publish job to RabbitMQ queue
+      await RabbitMQPublisherService.publishExcelUploadJob({
+        jobId,
+        dealershipId: req.user.dealershipId,
+        type: "digital_enquiry",
+        rows,
+        totalRows: rows.length,
+        userId,
+        timestamp: Date.now(),
+      });
+
+      // Return immediately with job ID (202 = Accepted)
+      res.status(202).json({
+        success: true,
+        message: "Upload job queued for processing",
+        jobId,
+        totalRows: rows.length,
+        status: "queued",
+      });
     } catch (error) {
       const errorMessage = (error as Error).message;
-      if (
-        errorMessage.includes("Missing required columns") ||
-        errorMessage.includes("No data provided")
-      ) {
+      console.error("❌ Bulk upload error:", errorMessage, error);
+      if (errorMessage.includes("Missing required columns")) {
         res.status(400).json({ error: errorMessage });
       } else {
-        res.status(500).json({ error: errorMessage });
+        res
+          .status(500)
+          .json({ error: "Failed to queue upload job", details: errorMessage });
       }
     }
   };

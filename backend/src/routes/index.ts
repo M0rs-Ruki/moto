@@ -18,6 +18,7 @@ import phoneLookupRoutes from "./phone-lookup";
 import cronRoutes from "./cron";
 import healthRoutes from "./health";
 import debugRoutes from "./debug";
+import bulkUploadJobsRoutes from "./bulk-upload-jobs";
 
 const router: ExpressRouter = Router();
 
@@ -41,6 +42,7 @@ router.use("/test-drives", testDrivesRoutes);
 router.use("/digital-enquiry", digitalEnquiryRoutes);
 router.use("/field-inquiry", fieldInquiryRoutes);
 router.use("/delivery-tickets", deliveryTicketsRoutes);
+router.use("/bulk-upload-jobs", bulkUploadJobsRoutes);
 
 // System routes
 router.use("/statistics", statisticsRoutes);
