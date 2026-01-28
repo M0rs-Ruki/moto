@@ -8,7 +8,7 @@ export class DigitalEnquiryRepository extends BaseRepository<DigitalEnquiryWithR
    */
   async findByIdAndDealership(
     id: string,
-    dealershipId: string
+    dealershipId: string,
   ): Promise<DigitalEnquiryWithRelations | null> {
     return this.findOne(
       this.prisma.digitalEnquiry,
@@ -25,7 +25,7 @@ export class DigitalEnquiryRepository extends BaseRepository<DigitalEnquiryWithR
             },
           },
         },
-      }
+      },
     );
   }
 
@@ -34,7 +34,7 @@ export class DigitalEnquiryRepository extends BaseRepository<DigitalEnquiryWithR
    */
   async findByWhatsAppNumberAndDealership(
     whatsappNumber: string,
-    dealershipId: string
+    dealershipId: string,
   ): Promise<DigitalEnquiryWithRelations | null> {
     return this.findOne(this.prisma.digitalEnquiry, {
       whatsappNumber,
@@ -50,7 +50,7 @@ export class DigitalEnquiryRepository extends BaseRepository<DigitalEnquiryWithR
     options?: {
       limit?: number;
       skip?: number;
-    }
+    },
   ): Promise<DigitalEnquiryWithRelations[]> {
     return this.findMany(
       this.prisma.digitalEnquiry,
@@ -69,7 +69,7 @@ export class DigitalEnquiryRepository extends BaseRepository<DigitalEnquiryWithR
         },
         take: options?.limit,
         skip: options?.skip,
-      }
+      },
     );
   }
 
@@ -84,12 +84,18 @@ export class DigitalEnquiryRepository extends BaseRepository<DigitalEnquiryWithR
    * Create a digital enquiry
    */
   async createEnquiry(
-    data: Prisma.DigitalEnquiryCreateInput
+    data: Prisma.DigitalEnquiryCreateInput,
   ): Promise<DigitalEnquiryWithRelations> {
-    return this.create(
-      this.prisma.digitalEnquiry,
-      data
-    ) as Promise<DigitalEnquiryWithRelations>;
+    return this.create(this.prisma.digitalEnquiry, data, {
+      include: {
+        leadSource: true,
+        model: {
+          include: {
+            category: true,
+          },
+        },
+      },
+    }) as Promise<DigitalEnquiryWithRelations>;
   }
 
   /**
@@ -97,7 +103,7 @@ export class DigitalEnquiryRepository extends BaseRepository<DigitalEnquiryWithR
    */
   async update(
     id: string,
-    data: Prisma.DigitalEnquiryUpdateInput
+    data: Prisma.DigitalEnquiryUpdateInput,
   ): Promise<DigitalEnquiryWithRelations> {
     return super.update(this.prisma.digitalEnquiry, { id }, data, {
       include: {

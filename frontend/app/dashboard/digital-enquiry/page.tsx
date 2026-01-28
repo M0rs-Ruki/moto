@@ -37,6 +37,7 @@ import {
   Upload,
   FileSpreadsheet,
   Edit2,
+  Check,
 } from "lucide-react";
 import Link from "next/link";
 import * as XLSX from "xlsx";
@@ -1268,12 +1269,26 @@ export default function DigitalEnquiryPage() {
                   )}
                 </div>
                 {uploadResults.jobId && (
-                  <p className="text-xs text-muted-foreground">
-                    Job ID: {uploadResults.jobId}
-                    <br />
-                    Your upload is being processed in the background. You can
-                    close this dialog and continue working.
-                  </p>
+                  <div className="space-y-3">
+                    <p className="text-xs text-muted-foreground">
+                      Job ID: {uploadResults.jobId}
+                      <br />
+                      Your upload is being processed in the background. You can
+                      close this dialog and continue working.
+                    </p>
+                    <Button
+                      type="button"
+                      className="w-full bg-green-600 hover:bg-green-700 text-white"
+                      onClick={() => {
+                        setBulkUploadDialogOpen(false);
+                        setUploadError("");
+                        setUploadResults(null);
+                      }}
+                    >
+                      <Check className="mr-2 h-4 w-4" />
+                      Done
+                    </Button>
+                  </div>
                 )}
                 {uploadResults.summary && uploadResults.summary.errors > 0 && (
                   <div className="space-y-2 max-h-60 overflow-y-auto">

@@ -193,8 +193,10 @@ export default function DailyWalkinsPage() {
   const [selectedSession, setSelectedSession] = useState<Session | null>(null);
   const [testDriveDialogOpen, setTestDriveDialogOpen] = useState(false);
   const [sessionSubmitting, setSessionSubmitting] = useState(false);
+  const [feedbackDialogOpen, setFeedbackDialogOpen] = useState(false);
   const [exitConfirmDialogOpen, setExitConfirmDialogOpen] = useState(false);
   const [sessionToExit, setSessionToExit] = useState<Session | null>(null);
+  const [selectedFeedback, setSelectedFeedback] = useState<string | null>(null);
 
   // Test drive form
   const [testDriveData, setTestDriveData] = useState({
@@ -685,6 +687,16 @@ export default function DailyWalkinsPage() {
   const handleExitSession = (session: Session) => {
     if (!session) return;
     setSessionToExit(session);
+    setSelectedFeedback(null);
+    setFeedbackDialogOpen(true);
+  };
+
+  const handleFeedbackSelect = (feedback: string) => {
+    setSelectedFeedback(feedback);
+  };
+
+  const handleFeedbackSubmit = () => {
+    setFeedbackDialogOpen(false);
     setExitConfirmDialogOpen(true);
   };
 
@@ -700,6 +712,7 @@ export default function DailyWalkinsPage() {
       }
       const response = await apiClient.post("/sessions/exit", {
         sessionId: sessionToExit.id,
+        feedback: selectedFeedback,
       });
 
       if (response.data.success) {
@@ -739,6 +752,7 @@ export default function DailyWalkinsPage() {
     } finally {
       setSessionSubmitting(false);
       setSessionToExit(null);
+      setSelectedFeedback(null);
     }
   };
 
@@ -2002,6 +2016,78 @@ export default function DailyWalkinsPage() {
         </DialogContent>
       </Dialog>
 
+      {/* Feedback Dialog */}
+      <Dialog open={feedbackDialogOpen} onOpenChange={setFeedbackDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>How was your experience?</DialogTitle>
+            <DialogDescription>
+              Please share your feedback about this visitor session.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex justify-center gap-6 py-8">
+            <button
+              type="button"
+              onClick={() => handleFeedbackSelect("happy")}
+              className={`flex flex-col items-center gap-2 p-4 rounded-lg transition-all hover:bg-green-50 ${
+                selectedFeedback === "happy"
+                  ? "bg-green-100 ring-2 ring-green-500"
+                  : "bg-gray-50"
+              }`}
+            >
+              <span className="text-5xl">😊</span>
+              <span className="text-sm font-medium">Happy</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => handleFeedbackSelect("okay")}
+              className={`flex flex-col items-center gap-2 p-4 rounded-lg transition-all hover:bg-yellow-50 ${
+                selectedFeedback === "okay"
+                  ? "bg-yellow-100 ring-2 ring-yellow-500"
+                  : "bg-gray-50"
+              }`}
+            >
+              <span className="text-5xl">😐</span>
+              <span className="text-sm font-medium">Okay</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => handleFeedbackSelect("sad")}
+              className={`flex flex-col items-center gap-2 p-4 rounded-lg transition-all hover:bg-red-50 ${
+                selectedFeedback === "sad"
+                  ? "bg-red-100 ring-2 ring-red-500"
+                  : "bg-gray-50"
+              }`}
+            >
+              <span className="text-5xl">😞</span>
+              <span className="text-sm font-medium">Not Good</span>
+            </button>
+          </div>
+          <div className="flex flex-col sm:flex-row justify-end gap-2 mt-4">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                setFeedbackDialogOpen(false);
+                setSessionToExit(null);
+                setSelectedFeedback(null);
+              }}
+              className="w-full sm:w-auto"
+            >
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              onClick={handleFeedbackSubmit}
+              disabled={!selectedFeedback}
+              className="w-full sm:w-auto"
+            >
+              Continue
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       {/* Exit Session Confirmation Dialog */}
       <Dialog
         open={exitConfirmDialogOpen}
@@ -2022,6 +2108,7 @@ export default function DailyWalkinsPage() {
               onClick={() => {
                 setExitConfirmDialogOpen(false);
                 setSessionToExit(null);
+                setSelectedFeedback(null);
               }}
               className="w-full sm:w-auto"
             >

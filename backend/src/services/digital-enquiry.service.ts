@@ -29,13 +29,13 @@ export class DigitalEnquiryService {
    */
   async createEnquiry(
     data: CreateDigitalEnquiryDto,
-    dealershipId: string
+    dealershipId: string,
   ): Promise<CreateDigitalEnquiryResponse> {
     // Check if enquiry already exists
     const existingEnquiry =
       await this.repository.findByWhatsAppNumberAndDealership(
         data.whatsappNumber,
-        dealershipId
+        dealershipId,
       );
 
     // Create digital enquiry
@@ -116,7 +116,7 @@ export class DigitalEnquiryService {
   async getEnquiries(
     dealershipId: string,
     limit?: number,
-    skip?: number
+    skip?: number,
   ): Promise<{
     enquiries: DigitalEnquiryWithRelations[];
     hasMore: boolean;
@@ -152,12 +152,12 @@ export class DigitalEnquiryService {
   async updateLeadScope(
     id: string,
     data: UpdateLeadScopeDto,
-    dealershipId: string
+    dealershipId: string,
   ): Promise<UpdateLeadScopeResponse> {
     // Verify enquiry exists and belongs to dealership
     const enquiry = await this.repository.findByIdAndDealership(
       id,
-      dealershipId
+      dealershipId,
     );
     if (!enquiry) {
       throw new Error("Enquiry not found");
@@ -183,7 +183,7 @@ export class DigitalEnquiryService {
    */
   async bulkUpload(
     data: BulkUploadRequest,
-    dealershipId: string
+    dealershipId: string,
   ): Promise<{
     success: boolean;
     summary: BulkUploadSummary;
@@ -199,14 +199,14 @@ export class DigitalEnquiryService {
     const firstRow = rows[0];
     const columnValidation = validateRequiredColumns(
       firstRow,
-      Array.from(EXCEL.REQUIRED_COLUMNS.DIGITAL_ENQUIRY)
+      Array.from(EXCEL.REQUIRED_COLUMNS.DIGITAL_ENQUIRY),
     );
 
     if (!columnValidation.valid) {
       throw new Error(
         `Missing required columns: ${columnValidation.missingColumns.join(
-          ", "
-        )}`
+          ", ",
+        )}`,
       );
     }
 
@@ -285,7 +285,7 @@ export class DigitalEnquiryService {
         // Match model (optional - no error if not found)
         const modelName = String(row.Model).trim();
         const matchedModel = allModels.find(
-          (m) => m.name.toLowerCase() === modelName.toLowerCase()
+          (m) => m.name.toLowerCase() === modelName.toLowerCase(),
         );
 
         // Match lead source
@@ -293,7 +293,7 @@ export class DigitalEnquiryService {
         if (row.Source) {
           const sourceName = String(row.Source).trim();
           const matchedSource = allLeadSources.find(
-            (s) => s.name.toLowerCase() === sourceName.toLowerCase()
+            (s) => s.name.toLowerCase() === sourceName.toLowerCase(),
           );
           leadSourceId = matchedSource?.id || null;
         }
@@ -309,7 +309,7 @@ export class DigitalEnquiryService {
         const existingEnquiry =
           await this.repository.findByWhatsAppNumberAndDealership(
             whatsappNumber,
-            dealershipId
+            dealershipId,
           );
 
         // Create digital enquiry
@@ -319,10 +319,8 @@ export class DigitalEnquiryService {
           whatsappNumber,
           email: null,
           address: address || null,
-          reason: date
-            ? `Enquiry from ${date.toLocaleDateString()}`
-            : "Bulk imported enquiry",
-          leadScope: LEAD_SCOPE.COLD,
+          reason: modelName || "Bulk imported enquiry",
+          leadScope: LEAD_SCOPE.WARM,
           whatsappContactId: null,
           dealership: {
             connect: { id: dealershipId },
@@ -349,7 +347,7 @@ export class DigitalEnquiryService {
           } catch (error: unknown) {
             console.error(
               `Failed to send WhatsApp message for row ${rowNumber}:`,
-              error
+              error,
             );
             // Don't fail the row if message sending fails
           }

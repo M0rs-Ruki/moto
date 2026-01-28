@@ -118,6 +118,7 @@ model VisitorSession {
   reason           String
   status           String            @default("intake")
   visitorId        String
+  feedback         String?           // happy, okay, sad
   createdAt        DateTime          @default(now())
   updatedAt        DateTime          @updatedAt
   testDrives       TestDrive[]

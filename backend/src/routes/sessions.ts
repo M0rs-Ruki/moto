@@ -81,7 +81,7 @@ router.get(
       skip,
       limit,
     });
-  })
+  }),
 );
 
 // Exit session
@@ -95,7 +95,7 @@ router.post(
       return;
     }
 
-    const { sessionId } = req.body;
+    const { sessionId, feedback } = req.body;
 
     if (!sessionId) {
       res.status(400).json({ error: "Session ID is required" });
@@ -120,11 +120,38 @@ router.post(
       return;
     }
 
-    // Update session status
-    await prisma.visitorSession.update({
+    // Update session status and feedback
+    const updatedSession = await prisma.visitorSession.update({
       where: { id: sessionId },
       data: {
         status: "exited",
+        feedback: feedback || null,
+      },
+      include: {
+        visitor: true,
+        testDrives: {
+          include: {
+            model: {
+              include: {
+                category: true,
+              },
+            },
+          },
+        },
+        visitorInterests: {
+          where: {
+            sessionId: {
+              not: null,
+            },
+          },
+          include: {
+            model: {
+              include: {
+                category: true,
+              },
+            },
+          },
+        },
       },
     });
 
@@ -152,19 +179,20 @@ router.post(
       } catch (error: unknown) {
         console.error("Failed to send exit message:", error);
         messageStatus = "failed";
-        messageError = (error as Error).message || "Failed to send exit message";
+        messageError =
+          (error as Error).message || "Failed to send exit message";
       }
     }
 
     res.json({
       success: true,
+      session: updatedSession,
       message: {
         status: messageStatus,
         error: messageError,
       },
     });
-  })
+  }),
 );
 
 export default router;
-

@@ -22,7 +22,7 @@ export abstract class BaseRepository<T> {
       orderBy?: Prisma.Args<any, "findMany">["orderBy"];
       take?: number;
       skip?: number;
-    }
+    },
   ): Promise<T[]> {
     return model.findMany({
       where,
@@ -38,7 +38,7 @@ export abstract class BaseRepository<T> {
     where: Prisma.Args<any, "findFirst">["where"],
     options?: {
       include?: Prisma.Args<any, "findFirst">["include"];
-    }
+    },
   ): Promise<T | null> {
     return model.findFirst({
       where,
@@ -51,7 +51,7 @@ export abstract class BaseRepository<T> {
    */
   protected async count(
     model: any,
-    where: Prisma.Args<any, "count">["where"]
+    where: Prisma.Args<any, "count">["where"],
   ): Promise<number> {
     return model.count({
       where,
@@ -63,10 +63,14 @@ export abstract class BaseRepository<T> {
    */
   protected async create(
     model: any,
-    data: Prisma.Args<any, "create">["data"]
+    data: Prisma.Args<any, "create">["data"],
+    options?: {
+      include?: Prisma.Args<any, "create">["include"];
+    },
   ): Promise<T> {
     return model.create({
       data,
+      ...options,
     });
   }
 
@@ -79,7 +83,7 @@ export abstract class BaseRepository<T> {
     data: Prisma.Args<any, "update">["data"],
     options?: {
       include?: Prisma.Args<any, "update">["include"];
-    }
+    },
   ): Promise<T> {
     return model.update({
       where,
@@ -93,7 +97,7 @@ export abstract class BaseRepository<T> {
    */
   protected async delete(
     model: any,
-    where: Prisma.Args<any, "delete">["where"]
+    where: Prisma.Args<any, "delete">["where"],
   ): Promise<T> {
     return model.delete({
       where,
