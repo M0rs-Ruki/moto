@@ -1,4 +1,5 @@
 import * as amqp from "amqplib";
+import { logger } from "../utils/logger";
 
 class RabbitMQService {
   private connection: amqp.Connection | null = null;
@@ -11,25 +12,25 @@ class RabbitMQService {
       this.connection = (await amqp.connect(rabbitmqUrl)) as any;
       this.channel = await (this.connection as any).createChannel();
 
-      console.log("Connected to RabbitMQ");
+      logger.info("✅ Connected to RabbitMQ");
 
       (this.connection as any).on("error", (err: any) => {
-        console.error("RabbitMQ connection error:", err);
+        logger.error("RabbitMQ connection error", err);
         this.reconnect();
       });
 
       (this.connection as any).on("close", () => {
-        console.warn("RabbitMQ connection closed. Reconnecting...");
+        logger.warn("RabbitMQ connection closed. Reconnecting...");
         this.reconnect();
       });
     } catch (error) {
-      console.error("Failed to connect to RabbitMQ:", error);
+      logger.error("Failed to connect to RabbitMQ", error as Error);
       setTimeout(() => this.connect(), 5000);
     }
   }
 
   private reconnect(): void {
-    console.log("Attempting to reconnect to RabbitMQ...");
+    logger.info("Attempting to reconnect to RabbitMQ...");
     setTimeout(() => this.connect(), 5000);
   }
 
@@ -51,6 +52,10 @@ class RabbitMQService {
     return this.connection;
   }
 
+  isConnected(): boolean {
+    return this.connection !== null && this.channel !== null;
+  }
+
   async disconnect(): Promise<void> {
     try {
       if (this.channel) {
@@ -59,9 +64,9 @@ class RabbitMQService {
       if (this.connection) {
         await (this.connection as any).close();
       }
-      console.log("Disconnected from RabbitMQ");
+      logger.info("Disconnected from RabbitMQ");
     } catch (error) {
-      console.error("Error while disconnecting from RabbitMQ:", error);
+      logger.error("Error while disconnecting from RabbitMQ", error as Error);
     }
   }
 }
