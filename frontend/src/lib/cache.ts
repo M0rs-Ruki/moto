@@ -15,7 +15,7 @@ export interface CacheEntry<T> {
  */
 export function getCachedData<T>(
   cacheKey: string,
-  maxAge: number = DEFAULT_CACHE_DURATION
+  maxAge: number = DEFAULT_CACHE_DURATION,
 ): T | null {
   if (typeof window === "undefined") return null;
 
@@ -83,5 +83,22 @@ export function clearAllCache(): void {
     });
   } catch {
     // Ignore errors
+  }
+}
+
+/**
+ * Get the age of cached data in milliseconds
+ */
+export function getCacheAge(cacheKey: string): number {
+  if (typeof window === "undefined") return Infinity;
+
+  try {
+    const cached = sessionStorage.getItem(cacheKey);
+    if (!cached) return Infinity;
+
+    const parsed: CacheEntry<any> = JSON.parse(cached);
+    return Date.now() - parsed.timestamp;
+  } catch {
+    return Infinity;
   }
 }
