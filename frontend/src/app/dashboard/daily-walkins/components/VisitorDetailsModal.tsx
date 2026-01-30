@@ -6,7 +6,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, User, Phone, Mail, Calendar } from "lucide-react";
+import { Loader2, Phone, Mail, Calendar } from "lucide-react";
 import { Visitor, Session } from "../types";
 import { SessionsList } from "./SessionsList";
 import { formatDate, getInitials } from "../utils/formatters";
@@ -78,98 +78,74 @@ export function VisitorDetailsModal({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
-        <DialogHeader className="pb-4 border-b">
+      <DialogContent className="max-w-3xl max-h-[85vh] p-0 flex flex-col gap-0">
+        {/* Fixed Header */}
+        <DialogHeader className="px-6 pt-6 pb-4 border-b shrink-0">
           <div className="flex items-start gap-4">
-            {/* Avatar */}
-            <div className="w-16 h-16 rounded-full bg-primary flex items-center justify-center text-primary-foreground font-semibold text-lg flex-shrink-0">
+            <div className="w-12 h-12 rounded-full bg-black text-white flex items-center justify-center font-semibold text-base shrink-0">
               {initials}
             </div>
 
-            {/* Visitor Info */}
-            <div className="flex-1 space-y-3">
-              <div>
-                <DialogTitle className="text-2xl font-bold">
-                  {visitor.firstName} {visitor.lastName}
-                </DialogTitle>
-                <div className="flex items-center gap-4 mt-2 flex-wrap">
-                  <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                    <Phone className="h-4 w-4" />
-                    {visitor.whatsappNumber}
+            <div className="flex-1 min-w-0 space-y-2.5">
+              <DialogTitle className="text-xl font-semibold">
+                {visitor.firstName} {visitor.lastName}
+              </DialogTitle>
+
+              <div className="flex items-center gap-3 text-xs text-muted-foreground flex-wrap">
+                <div className="flex items-center gap-1">
+                  <Phone className="h-3 w-3" />
+                  {visitor.whatsappNumber}
+                </div>
+                {visitor.email && (
+                  <div className="flex items-center gap-1">
+                    <Mail className="h-3 w-3" />
+                    {visitor.email}
                   </div>
-                  {visitor.email && (
-                    <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                      <Mail className="h-4 w-4" />
-                      {visitor.email}
-                    </div>
-                  )}
-                  <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                    <Calendar className="h-4 w-4" />
-                    Last visit: {lastVisit}
-                  </div>
+                )}
+                <div className="flex items-center gap-1">
+                  <Calendar className="h-3 w-3" />
+                  {lastVisit}
                 </div>
               </div>
 
-              {/* Quick Stats */}
-              <div className="flex gap-3 flex-wrap">
-                <Badge variant="secondary" className="text-xs font-medium">
-                  {sessions.length} session{sessions.length !== 1 ? "s" : ""}
-                </Badge>
-                {visitor.interests && visitor.interests.length > 0 && (
-                  <Badge variant="outline" className="text-xs font-medium">
-                    {visitor.interests.length} interest
-                    {visitor.interests.length !== 1 ? "s" : ""}
-                  </Badge>
-                )}
-              </div>
-
-              {/* Interested Models */}
               {visitor.interests && visitor.interests.length > 0 && (
-                <div>
-                  <h4 className="text-sm font-medium text-muted-foreground mb-2">
-                    Interested Models:
-                  </h4>
-                  <div className="flex flex-wrap gap-2">
-                    {visitor.interests.map((interest, idx) => (
-                      <Badge key={idx} variant="outline" className="text-xs">
-                        {interest.model.category.name} - {interest.model.name}
-                      </Badge>
-                    ))}
-                  </div>
+                <div className="flex flex-wrap gap-1.5">
+                  {visitor.interests.map((interest, idx) => (
+                    <Badge key={idx} variant="outline" className="text-xs">
+                      {interest.model.category.name} - {interest.model.name}
+                    </Badge>
+                  ))}
                 </div>
               )}
             </div>
           </div>
         </DialogHeader>
 
-        {/* Sessions Content */}
-        <div className="flex-1 overflow-y-auto py-6">
-          <div className="space-y-6">
-            <div>
-              <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
-                <User className="h-5 w-5" />
-                Session History
-              </h3>
-
-              {loading ? (
-                <div className="flex items-center justify-center py-8">
-                  <Loader2 className="h-6 w-6 animate-spin text-primary" />
-                  <span className="ml-2 text-sm text-muted-foreground">
-                    Loading sessions...
-                  </span>
-                </div>
-              ) : (
-                <SessionsList
-                  sessions={sessions}
-                  expandedSessions={expandedSessions}
-                  onToggleSession={onToggleSession}
-                  onAddTestDrive={onAddTestDrive}
-                  onExitSession={onExitSession}
-                  sessionSubmitting={sessionSubmitting}
-                />
-              )}
-            </div>
+        {/* Scrollable Sessions Area */}
+        <div className="flex-1 overflow-y-auto px-6 py-4 min-h-0">
+          <div className="mb-4">
+            <h3 className="text-xs font-medium text-muted-foreground">
+              {sessions.length} Session{sessions.length !== 1 ? "s" : ""}
+            </h3>
           </div>
+
+          {loading ? (
+            <div className="flex flex-col items-center justify-center py-12">
+              <Loader2 className="h-6 w-6 animate-spin mb-2" />
+              <span className="text-sm text-muted-foreground">
+                Loading sessions...
+              </span>
+            </div>
+          ) : (
+            <SessionsList
+              sessions={sessions}
+              expandedSessions={expandedSessions}
+              onToggleSession={onToggleSession}
+              onAddTestDrive={onAddTestDrive}
+              onExitSession={onExitSession}
+              sessionSubmitting={sessionSubmitting}
+            />
+          )}
         </div>
       </DialogContent>
     </Dialog>
