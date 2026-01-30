@@ -10,6 +10,7 @@ import { Plus, Loader2 } from "lucide-react";
 import CreateTicketDialog from "./components/CreateTicketDialog";
 import DeliveryTicketsTable from "./components/DeliveryTicketsTable";
 import Pagination from "./components/Pagination";
+import DeliveryUpdateLoading from "./loading";
 
 interface DeliveryTicket {
   id: string;
@@ -207,11 +208,7 @@ export default function DeliveryUpdatePage() {
   }
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    );
+    return <DeliveryUpdateLoading />;
   }
 
   const totalPages = Math.max(1, Math.ceil(totalTickets / PAGE_SIZE));

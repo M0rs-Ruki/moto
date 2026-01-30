@@ -39,6 +39,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import * as XLSX from "xlsx";
+import FieldInquiryLoading from "./loading";
 
 interface LeadSource {
   id: string;
@@ -498,11 +499,7 @@ export default function FieldInquiryPage() {
   };
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    );
+    return <FieldInquiryLoading />;
   }
 
   const totalPages = Math.max(1, Math.ceil(totalEnquiries / PAGE_SIZE));

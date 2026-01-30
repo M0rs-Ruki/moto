@@ -35,6 +35,7 @@ import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Loader2, Plus, Trash2, Save } from "lucide-react";
 import { UserPermissions } from "@/lib/auth";
+import UserManagementLoading from "./loading";
 
 interface User {
   id: string;
@@ -241,11 +242,7 @@ export default function UserManagementPage() {
   }
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <Loader2 className="h-8 w-8 animate-spin" />
-      </div>
-    );
+    return <UserManagementLoading />;
   }
 
   return (

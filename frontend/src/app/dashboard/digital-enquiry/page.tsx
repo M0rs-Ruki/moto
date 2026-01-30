@@ -13,6 +13,7 @@ import CreateEnquiryDialog from "./components/CreateEnquiryDialog";
 import BulkUploadDialog from "./components/BulkUploadDialog";
 import EnquiriesTable from "./components/EnquiriesTable";
 import Pagination from "./components/Pagination";
+import DigitalEnquiryLoading from "./loading";
 
 interface LeadSource {
   id: string;
@@ -495,11 +496,7 @@ export default function DigitalEnquiryPage() {
   };
 
   if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    );
+    return <DigitalEnquiryLoading />;
   }
 
   const totalPages = Math.max(1, Math.ceil(totalEnquiries / PAGE_SIZE));

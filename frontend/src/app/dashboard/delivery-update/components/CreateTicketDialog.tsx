@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import apiClient from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -82,18 +82,9 @@ export default function CreateTicketDialog({
     scheduleOption: "d3", // d3, d2, d1, or "now"
   });
 
-  const fetchCreateFormData = async () => {
-    try {
-      const response = await apiClient.get("/categories");
-      setCategories(response.data.categories);
-    } catch (error) {
-      console.error("Failed to fetch categories:", error);
-    }
-  };
-
-  const handleOpenChange = (isOpen: boolean) => {
-    onOpenChange(isOpen);
-    if (isOpen) {
+  // Fetch categories when dialog opens
+  useEffect(() => {
+    if (open) {
       fetchCreateFormData();
     } else {
       // Reset form when closing
@@ -110,6 +101,16 @@ export default function CreateTicketDialog({
         scheduleOption: "d3",
       });
       setError("");
+      setCategories([]);
+    }
+  }, [open]);
+
+  const fetchCreateFormData = async () => {
+    try {
+      const response = await apiClient.get("/categories");
+      setCategories(response.data.categories);
+    } catch (error) {
+      console.error("Failed to fetch categories:", error);
     }
   };
 
@@ -153,7 +154,7 @@ export default function CreateTicketDialog({
   };
 
   return (
-    <Dialog open={open} onOpenChange={handleOpenChange}>
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Create Delivery Ticket</DialogTitle>

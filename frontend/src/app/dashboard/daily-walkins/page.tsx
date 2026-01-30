@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from "react";
 import { usePermissions } from "@/contexts/permissions";
-import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
 // Local imports
@@ -19,6 +18,7 @@ import { VisitorDetailsModal } from "./components/VisitorDetailsModal";
 import { TestDriveDialog } from "./components/TestDriveDialog";
 import { FeedbackDialog } from "./components/FeedbackDialog";
 import { ExitConfirmDialog } from "./components/ExitConfirmDialog";
+import DailyWalkinsLoading from "./loading";
 
 export default function DailyWalkinsPage() {
   const { hasPermission } = usePermissions();
@@ -175,11 +175,7 @@ export default function DailyWalkinsPage() {
   };
 
   if (categoriesLoading || visitorsHook.loading) {
-    return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    );
+    return <DailyWalkinsLoading />;
   }
 
   return (
