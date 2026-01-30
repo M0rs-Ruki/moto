@@ -6,42 +6,13 @@ import { getCachedData, setCachedData } from "@/lib/cache";
 import { toast } from "sonner";
 import { usePermissions } from "@/contexts/permissions";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@/components/ui/collapsible";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import {
-  Plus,
-  Loader2,
-  MessageSquare,
-  ChevronDown,
-  Upload,
-  FileSpreadsheet,
-  Edit2,
-  Check,
-} from "lucide-react";
-import Link from "next/link";
+import { Card, CardContent } from "@/components/ui/card";
+import { Plus, Loader2, MessageSquare, Upload, RotateCw } from "lucide-react";
 import * as XLSX from "xlsx";
+import CreateEnquiryDialog from "./components/CreateEnquiryDialog";
+import BulkUploadDialog from "./components/BulkUploadDialog";
+import EnquiriesTable from "./components/EnquiriesTable";
+import Pagination from "./components/Pagination";
 
 interface LeadSource {
   id: string;
@@ -80,6 +51,19 @@ interface DigitalEnquiry {
     };
   } | null;
   createdAt: string;
+}
+
+interface FormData {
+  firstName: string;
+  lastName: string;
+  whatsappNumber: string;
+  email: string;
+  address: string;
+  reason: string;
+  leadSourceId: string;
+  leadScope: string;
+  interestedModelId: string;
+  interestedVariantId: string;
 }
 
 interface PhoneLookup {
@@ -137,25 +121,6 @@ export default function DigitalEnquiryPage() {
   const [updatingLeadScope, setUpdatingLeadScope] = useState(false);
   const [leadSources, setLeadSources] = useState<LeadSource[]>([]);
   const [categories, setCategories] = useState<VehicleCategory[]>([]);
-  const [openModelCategories, setOpenModelCategories] = useState<Set<string>>(
-    new Set(),
-  );
-  const [expandedVariants, setExpandedVariants] = useState<Set<string>>(
-    new Set(),
-  );
-
-  const [formData, setFormData] = useState({
-    firstName: "",
-    lastName: "",
-    whatsappNumber: "",
-    email: "",
-    address: "",
-    reason: "",
-    leadSourceId: "",
-    leadScope: "warm",
-    interestedModelId: "",
-    interestedVariantId: "",
-  });
 
   useEffect(() => {
     mountedRef.current = true;
@@ -201,6 +166,7 @@ export default function DigitalEnquiryPage() {
     return () => {
       mountedRef.current = false;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   if (!hasPermission("digitalEnquiry")) {
@@ -295,43 +261,6 @@ export default function DigitalEnquiryPage() {
     }
   };
 
-  const handlePageChange = async (page: number) => {
-    const totalPages = Math.max(1, Math.ceil(totalEnquiries / PAGE_SIZE));
-    const targetPage = Math.min(Math.max(page, 1), totalPages);
-
-    if (targetPage * PAGE_SIZE <= enquiries.length || !hasMore) {
-      setCurrentPage(targetPage);
-      return;
-    }
-
-    if (hasMore && !pageLoading) {
-      await fetchData(enquiries.length, true);
-      setCurrentPage(targetPage);
-    }
-  };
-
-  const getVisiblePages = (totalPages: number, page: number) => {
-    const maxVisible = 5;
-    const pages: number[] = [];
-
-    let start = Math.max(1, page - 2);
-    let end = Math.min(totalPages, page + 2);
-
-    if (page <= 3) {
-      start = 1;
-      end = Math.min(totalPages, maxVisible);
-    } else if (page >= totalPages - 2) {
-      end = totalPages;
-      start = Math.max(1, totalPages - (maxVisible - 1));
-    }
-
-    for (let i = start; i <= end; i += 1) {
-      pages.push(i);
-    }
-
-    return pages;
-  };
-
   const fetchCreateFormData = async () => {
     try {
       const [leadSourcesRes, categoriesRes] = await Promise.all([
@@ -345,8 +274,7 @@ export default function DigitalEnquiryPage() {
     }
   };
 
-  const handleCreateEnquiry = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleCreateEnquiry = async (formData: FormData) => {
     setSubmitting(true);
     setError("");
 
@@ -384,24 +312,13 @@ export default function DigitalEnquiryPage() {
         // 3. BACKGROUND REFETCH - Ensure consistency
         fetchData(0, false, true); // Background fetch
 
-        // Reset form and close dialog
+        // Close dialog
         setCreateDialogOpen(false);
-        setFormData({
-          firstName: "",
-          lastName: "",
-          whatsappNumber: "",
-          email: "",
-          address: "",
-          reason: "",
-          leadSourceId: "",
-          leadScope: "warm",
-          interestedModelId: "",
-          interestedVariantId: "",
-        });
       }
     } catch (err: unknown) {
       const error = err as { response?: { data?: { error?: string } } };
       setError(error.response?.data?.error || "Failed to create enquiry");
+      throw error;
     } finally {
       setSubmitting(false);
     }
@@ -448,7 +365,8 @@ export default function DigitalEnquiryPage() {
       }
 
       const worksheet = workbook.Sheets[firstSheetName];
-      const rows: any[] = XLSX.utils.sheet_to_json(worksheet);
+      const rows: Record<string, unknown>[] =
+        XLSX.utils.sheet_to_json(worksheet);
 
       if (rows.length === 0) {
         setUploadError("Excel file is empty");
@@ -495,21 +413,19 @@ export default function DigitalEnquiryPage() {
     }
   };
 
-  const getLeadScopeColor = (scope: string) => {
-    switch (scope) {
-      case "hot":
-        return "bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400";
-      case "warm":
-        return "bg-yellow-100 dark:bg-yellow-900/30 text-yellow-600 dark:text-yellow-400";
-      case "cold":
-        return "bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400";
-      default:
-        return "bg-gray-100 dark:bg-gray-900/30 text-gray-600 dark:text-gray-400";
-    }
-  };
+  const handlePageChange = async (page: number) => {
+    const totalPages = Math.max(1, Math.ceil(totalEnquiries / PAGE_SIZE));
+    const targetPage = Math.min(Math.max(page, 1), totalPages);
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString();
+    if (targetPage * PAGE_SIZE <= enquiries.length || !hasMore) {
+      setCurrentPage(targetPage);
+      return;
+    }
+
+    if (hasMore && !pageLoading) {
+      await fetchData(enquiries.length, true);
+      setCurrentPage(targetPage);
+    }
   };
 
   const handleUpdateLeadScope = async (
@@ -550,11 +466,29 @@ export default function DigitalEnquiryPage() {
 
         setEditingLeadScope(null);
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const err = error as { response?: { data?: { error?: string } } };
       console.error("Failed to update lead scope:", error);
-      toast.error(error.response?.data?.error || "Failed to update lead scope");
+      toast.error(err.response?.data?.error || "Failed to update lead scope");
     } finally {
       setUpdatingLeadScope(false);
+    }
+  };
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString();
+  };
+
+  const getLeadScopeColor = (scope: string) => {
+    switch (scope) {
+      case "hot":
+        return "bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400";
+      case "warm":
+        return "bg-yellow-100 dark:bg-yellow-900/30 text-yellow-600 dark:text-yellow-400";
+      case "cold":
+        return "bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400";
+      default:
+        return "bg-gray-100 dark:bg-gray-900/30 text-gray-600 dark:text-gray-400";
     }
   };
 
@@ -571,7 +505,6 @@ export default function DigitalEnquiryPage() {
     (currentPage - 1) * PAGE_SIZE,
     currentPage * PAGE_SIZE,
   );
-  const pageNumbers = getVisiblePages(totalPages, currentPage);
 
   return (
     <div className="space-y-6 sm:space-y-8">
@@ -585,6 +518,21 @@ export default function DigitalEnquiryPage() {
       </div>
 
       <div className="flex justify-end gap-2">
+        <Button
+          variant="outline"
+          onClick={() => {
+            setEnquiries([]);
+            setCurrentPage(1);
+            fetchData(0, false);
+            toast.success("Reloading data...");
+          }}
+          disabled={loading}
+        >
+          <RotateCw
+            className={`mr-2 h-4 w-4 ${loading ? "animate-spin" : ""}`}
+          />
+          Reload
+        </Button>
         <Button
           variant="outline"
           onClick={() => {
@@ -621,763 +569,48 @@ export default function DigitalEnquiryPage() {
         </Card>
       ) : (
         <>
-          <Card>
-            <CardContent className="p-0">
-              <div className="overflow-x-auto">
-                <table className="w-full border-collapse">
-                  <thead>
-                    <tr className="border-b bg-muted/50">
-                      <th className="text-left py-3 px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-                        Enquiry
-                      </th>
-                      <th className="text-left py-3 px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-                        Contact
-                      </th>
-                      <th className="text-left py-3 px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-                        Lead Scope
-                      </th>
-                      <th className="text-left py-3 px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-                        Lead Source
-                      </th>
-                      <th className="text-left py-3 px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-                        Model
-                      </th>
-                      <th className="text-left py-3 px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-                        Created
-                      </th>
-                      <th className="text-left py-3 px-4 text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-                        Actions
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {paginatedEnquiries.map((enquiry) => {
-                      const initials = `${enquiry.firstName.charAt(
-                        0,
-                      )}${enquiry.lastName.charAt(0)}`.toUpperCase();
-
-                      return (
-                        <tr
-                          key={enquiry.id}
-                          className="border-b hover:bg-muted/30 transition-colors"
-                        >
-                          {/* Enquiry Column */}
-                          <td className="py-3 px-4">
-                            <div className="flex items-center gap-3">
-                              <div className="w-10 h-10 rounded-full bg-primary flex items-center justify-center text-primary-foreground font-semibold text-sm flex-shrink-0">
-                                {initials}
-                              </div>
-                              <div className="min-w-0">
-                                <p className="text-sm font-medium truncate">
-                                  {enquiry.firstName} {enquiry.lastName}
-                                </p>
-                                {enquiry.email && (
-                                  <p className="text-xs text-muted-foreground truncate">
-                                    {enquiry.email}
-                                  </p>
-                                )}
-                                {enquiry.reason && (
-                                  <p className="text-xs text-muted-foreground truncate max-w-[200px]">
-                                    {enquiry.reason.length > 50
-                                      ? enquiry.reason.substring(0, 50) + "..."
-                                      : enquiry.reason}
-                                  </p>
-                                )}
-                              </div>
-                            </div>
-                          </td>
-
-                          {/* Contact Column */}
-                          <td className="py-3 px-4">
-                            <p className="text-sm">
-                              {enquiry.whatsappNumber || "No phone"}
-                            </p>
-                          </td>
-
-                          {/* Lead Scope Column */}
-                          <td className="py-3 px-4">
-                            <div className="flex items-center gap-1.5 group">
-                              {editingLeadScope === enquiry.id ? (
-                                <Select
-                                  value={enquiry.leadScope}
-                                  onValueChange={(value) => {
-                                    handleUpdateLeadScope(enquiry.id, value);
-                                  }}
-                                  disabled={updatingLeadScope}
-                                >
-                                  <SelectTrigger className="h-7 w-20 text-xs">
-                                    <SelectValue />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    <SelectItem value="hot">Hot</SelectItem>
-                                    <SelectItem value="warm">Warm</SelectItem>
-                                    <SelectItem value="cold">Cold</SelectItem>
-                                  </SelectContent>
-                                </Select>
-                              ) : (
-                                <>
-                                  <Badge
-                                    className={getLeadScopeColor(
-                                      enquiry.leadScope,
-                                    )}
-                                    variant="secondary"
-                                  >
-                                    {enquiry.leadScope?.toUpperCase() || "N/A"}
-                                  </Badge>
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    className="h-5 w-5 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      setEditingLeadScope(enquiry.id);
-                                    }}
-                                    disabled={updatingLeadScope}
-                                  >
-                                    <Edit2 className="h-3 w-3" />
-                                  </Button>
-                                </>
-                              )}
-                              {updatingLeadScope &&
-                                editingLeadScope === enquiry.id && (
-                                  <Loader2 className="h-3 w-3 animate-spin" />
-                                )}
-                            </div>
-                          </td>
-
-                          {/* Lead Source Column */}
-                          <td className="py-3 px-4">
-                            {enquiry.leadSource ? (
-                              <Badge variant="outline" className="text-xs">
-                                {enquiry.leadSource.name}
-                              </Badge>
-                            ) : (
-                              <span className="text-xs text-muted-foreground">
-                                None
-                              </span>
-                            )}
-                          </td>
-
-                          {/* Model Column */}
-                          <td className="py-3 px-4">
-                            {enquiry.model ? (
-                              <div className="space-y-1">
-                                <p className="text-xs text-muted-foreground">
-                                  {enquiry.model.category.name}
-                                </p>
-                                <p className="text-sm font-medium">
-                                  {enquiry.model.name}
-                                </p>
-                              </div>
-                            ) : (
-                              <span className="text-xs text-muted-foreground">
-                                None
-                              </span>
-                            )}
-                          </td>
-
-                          {/* Created Column */}
-                          <td className="py-3 px-4">
-                            <p className="text-sm">
-                              {formatDate(enquiry.createdAt)}
-                            </p>
-                          </td>
-
-                          {/* Actions Column */}
-                          <td className="py-3 px-4">
-                            <div className="flex items-center gap-2">
-                              {phoneLookups[enquiry.whatsappNumber]
-                                ?.dailyWalkins && (
-                                <Link
-                                  href="/dashboard/daily-walkins"
-                                  onClick={(e) => e.stopPropagation()}
-                                >
-                                  <Badge
-                                    variant="outline"
-                                    className="text-xs cursor-pointer hover:bg-primary/10 transition-colors"
-                                  >
-                                    Walkins
-                                  </Badge>
-                                </Link>
-                              )}
-                              {phoneLookups[enquiry.whatsappNumber]
-                                ?.deliveryUpdate && (
-                                <Link
-                                  href="/dashboard/delivery-update"
-                                  onClick={(e) => e.stopPropagation()}
-                                >
-                                  <Badge
-                                    variant="outline"
-                                    className="text-xs cursor-pointer hover:bg-primary/10 transition-colors"
-                                  >
-                                    Delivery
-                                  </Badge>
-                                </Link>
-                              )}
-                            </div>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            </CardContent>
-          </Card>
-          {totalPages > 1 ? (
-            <div className="flex flex-wrap items-center justify-center gap-2 pt-4">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => handlePageChange(currentPage - 1)}
-                disabled={currentPage === 1 || pageLoading}
-                className="w-auto"
-              >
-                Previous
-              </Button>
-
-              {pageNumbers.map((page) => (
-                <Button
-                  key={page}
-                  variant={page === currentPage ? "default" : "outline"}
-                  size="sm"
-                  onClick={() => handlePageChange(page)}
-                  disabled={pageLoading}
-                  className="w-auto"
-                >
-                  {page}
-                </Button>
-              ))}
-
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => handlePageChange(currentPage + 1)}
-                disabled={currentPage === totalPages || pageLoading}
-                className="w-auto"
-              >
-                Next
-              </Button>
-            </div>
-          ) : null}
+          <EnquiriesTable
+            enquiries={paginatedEnquiries}
+            phoneLookups={phoneLookups}
+            editingLeadScope={editingLeadScope}
+            updatingLeadScope={updatingLeadScope}
+            onEditLeadScope={setEditingLeadScope}
+            onUpdateLeadScope={handleUpdateLeadScope}
+            formatDate={formatDate}
+            getLeadScopeColor={getLeadScopeColor}
+          />
+          <Pagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            onPageChange={handlePageChange}
+            pageLoading={pageLoading}
+          />
         </>
       )}
 
-      {/* Create Enquiry Dialog */}
-      <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Create Digital Enquiry</DialogTitle>
-            <DialogDescription>
-              Add a new digital lead inquiry
-            </DialogDescription>
-          </DialogHeader>
-          <form onSubmit={handleCreateEnquiry} className="space-y-4 mt-4">
-            {error && (
-              <div className="bg-destructive/10 text-destructive text-xs sm:text-sm p-3 rounded">
-                {error}
-              </div>
-            )}
+      <CreateEnquiryDialog
+        open={createDialogOpen}
+        onOpenChange={setCreateDialogOpen}
+        leadSources={leadSources}
+        categories={categories}
+        onSubmit={handleCreateEnquiry}
+        submitting={submitting}
+        error={error}
+      />
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="firstName" className="text-sm">
-                  First Name *
-                </Label>
-                <Input
-                  id="firstName"
-                  placeholder="John"
-                  value={formData.firstName}
-                  onChange={(e) =>
-                    setFormData({ ...formData, firstName: e.target.value })
-                  }
-                  required
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="lastName" className="text-sm">
-                  Last Name *
-                </Label>
-                <Input
-                  id="lastName"
-                  placeholder="Doe"
-                  value={formData.lastName}
-                  onChange={(e) =>
-                    setFormData({ ...formData, lastName: e.target.value })
-                  }
-                  required
-                />
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="whatsappNumber" className="text-sm">
-                WhatsApp Number *
-              </Label>
-              <Input
-                id="whatsappNumber"
-                placeholder="+1234567890"
-                value={formData.whatsappNumber}
-                onChange={(e) =>
-                  setFormData({
-                    ...formData,
-                    whatsappNumber: e.target.value,
-                  })
-                }
-                required
-              />
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="email" className="text-sm">
-                  Email
-                </Label>
-                <Input
-                  id="email"
-                  type="email"
-                  placeholder="john@example.com"
-                  value={formData.email}
-                  onChange={(e) =>
-                    setFormData({ ...formData, email: e.target.value })
-                  }
-                />
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="address" className="text-sm">
-                  Address
-                </Label>
-                <Input
-                  id="address"
-                  placeholder="123 Main St"
-                  value={formData.address}
-                  onChange={(e) =>
-                    setFormData({ ...formData, address: e.target.value })
-                  }
-                />
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="reason" className="text-sm">
-                Reason for Enquiry *
-              </Label>
-              <Textarea
-                id="reason"
-                placeholder="Why are they interested?"
-                value={formData.reason}
-                onChange={(e) =>
-                  setFormData({ ...formData, reason: e.target.value })
-                }
-                required
-              />
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="leadSource" className="text-sm">
-                  Lead Source
-                </Label>
-                <Select
-                  value={formData.leadSourceId}
-                  onValueChange={(value) =>
-                    setFormData({ ...formData, leadSourceId: value })
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select lead source" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {leadSources.map((source) => (
-                      <SelectItem key={source.id} value={source.id}>
-                        {source.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="leadScope" className="text-sm">
-                  Lead Scope (Priority)
-                </Label>
-                <Select
-                  value={formData.leadScope}
-                  onValueChange={(value) =>
-                    setFormData({ ...formData, leadScope: value })
-                  }
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="hot">Hot</SelectItem>
-                    <SelectItem value="warm">Warm</SelectItem>
-                    <SelectItem value="cold">Cold</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            <div className="space-y-3">
-              <Label className="text-sm font-semibold">Interested Model</Label>
-              <div className="border border-border/40 rounded-lg bg-background p-3 max-h-64 overflow-y-auto">
-                {categories.length === 0 ? (
-                  <p className="text-sm text-muted-foreground text-center py-6">
-                    No models available. Add models in Global Settings.
-                  </p>
-                ) : (
-                  <div className="space-y-1">
-                    {categories.map((category) => {
-                      const isOpen = openModelCategories.has(category.id);
-                      return (
-                        <Collapsible
-                          key={category.id}
-                          open={isOpen}
-                          onOpenChange={(open) => {
-                            setOpenModelCategories((prev) => {
-                              const newSet = new Set(prev);
-                              if (open) {
-                                newSet.add(category.id);
-                              } else {
-                                newSet.delete(category.id);
-                              }
-                              return newSet;
-                            });
-                          }}
-                        >
-                          <CollapsibleTrigger className="w-full flex items-center justify-between px-3 py-2 bg-muted/40 hover:bg-muted/60 rounded-md text-sm font-medium transition-colors">
-                            <span className="text-foreground">
-                              {category.name}
-                            </span>
-                            <ChevronDown
-                              className={`h-4 w-4 text-muted-foreground transition-transform ${
-                                isOpen ? "rotate-180" : ""
-                              }`}
-                            />
-                          </CollapsibleTrigger>
-                          <CollapsibleContent className="mt-1.5 space-y-1">
-                            {category.models.map((model) => {
-                              const isModelSelected =
-                                formData.interestedModelId === model.id &&
-                                !formData.interestedVariantId;
-                              const hasVariants =
-                                model.variants && model.variants.length > 0;
-                              return (
-                                <div key={model.id} className="space-y-0.5">
-                                  <label className="flex items-center gap-2.5 px-2 py-1.5 rounded hover:bg-muted/30 cursor-pointer transition-colors group">
-                                    <div className="relative flex items-center justify-center shrink-0">
-                                      <div
-                                        className={`flex items-center justify-center w-5 h-5 rounded-full border-2 transition-all ${
-                                          isModelSelected
-                                            ? "bg-primary border-primary"
-                                            : "bg-background border-border hover:border-primary/50"
-                                        }`}
-                                      >
-                                        {isModelSelected && (
-                                          <div className="w-2 h-2 rounded-full bg-primary-foreground" />
-                                        )}
-                                      </div>
-                                      <input
-                                        type="radio"
-                                        name="interestedModel"
-                                        checked={isModelSelected}
-                                        onChange={() =>
-                                          setFormData({
-                                            ...formData,
-                                            interestedModelId: model.id,
-                                            interestedVariantId: "",
-                                          })
-                                        }
-                                        className="absolute opacity-0 cursor-pointer w-5 h-5"
-                                      />
-                                    </div>
-                                    <span className="text-sm text-foreground flex-1">
-                                      {model.name}
-                                      {model.year && (
-                                        <span className="text-muted-foreground ml-1">
-                                          ({model.year})
-                                        </span>
-                                      )}
-                                    </span>
-                                  </label>
-                                  {hasVariants && (
-                                    <Collapsible
-                                      open={expandedVariants.has(model.id)}
-                                      onOpenChange={(open) => {
-                                        setExpandedVariants((prev) => {
-                                          const newSet = new Set(prev);
-                                          if (open) {
-                                            newSet.add(model.id);
-                                          } else {
-                                            newSet.delete(model.id);
-                                          }
-                                          return newSet;
-                                        });
-                                      }}
-                                    >
-                                      <CollapsibleTrigger className="w-full flex items-center gap-2.5 px-2.5 py-2 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted/30 rounded transition-all">
-                                        <ChevronDown
-                                          className={`h-4 w-4 transition-transform ${
-                                            expandedVariants.has(model.id)
-                                              ? "rotate-180"
-                                              : ""
-                                          }`}
-                                        />
-                                        <span>
-                                          {model.variants?.length || 0} variant
-                                          {(model.variants?.length || 0) !== 1
-                                            ? "s"
-                                            : ""}
-                                        </span>
-                                      </CollapsibleTrigger>
-                                      <CollapsibleContent className="ml-6 space-y-1 mt-1">
-                                        {model.variants?.map((variant) => {
-                                          const isVariantSelected =
-                                            formData.interestedModelId ===
-                                              model.id &&
-                                            formData.interestedVariantId ===
-                                              variant.id;
-                                          return (
-                                            <label
-                                              key={variant.id}
-                                              className="flex items-center gap-3 px-2.5 py-2 rounded hover:bg-muted/30 cursor-pointer transition-colors"
-                                            >
-                                              <div className="relative flex items-center justify-center shrink-0">
-                                                <div
-                                                  className={`flex items-center justify-center w-5 h-5 rounded-full border-2 transition-all ${
-                                                    isVariantSelected
-                                                      ? "bg-primary border-primary"
-                                                      : "bg-background border-border hover:border-primary/50"
-                                                  }`}
-                                                >
-                                                  {isVariantSelected && (
-                                                    <div className="w-2 h-2 rounded-full bg-primary-foreground" />
-                                                  )}
-                                                </div>
-                                                <input
-                                                  type="radio"
-                                                  name="interestedModel"
-                                                  checked={isVariantSelected}
-                                                  onChange={() =>
-                                                    setFormData({
-                                                      ...formData,
-                                                      interestedModelId:
-                                                        model.id,
-                                                      interestedVariantId:
-                                                        variant.id,
-                                                    })
-                                                  }
-                                                  className="absolute opacity-0 cursor-pointer w-5 h-5"
-                                                />
-                                              </div>
-                                              <span className="text-sm text-foreground flex-1">
-                                                {model.name}.{variant.name}
-                                                {model.year && (
-                                                  <span className="text-muted-foreground ml-1">
-                                                    ({model.year})
-                                                  </span>
-                                                )}
-                                              </span>
-                                            </label>
-                                          );
-                                        })}
-                                      </CollapsibleContent>
-                                    </Collapsible>
-                                  )}
-                                </div>
-                              );
-                            })}
-                          </CollapsibleContent>
-                        </Collapsible>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-            </div>
-
-            <div className="flex flex-col sm:flex-row justify-end gap-2 pt-4">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => setCreateDialogOpen(false)}
-                className="w-full sm:w-auto"
-              >
-                Cancel
-              </Button>
-              <Button
-                type="submit"
-                disabled={submitting}
-                className="w-full sm:w-auto"
-              >
-                {submitting ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Creating...
-                  </>
-                ) : (
-                  "Create Inquiry"
-                )}
-              </Button>
-            </div>
-          </form>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog
+      <BulkUploadDialog
         open={bulkUploadDialogOpen}
         onOpenChange={setBulkUploadDialogOpen}
-      >
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>Bulk Upload Digital Enquiries</DialogTitle>
-            <DialogDescription>
-              Upload multiple enquiries at once using an Excel file
-            </DialogDescription>
-          </DialogHeader>
-
-          <form onSubmit={handleBulkUpload} className="space-y-4">
-            {uploadError && (
-              <div className="bg-destructive/10 text-destructive text-xs sm:text-sm p-3 rounded">
-                {uploadError}
-              </div>
-            )}
-
-            {uploadResults && (
-              <div className="space-y-3 p-4 bg-muted/50 rounded-lg">
-                <div className="flex items-center justify-between">
-                  <h3 className="font-semibold text-sm">
-                    {uploadResults.jobId ? "Upload Queued" : "Upload Results"}
-                  </h3>
-                  {uploadResults.jobId ? (
-                    <Badge variant="outline">
-                      Processing {uploadResults.totalRows} rows...
-                    </Badge>
-                  ) : (
-                    <Badge
-                      variant={
-                        uploadResults.summary?.errors === 0
-                          ? "default"
-                          : "secondary"
-                      }
-                    >
-                      {uploadResults.summary?.success} /{" "}
-                      {uploadResults.summary?.total} successful
-                    </Badge>
-                  )}
-                </div>
-                {uploadResults.jobId && (
-                  <div className="space-y-3">
-                    <p className="text-xs text-muted-foreground">
-                      Job ID: {uploadResults.jobId}
-                      <br />
-                      Your upload is being processed in the background. You can
-                      close this dialog and continue working.
-                    </p>
-                    <Button
-                      type="button"
-                      className="w-full bg-green-600 hover:bg-green-700 text-white"
-                      onClick={() => {
-                        setBulkUploadDialogOpen(false);
-                        setUploadError("");
-                        setUploadResults(null);
-                      }}
-                    >
-                      <Check className="mr-2 h-4 w-4" />
-                      Done
-                    </Button>
-                  </div>
-                )}
-                {uploadResults.summary && uploadResults.summary.errors > 0 && (
-                  <div className="space-y-2 max-h-60 overflow-y-auto">
-                    <p className="text-xs font-medium text-destructive">
-                      Errors ({uploadResults.summary.errors}):
-                    </p>
-                    <div className="space-y-1 text-xs">
-                      {uploadResults.results
-                        ?.filter((r) => !r.success)
-                        .map((result, idx) => (
-                          <div
-                            key={idx}
-                            className="p-2 bg-background rounded border-l-2 border-destructive"
-                          >
-                            <span className="font-medium">
-                              Row {result.rowNumber}:
-                            </span>{" "}
-                            {result.error}
-                          </div>
-                        ))}
-                    </div>
-                  </div>
-                )}
-                {uploadResults.summary && uploadResults.summary.success > 0 && (
-                  <p className="text-xs text-muted-foreground">
-                    {uploadResults.summary.success} enquiries created
-                    successfully. All enquiries have been set to
-                    &ldquo;Cold&quot; lead scope.
-                  </p>
-                )}
-              </div>
-            )}
-
-            <div className="space-y-2">
-              <Label htmlFor="excelFile" className="text-sm">
-                Excel File *
-              </Label>
-              <div className="flex items-center gap-2">
-                <Input
-                  id="excelFile"
-                  type="file"
-                  accept=".xlsx,.xls"
-                  required
-                  disabled={uploading}
-                  className="cursor-pointer"
-                />
-                <FileSpreadsheet className="h-5 w-5 text-muted-foreground" />
-              </div>
-              <p className="text-xs text-muted-foreground">
-                Required columns: Date, Name, WhatsApp Number, Location, Model,
-                Source
-              </p>
-            </div>
-
-            <div className="flex flex-col sm:flex-row justify-end gap-2 pt-4">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => {
-                  setBulkUploadDialogOpen(false);
-                  setUploadError("");
-                  setUploadResults(null);
-                }}
-                className="w-full sm:w-auto"
-                disabled={uploading}
-              >
-                {uploadResults ? "Close" : "Cancel"}
-              </Button>
-              {!uploadResults && (
-                <Button
-                  type="submit"
-                  disabled={uploading}
-                  className="w-full sm:w-auto"
-                >
-                  {uploading ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Uploading...
-                    </>
-                  ) : (
-                    "Upload Enquiries"
-                  )}
-                </Button>
-              )}
-            </div>
-          </form>
-        </DialogContent>
-      </Dialog>
+        onSubmit={handleBulkUpload}
+        uploading={uploading}
+        uploadError={uploadError}
+        uploadResults={uploadResults}
+        onClose={() => {
+          setBulkUploadDialogOpen(false);
+          setUploadError("");
+          setUploadResults(null);
+        }}
+      />
     </div>
   );
 }
