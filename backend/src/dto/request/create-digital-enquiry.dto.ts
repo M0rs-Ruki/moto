@@ -12,4 +12,7 @@ export interface CreateDigitalEnquiryDto {
   leadScope?: "hot" | "warm" | "cold";
   interestedModelId?: string;
   interestedVariantId?: string;
+  // Text fields for bulk upload when IDs are not available
+  sourceText?: string;
+  modelText?: string;
 }

@@ -50,6 +50,8 @@ interface DigitalEnquiry {
       name: string;
     };
   } | null;
+  modelText?: string | null; // Raw model name when not found in DB
+  sourceText?: string | null; // Raw source name when not found in DB
   createdAt: string;
 }
 
@@ -531,7 +533,7 @@ export default function DigitalEnquiryPage() {
           <RotateCw
             className={`mr-2 h-4 w-4 ${loading ? "animate-spin" : ""}`}
           />
-          Reload
+          Sync Data
         </Button>
         <Button
           variant="outline"

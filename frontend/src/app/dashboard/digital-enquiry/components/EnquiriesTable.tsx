@@ -31,6 +31,8 @@ interface DigitalEnquiry {
       name: string;
     };
   } | null;
+  modelText?: string | null; // Raw model name when not found in DB
+  sourceText?: string | null; // Raw source name when not found in DB
   createdAt: string;
 }
 
@@ -193,6 +195,10 @@ export default function EnquiriesTable({
                         <Badge variant="outline" className="text-xs">
                           {enquiry.leadSource.name}
                         </Badge>
+                      ) : enquiry.sourceText ? (
+                        <Badge variant="outline" className="text-xs">
+                          {enquiry.sourceText}
+                        </Badge>
                       ) : (
                         <span className="text-xs text-muted-foreground">
                           None
@@ -211,6 +217,13 @@ export default function EnquiriesTable({
                             {enquiry.model.name}
                           </p>
                         </div>
+                      ) : enquiry.modelText ? (
+                        <p className="text-sm font-medium">
+                          {enquiry.modelText}
+                        </p>
+                      ) : enquiry.reason &&
+                        enquiry.reason !== "Bulk imported enquiry" ? (
+                        <p className="text-sm font-medium">{enquiry.reason}</p>
                       ) : (
                         <span className="text-xs text-muted-foreground">
                           None

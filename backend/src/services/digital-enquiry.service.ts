@@ -60,6 +60,9 @@ export class DigitalEnquiryService {
       variant: data.interestedVariantId
         ? { connect: { id: data.interestedVariantId } }
         : undefined,
+      // Store text fields for bulk upload when IDs are not available
+      sourceText: data.sourceText || null,
+      modelText: data.modelText || null,
     });
 
     // Get WhatsApp template
@@ -290,12 +293,18 @@ export class DigitalEnquiryService {
 
         // Match lead source
         let leadSourceId: string | null = null;
+        let sourceText: string | null = null;
         if (row.Source) {
           const sourceName = String(row.Source).trim();
           const matchedSource = allLeadSources.find(
             (s) => s.name.toLowerCase() === sourceName.toLowerCase(),
           );
-          leadSourceId = matchedSource?.id || null;
+          if (matchedSource) {
+            leadSourceId = matchedSource.id;
+          } else {
+            // Store source name as text if not found in database
+            sourceText = sourceName;
+          }
         }
 
         if (!leadSourceId && defaultLeadSource) {
@@ -332,6 +341,9 @@ export class DigitalEnquiryService {
             ? { connect: { id: matchedModel.id } }
             : undefined,
           variant: undefined,
+          // Store text values when no match found
+          modelText: matchedModel ? null : modelName,
+          sourceText: sourceText,
         });
 
         // Send WhatsApp message if template is configured

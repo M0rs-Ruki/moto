@@ -171,6 +171,9 @@ export class RabbitMQConsumerService {
                 address: location || undefined,
                 reason: model || "",
                 leadScope: row.leadScope || "WARM",
+                // Pass source and model as text for bulk upload
+                sourceText: source || undefined,
+                modelText: model || undefined,
               },
               jobData.dealershipId,
             );
