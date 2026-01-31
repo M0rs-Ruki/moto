@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, Suspense } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import apiClient from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,11 +14,10 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { ThemeSwitcher } from "@/components/theme-switcher";
-import Link from "next/link";
+import Image from "next/image";
 import { Eye, EyeOff } from "lucide-react";
 
 function LoginContent() {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const redirect = searchParams.get("redirect") || "/dashboard";
 
@@ -46,8 +45,9 @@ function LoginContent() {
         // Full page reload to ensure cookie is available to middleware
         window.location.href = redirect;
       }
-    } catch (err: any) {
-      setError(err.response?.data?.error || "Login failed");
+    } catch (err: unknown) {
+      const error = err as { response?: { data?: { error?: string } } };
+      setError(error.response?.data?.error || "Login failed");
     } finally {
       setLoading(false);
     }
@@ -63,15 +63,21 @@ function LoginContent() {
         <CardHeader className="space-y-3 sm:space-y-4">
           {/* Logo */}
           <div className="flex justify-center mb-1 sm:mb-2">
-            <img
+            <Image
               src="/autopluse-black.png"
               alt="Autopluse Logo"
+              width={120}
+              height={96}
               className="h-20 sm:h-24 w-auto object-contain dark:hidden"
+              priority
             />
-            <img
+            <Image
               src="/autopluse-white.png"
               alt="Autopluse Logo"
+              width={120}
+              height={96}
               className="h-20 sm:h-24 w-auto object-contain hidden dark:block"
+              priority
             />
           </div>
           <CardTitle className="text-lg sm:text-xl md:text-2xl text-center font-semibold leading-tight">

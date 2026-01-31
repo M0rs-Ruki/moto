@@ -19,6 +19,7 @@ import cronRoutes from "./cron";
 import healthRoutes from "./health";
 import debugRoutes from "./debug";
 import bulkUploadJobsRoutes from "./bulk-upload-jobs";
+import exportRoutes from "./export.routes";
 
 const router: ExpressRouter = Router();
 
@@ -43,6 +44,7 @@ router.use("/digital-enquiry", digitalEnquiryRoutes);
 router.use("/field-inquiry", fieldInquiryRoutes);
 router.use("/delivery-tickets", deliveryTicketsRoutes);
 router.use("/bulk-upload-jobs", bulkUploadJobsRoutes);
+router.use("/export", exportRoutes);
 
 // System routes
 router.use("/statistics", statisticsRoutes);

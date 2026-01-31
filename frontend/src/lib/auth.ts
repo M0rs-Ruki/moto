@@ -23,6 +23,7 @@ export interface UserPermissions {
   digitalEnquiry: boolean;
   fieldInquiry: boolean;
   deliveryUpdate: boolean;
+  exportExcel: boolean;
   settingsProfile: boolean;
   settingsVehicleModels: boolean;
   settingsLeadSources: boolean;
@@ -130,7 +131,7 @@ export async function clearAuthCookie() {
  * Get user from request (for API routes)
  */
 export async function getUserFromRequest(
-  request: NextRequest
+  request: NextRequest,
 ): Promise<JWTPayload | null> {
   const token = request.cookies.get("auth-token")?.value;
 

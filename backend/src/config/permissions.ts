@@ -9,10 +9,11 @@ export const PERMISSIONS = {
   DIGITAL_ENQUIRY: "digitalEnquiry",
   FIELD_INQUIRY: "fieldInquiry",
   DELIVERY_UPDATE: "deliveryUpdate",
+  EXPORT_EXCEL: "exportExcel",
   SETTINGS_PROFILE: "settingsProfile",
   SETTINGS_VEHICLE_MODELS: "settingsVehicleModels",
   SETTINGS_LEAD_SOURCES: "settingsLeadSources",
   SETTINGS_WHATSAPP: "settingsWhatsApp",
 } as const;
 
-export type PermissionKey = typeof PERMISSIONS[keyof typeof PERMISSIONS];
+export type PermissionKey = (typeof PERMISSIONS)[keyof typeof PERMISSIONS];

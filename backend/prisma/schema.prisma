@@ -339,6 +339,7 @@ model UserPermission {
   digitalEnquiry Boolean @default(false)
   fieldInquiry   Boolean @default(false)
   deliveryUpdate Boolean @default(false)
+  exportExcel    Boolean @default(false)
   
   // Settings - granular control for each tab
   settingsProfile      Boolean @default(false)  // Profile & Appearance tab
