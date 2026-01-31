@@ -7,35 +7,84 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// ============================================================
+// MULTI-TENANT RBAC HIERARCHY (Simplified)
+// ============================================================
+// Super Admin → owns Organization, full access
+// Admin       → manager with full access
+// User        → staff with permission toggles
+// ============================================================
+
 enum UserRole {
-  admin
-  user
+  super_admin // Organization owner - full access
+  admin       // Manager - full access to organization
+  user        // Staff - permissions controlled by admin
 }
 
-model User {
-  id             String          @id @default(cuid())
-  email          String          @unique
-  password       String
-  role           UserRole        @default(user)
-  isActive       Boolean         @default(true)
-  createdAt      DateTime        @default(now())
-  updatedAt      DateTime        @updatedAt
-  dealershipId   String?
-  theme          String          @default("light")
-  profilePicture String?
-  dealership     Dealership?     @relation(fields: [dealershipId], references: [id])
-  permissions    UserPermission?
+// ============================================================
+// ORGANIZATION MODEL (Tenant Root)
+// ============================================================
+// Every piece of data belongs to an Organization.
+// This ensures complete isolation between different organizations.
+// ============================================================
+model Organization {
+  id        String   @id @default(cuid())
+  name      String   // e.g., "Utkal Automobiles Pvt Ltd"
+  slug      String   @unique // URL-friendly identifier: "utkal-automobiles"
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
-  @@index([dealershipId])
+  // Relations - everything belongs to organization
+  users          User[]
+  featureToggles OrgFeatureToggle[]
+
+  @@index([slug])
+  @@index([isActive])
 }
 
+// ============================================================
+// ORGANIZATION FEATURE TOGGLES
+// ============================================================
+// Super Admin can enable/disable features for entire organization.
+// ============================================================
+model OrgFeatureToggle {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  // Feature flags (master switches for the organization)
+  dashboard             Boolean @default(true)
+  dailyWalkinsVisitors  Boolean @default(true)
+  dailyWalkinsSessions  Boolean @default(true)
+  digitalEnquiry        Boolean @default(true)
+  fieldInquiry          Boolean @default(true)
+  deliveryUpdate        Boolean @default(true)
+  exportExcel           Boolean @default(true)
+  settingsProfile       Boolean @default(true)
+  settingsVehicleModels Boolean @default(true)
+  settingsLeadSources   Boolean @default(true)
+  settingsWhatsApp      Boolean @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([organizationId])
+  @@index([organizationId])
+}
+
+// ============================================================
+// DEALERSHIP MODEL (Legacy - keeps existing data working)
+// ============================================================
 model Dealership {
-  id                String             @id @default(cuid())
-  name              String
-  location          String
-  createdAt         DateTime           @default(now())
-  updatedAt         DateTime           @updatedAt
-  showroomNumber    String?
+  id             String   @id @default(cuid())
+  name           String
+  location       String
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  showroomNumber String?
+  organizationId String?
+
   deliveryTickets   DeliveryTicket[]
   digitalEnquiries  DigitalEnquiry[]
   fieldInquiries    FieldInquiry[]
@@ -44,16 +93,48 @@ model Dealership {
   vehicleCategories VehicleCategory[]
   visitors          Visitor[]
   whatsappTemplates WhatsAppTemplate[]
+
+  @@index([organizationId])
+}
+
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  password  String
+  role      UserRole @default(user)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Multi-tenant isolation
+  organizationId String?
+  organization   Organization? @relation(fields: [organizationId], references: [id])
+
+  // Legacy field for backward compatibility
+  dealershipId String?
+  dealership   Dealership? @relation(fields: [dealershipId], references: [id])
+
+  // User preferences
+  theme          String  @default("light")
+  profilePicture String?
+
+  // Granular permissions (for users, admins have all by default)
+  permissions UserPermission?
+
+  @@index([organizationId])
+  @@index([dealershipId])
 }
 
 model VehicleCategory {
-  id           String         @id @default(cuid())
-  name         String
-  dealershipId String
-  createdAt    DateTime       @default(now())
-  updatedAt    DateTime       @updatedAt
-  dealership   Dealership     @relation(fields: [dealershipId], references: [id], onDelete: Cascade)
-  models       VehicleModel[]
+  id        String   @id @default(cuid())
+  name      String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  dealershipId String?
+  dealership   Dealership? @relation(fields: [dealershipId], references: [id], onDelete: Cascade)
+
+  models VehicleModel[]
 
   @@unique([dealershipId, name])
   @@index([dealershipId])
@@ -95,19 +176,21 @@ model VehicleVariant {
 }
 
 model Visitor {
-  id                String            @id @default(cuid())
+  id                String   @id @default(cuid())
   firstName         String
   lastName          String
   whatsappNumber    String
   email             String?
   address           String?
   whatsappContactId String?
-  dealershipId      String
-  createdAt         DateTime          @default(now())
-  updatedAt         DateTime          @updatedAt
-  dealership        Dealership        @relation(fields: [dealershipId], references: [id], onDelete: Cascade)
-  interests         VisitorInterest[]
-  sessions          VisitorSession[]
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  dealershipId String?
+  dealership   Dealership? @relation(fields: [dealershipId], references: [id], onDelete: Cascade)
+
+  interests VisitorInterest[]
+  sessions  VisitorSession[]
 
   @@index([dealershipId])
   @@index([whatsappNumber])
@@ -118,7 +201,7 @@ model VisitorSession {
   reason           String
   status           String            @default("intake")
   visitorId        String
-  feedback         String?           // happy, okay, sad
+  feedback         String?
   createdAt        DateTime          @default(now())
   updatedAt        DateTime          @updatedAt
   testDrives       TestDrive[]
@@ -165,61 +248,66 @@ model TestDrive {
 }
 
 model WhatsAppTemplate {
-  id           String     @id @default(cuid())
+  id           String   @id @default(cuid())
   name         String
   templateId   String
   templateName String
-  language     String     @default("en_US")
+  language     String   @default("en_US")
   type         String
-  dealershipId String
-  createdAt    DateTime   @default(now())
-  updatedAt    DateTime   @updatedAt
-  section      String?    @default("global")
-  dealership   Dealership @relation(fields: [dealershipId], references: [id], onDelete: Cascade)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  section      String?  @default("global")
+
+  dealershipId String?
+  dealership   Dealership? @relation(fields: [dealershipId], references: [id], onDelete: Cascade)
 
   @@unique([dealershipId, type, section])
   @@index([dealershipId])
 }
 
 model LeadSource {
-  id               String           @id @default(cuid())
-  name             String
-  order            Int              @default(0)
-  isDefault        Boolean          @default(false)
-  dealershipId     String
-  createdAt        DateTime         @default(now())
-  updatedAt        DateTime         @updatedAt
+  id        String   @id @default(cuid())
+  name      String
+  order     Int      @default(0)
+  isDefault Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  dealershipId String?
+  dealership   Dealership? @relation(fields: [dealershipId], references: [id], onDelete: Cascade)
+
   digitalEnquiries DigitalEnquiry[]
   fieldInquiries   FieldInquiry[]
-  dealership       Dealership       @relation(fields: [dealershipId], references: [id], onDelete: Cascade)
 
   @@unique([dealershipId, name])
   @@index([dealershipId])
 }
 
 model DigitalEnquiry {
-  id                  String                  @id @default(cuid())
+  id                  String   @id @default(cuid())
   firstName           String
   lastName            String
   whatsappNumber      String
   email               String?
   address             String?
   reason              String
-  leadScope           String                  @default("warm")
+  leadScope           String   @default("warm")
   whatsappContactId   String?
-  dealershipId        String
   leadSourceId        String?
   interestedModelId   String?
-  createdAt           DateTime                @default(now())
-  updatedAt           DateTime                @updatedAt
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
   interestedVariantId String?
-  modelText           String?                 // Stores model name when not found in DB
-  sourceText          String?                 // Stores source name when not found in DB
-  dealership          Dealership              @relation(fields: [dealershipId], references: [id], onDelete: Cascade)
-  model               VehicleModel?           @relation(fields: [interestedModelId], references: [id])
-  variant             VehicleVariant?         @relation(fields: [interestedVariantId], references: [id])
-  leadSource          LeadSource?             @relation(fields: [leadSourceId], references: [id])
-  sessions            DigitalEnquirySession[]
+  modelText           String?
+  sourceText          String?
+
+  dealershipId String?
+  dealership   Dealership? @relation(fields: [dealershipId], references: [id], onDelete: Cascade)
+
+  model      VehicleModel?           @relation(fields: [interestedModelId], references: [id])
+  variant    VehicleVariant?         @relation(fields: [interestedVariantId], references: [id])
+  leadSource LeadSource?             @relation(fields: [leadSourceId], references: [id])
+  sessions   DigitalEnquirySession[]
 
   @@index([dealershipId])
   @@index([whatsappNumber])
@@ -240,7 +328,7 @@ model DigitalEnquirySession {
 }
 
 model DeliveryTicket {
-  id                String             @id @default(cuid())
+  id                String   @id @default(cuid())
   firstName         String
   lastName          String
   whatsappNumber    String
@@ -248,16 +336,18 @@ model DeliveryTicket {
   address           String?
   description       String?
   deliveryDate      DateTime
-  messageSent       Boolean            @default(false)
+  messageSent       Boolean  @default(false)
   whatsappContactId String?
-  dealershipId      String
   modelId           String
-  createdAt         DateTime           @default(now())
-  updatedAt         DateTime           @updatedAt
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
   variantId         String?
-  completionSent    Boolean            @default(false)
-  status            String             @default("active")
-  dealership        Dealership         @relation(fields: [dealershipId], references: [id], onDelete: Cascade)
+  completionSent    Boolean  @default(false)
+  status            String   @default("active")
+
+  dealershipId String?
+  dealership   Dealership? @relation(fields: [dealershipId], references: [id], onDelete: Cascade)
+
   model             VehicleModel       @relation(fields: [modelId], references: [id], onDelete: Cascade)
   variant           VehicleVariant?    @relation(fields: [variantId], references: [id])
   scheduledMessages ScheduledMessage[]
@@ -285,26 +375,28 @@ model ScheduledMessage {
 }
 
 model FieldInquiry {
-  id                  String                @id @default(cuid())
+  id                  String   @id @default(cuid())
   firstName           String
   lastName            String
   whatsappNumber      String
   email               String?
   address             String?
   reason              String
-  leadScope           String                @default("warm")
+  leadScope           String   @default("warm")
   whatsappContactId   String?
-  dealershipId        String
   leadSourceId        String?
   interestedModelId   String?
   interestedVariantId String?
-  createdAt           DateTime              @default(now())
-  updatedAt           DateTime              @updatedAt
-  dealership          Dealership            @relation(fields: [dealershipId], references: [id], onDelete: Cascade)
-  model               VehicleModel?         @relation(fields: [interestedModelId], references: [id])
-  variant             VehicleVariant?       @relation(fields: [interestedVariantId], references: [id])
-  leadSource          LeadSource?           @relation(fields: [leadSourceId], references: [id])
-  sessions            FieldInquirySession[]
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  dealershipId String?
+  dealership   Dealership? @relation(fields: [dealershipId], references: [id], onDelete: Cascade)
+
+  model      VehicleModel?         @relation(fields: [interestedModelId], references: [id])
+  variant    VehicleVariant?       @relation(fields: [interestedVariantId], references: [id])
+  leadSource LeadSource?           @relation(fields: [leadSourceId], references: [id])
+  sessions   FieldInquirySession[]
 
   @@index([dealershipId])
   @@index([whatsappNumber])
@@ -325,31 +417,31 @@ model FieldInquirySession {
 }
 
 model UserPermission {
-  id        String   @id @default(cuid())
-  userId    String   @unique
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
+  id     String @id @default(cuid())
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
   // Feature permissions
-  dashboard Boolean  @default(false)
-  
+  dashboard Boolean @default(false)
+
   // Daily Walkins - granular control
   dailyWalkinsVisitors Boolean @default(false)
   dailyWalkinsSessions Boolean @default(false)
-  
+
   digitalEnquiry Boolean @default(false)
   fieldInquiry   Boolean @default(false)
   deliveryUpdate Boolean @default(false)
   exportExcel    Boolean @default(false)
-  
+
   // Settings - granular control for each tab
-  settingsProfile      Boolean @default(false)  // Profile & Appearance tab
-  settingsVehicleModels Boolean @default(false) // Vehicle Models tab
-  settingsLeadSources  Boolean @default(false) // Lead Sources tab
-  settingsWhatsApp     Boolean @default(false) // WhatsApp Templates tab
-  
+  settingsProfile       Boolean @default(false)
+  settingsVehicleModels Boolean @default(false)
+  settingsLeadSources   Boolean @default(false)
+  settingsWhatsApp      Boolean @default(false)
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-  
+
   @@index([userId])
 }
 
@@ -361,34 +453,35 @@ enum BulkUploadJobStatus {
 }
 
 model BulkUploadJob {
-  id            String                 @id @default(cuid())
-  jobId         String                 @unique
-  type          String                 // "digital_enquiry" | "field_inquiry"
-  status        BulkUploadJobStatus    @default(QUEUED)
+  id            String              @id @default(cuid())
+  jobId         String              @unique
+  type          String
+  status        BulkUploadJobStatus @default(QUEUED)
   totalRows     Int
-  processedRows Int                    @default(0)
-  successCount  Int                    @default(0)
-  errorCount    Int                    @default(0)
-  failedRows    Json?                  // Array of failed row details
-  dealershipId  String
-  createdAt     DateTime               @default(now())
-  updatedAt     DateTime               @updatedAt
+  processedRows Int                 @default(0)
+  successCount  Int                 @default(0)
+  errorCount    Int                 @default(0)
+  failedRows    Json?
+  createdAt     DateTime            @default(now())
+  updatedAt     DateTime            @updatedAt
   completedAt   DateTime?
-  
+
+  dealershipId String?
+
   @@index([dealershipId])
   @@index([status])
   @@index([createdAt])
 }
 
 model BulkUploadJobResult {
-  id           String   @id @default(cuid())
-  jobId        String
-  rowNumber    Int
-  success      Boolean
-  data         Json?    // Created record data
-  error        String?  // Error message if failed
-  createdAt    DateTime @default(now())
-  
+  id        String   @id @default(cuid())
+  jobId     String
+  rowNumber Int
+  success   Boolean
+  data      Json?
+  error     String?
+  createdAt DateTime @default(now())
+
   @@index([jobId])
   @@index([createdAt])
 }

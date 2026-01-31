@@ -2,6 +2,15 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { verifyToken } from "./lib/auth";
 
+// ============================================================
+// MULTI-TENANT MIDDLEWARE
+// ============================================================
+// Handles authentication and role-based routing:
+// - Super Admin: Full organization access (org owner)
+// - Admin: Organization manager
+// - User: Staff member (limited by permissions)
+// ============================================================
+
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
@@ -24,7 +33,24 @@ export async function middleware(request: NextRequest) {
 
   // Redirect to dashboard if accessing auth pages while logged in
   if (isPublicPath && user) {
+    // Role-based default redirect
+    if (user.role === "super_admin") {
+      return NextResponse.redirect(new URL("/dashboard", request.url));
+    }
     return NextResponse.redirect(new URL("/dashboard", request.url));
+  }
+
+  // Protected route checks based on role
+  if (user) {
+    // Organization management routes - Super Admin only
+    if (
+      pathname.startsWith("/org-dashboard") ||
+      pathname.startsWith("/organization")
+    ) {
+      if (user.role !== "super_admin") {
+        return NextResponse.redirect(new URL("/dashboard", request.url));
+      }
+    }
   }
 
   return NextResponse.next();

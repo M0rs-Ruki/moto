@@ -9,11 +9,19 @@ const secret =
 // Pre-encode the secret so it works in the Edge runtime (middleware)
 const secretKey = new TextEncoder().encode(secret);
 
+// ============================================================
+// 3-TIER MULTI-TENANT RBAC TYPES
+// ============================================================
+
+export type UserRoleType = "super_admin" | "admin" | "user";
+
 export interface JWTPayload {
   userId: string;
   email: string;
-  dealershipId?: string;
-  role?: string;
+  // Multi-tenant fields
+  organizationId?: string;
+  dealershipId?: string; // Legacy support
+  role?: UserRoleType;
 }
 
 export interface UserPermissions {
@@ -30,19 +38,45 @@ export interface UserPermissions {
   settingsWhatsApp: boolean;
 }
 
+export interface OrgFeatureToggles {
+  dashboard: boolean;
+  dailyWalkinsVisitors: boolean;
+  dailyWalkinsSessions: boolean;
+  digitalEnquiry: boolean;
+  fieldInquiry: boolean;
+  deliveryUpdate: boolean;
+  exportExcel: boolean;
+  settingsProfile: boolean;
+  settingsVehicleModels: boolean;
+  settingsLeadSources: boolean;
+  settingsWhatsApp: boolean;
+}
+
+export interface Organization {
+  id: string;
+  name: string;
+  slug: string;
+  isActive?: boolean;
+}
+
 export interface User {
   id: string;
   email: string;
-  role?: string;
+  role?: UserRoleType;
   isActive?: boolean;
   theme?: string;
   profilePicture?: string | null;
+  // Multi-tenant fields
+  organizationId?: string | null;
+  organization?: Organization | null;
+  // Legacy field for backward compatibility
   dealership?: {
     id: string;
     name: string;
     location: string;
   } | null;
   permissions?: UserPermissions | null;
+  orgFeatureToggles?: OrgFeatureToggles | null;
 }
 
 /**

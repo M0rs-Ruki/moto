@@ -56,6 +56,8 @@ router.post(
       token = await generateToken({
         userId: user.id,
         email: user.email,
+        // Multi-tenant fields
+        organizationId: user.organizationId || undefined,
         dealershipId: user.dealershipId || undefined,
         role: user.role, // Include role in JWT for faster admin checks
       });
@@ -81,6 +83,8 @@ router.post(
         profilePicture: user.profilePicture,
         dealership: user.dealership,
         permissions: user.permissions || null,
+        // Multi-tenant fields
+        organizationId: user.organizationId,
       },
     });
   }),
@@ -433,8 +437,7 @@ router.get(
       return;
     }
 
-    // Get full user details with all required fields
-    // Cache bust: 2026-01-18-2 - Force rebuild
+    // Get full user details with all required fields including multi-tenant data
     const fullUser = await prisma.user.findUnique({
       where: { id: req.user.userId },
       select: {
@@ -444,6 +447,17 @@ router.get(
         isActive: true, // Required for account status
         theme: true,
         profilePicture: true,
+        // Multi-tenant fields
+        organizationId: true,
+        organization: {
+          select: {
+            id: true,
+            name: true,
+            slug: true,
+            isActive: true,
+          },
+        },
+        // Dealership for backward compatibility
         dealership: {
           select: {
             id: true,
@@ -464,10 +478,12 @@ router.get(
     // This handles existing users in production who were created before the permissions system
     let userPermissions = fullUser.permissions;
     if (!userPermissions) {
-      const isAdmin = fullUser.role === UserRole.admin;
+      const isAdminRole =
+        fullUser.role === UserRole.admin ||
+        fullUser.role === UserRole.super_admin;
 
-      // Create default permissions (all true for admin, all false for regular users)
-      const defaultPermissions = isAdmin
+      // Create default permissions (all true for admin/super_admin, all false for regular users)
+      const defaultPermissions = isAdminRole
         ? {
             dashboard: true,
             dailyWalkinsVisitors: true,
@@ -475,6 +491,7 @@ router.get(
             digitalEnquiry: true,
             fieldInquiry: true,
             deliveryUpdate: true,
+            exportExcel: true,
             settingsProfile: true,
             settingsVehicleModels: true,
             settingsLeadSources: true,
@@ -487,6 +504,7 @@ router.get(
             digitalEnquiry: false,
             fieldInquiry: false,
             deliveryUpdate: false,
+            exportExcel: false,
             settingsProfile: false,
             settingsVehicleModels: false,
             settingsLeadSources: false,
@@ -501,10 +519,15 @@ router.get(
       });
     }
 
-    // Explicitly include all fields to ensure they're always present in the response
-    // This prevents issues with spread operator or missing fields in production
-    // FIXED: 2026-01-18-v2 - Explicitly return role, isActive, and permissions
-    // Build verification: This code must be compiled by tsc during Docker build
+    // Fetch organization feature toggles if user belongs to an organization
+    let orgFeatureToggles = null;
+    if (fullUser.organizationId) {
+      orgFeatureToggles = await prisma.orgFeatureToggle.findUnique({
+        where: { organizationId: fullUser.organizationId },
+      });
+    }
+
+    // Build response with all fields for RBAC
     const response = {
       user: {
         id: fullUser.id,
@@ -513,8 +536,14 @@ router.get(
         isActive: fullUser.isActive ?? true, // Ensure isActive is always present
         theme: fullUser.theme,
         profilePicture: fullUser.profilePicture,
+        // Multi-tenant fields
+        organizationId: fullUser.organizationId,
+        organization: fullUser.organization,
+        // Dealership for backward compatibility
         dealership: fullUser.dealership,
         permissions: userPermissions, // Always include permissions (created or existing)
+        // Organization-level feature toggles (for UI to know what's available)
+        orgFeatureToggles: orgFeatureToggles,
       },
     };
     res.json(response);

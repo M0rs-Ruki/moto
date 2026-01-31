@@ -24,18 +24,22 @@ import {
   Package,
   MapPin,
   FileSpreadsheet,
+  Building2,
+  BarChart3,
 } from "lucide-react";
 
 function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
   const { theme } = useTheme();
-  const { user, loading, isAdmin, hasPermission } = usePermissions();
+  const { user, loading, isAdmin, isSuperAdmin, hasPermission } =
+    usePermissions();
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
-  // Set browser tab title to dealership name (fallback to Autopulse)
+  // Set browser tab title to organization name (fallback to Autopulse)
   useEffect(() => {
-    const title = user?.dealership?.name || "Autopulse";
+    const title =
+      user?.organization?.name || user?.dealership?.name || "Autopulse";
     if (typeof document !== "undefined") {
       document.title = title;
     }
@@ -370,18 +374,18 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
                 </div>
               )}
 
-              {/* User Management - Admin only */}
+              {/* Role Management - Admin only */}
               {isAdmin && (
                 <Link
                   prefetch={false}
-                  href="/dashboard/user-management"
+                  href="/dashboard/role-management"
                   onClick={() => setSidebarOpen(false)}
                   className="w-full"
                 >
                   <Button
                     variant={
-                      pathname === "/dashboard/user-management" ||
-                      pathname?.startsWith("/dashboard/user-management/")
+                      pathname === "/dashboard/role-management" ||
+                      pathname?.startsWith("/dashboard/role-management/")
                         ? "secondary"
                         : "ghost"
                     }
@@ -391,9 +395,9 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
                       className="h-5 w-5 mr-3 flex-shrink-0"
                       style={{ color: "#1976B8" }}
                     />
-                    <span className="text-sm font-medium">User Management</span>
-                    {(pathname === "/dashboard/user-management" ||
-                      pathname?.startsWith("/dashboard/user-management/")) && (
+                    <span className="text-sm font-medium">Role Management</span>
+                    {(pathname === "/dashboard/role-management" ||
+                      pathname?.startsWith("/dashboard/role-management/")) && (
                       <div
                         className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-8 rounded-r-full"
                         style={{ backgroundColor: "#1976B8" }}
@@ -401,6 +405,71 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
                     )}
                   </Button>
                 </Link>
+              )}
+
+              {/* Organization Management - Super Admin only */}
+              {isSuperAdmin && (
+                <>
+                  <div className="pt-2 border-t w-full">
+                    <p className="text-xs text-muted-foreground px-3 py-2 uppercase tracking-wider">
+                      Organization
+                    </p>
+                  </div>
+                  <Link
+                    prefetch={false}
+                    href="/dashboard/org-settings"
+                    onClick={() => setSidebarOpen(false)}
+                    className="w-full"
+                  >
+                    <Button
+                      variant={
+                        pathname === "/dashboard/org-settings"
+                          ? "secondary"
+                          : "ghost"
+                      }
+                      className="w-full h-12 md:h-11 justify-start relative min-h-[44px]"
+                    >
+                      <Building2
+                        className="h-5 w-5 mr-3 flex-shrink-0"
+                        style={{ color: "#1976B8" }}
+                      />
+                      <span className="text-sm font-medium">Org Settings</span>
+                      {pathname === "/dashboard/org-settings" && (
+                        <div
+                          className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-8 rounded-r-full"
+                          style={{ backgroundColor: "#1976B8" }}
+                        />
+                      )}
+                    </Button>
+                  </Link>
+                  <Link
+                    prefetch={false}
+                    href="/dashboard/usage-stats"
+                    onClick={() => setSidebarOpen(false)}
+                    className="w-full"
+                  >
+                    <Button
+                      variant={
+                        pathname === "/dashboard/usage-stats"
+                          ? "secondary"
+                          : "ghost"
+                      }
+                      className="w-full h-12 md:h-11 justify-start relative min-h-[44px]"
+                    >
+                      <BarChart3
+                        className="h-5 w-5 mr-3 flex-shrink-0"
+                        style={{ color: "#1976B8" }}
+                      />
+                      <span className="text-sm font-medium">Usage Stats</span>
+                      {pathname === "/dashboard/usage-stats" && (
+                        <div
+                          className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-8 rounded-r-full"
+                          style={{ backgroundColor: "#1976B8" }}
+                        />
+                      )}
+                    </Button>
+                  </Link>
+                </>
               )}
             </nav>
 

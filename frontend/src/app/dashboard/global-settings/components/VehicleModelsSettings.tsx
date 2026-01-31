@@ -265,7 +265,7 @@ export default function VehicleModelsSettings() {
                 Categories & Models
               </CardTitle>
               <CardDescription className="text-xs sm:text-sm">
-                Manage vehicle categories and models for your showroom
+                Manage vehicle categories and models for your dealership
               </CardDescription>
             </div>
             <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">

@@ -20,11 +20,15 @@ import healthRoutes from "./health";
 import debugRoutes from "./debug";
 import bulkUploadJobsRoutes from "./bulk-upload-jobs";
 import exportRoutes from "./export.routes";
+import organizationsRoutes from "./organizations";
 
 const router: ExpressRouter = Router();
 
 // Auth routes
 router.use("/auth", authRoutes);
+
+// Organization routes (3-tier multi-tenant)
+router.use("/organizations", organizationsRoutes);
 
 // Data routes
 router.use("/categories", categoriesRoutes);

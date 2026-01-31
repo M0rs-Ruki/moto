@@ -46,8 +46,6 @@ cron.log
 .env
 
 # database backups (store locally, don't commit)
-/BACKUP
-*.sql
 
 # vercel
 .vercel
