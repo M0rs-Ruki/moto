@@ -119,6 +119,8 @@
 
   html {
     scroll-behavior: smooth;
+    /* Fluid typography base - prevents text from being too small on large screens */
+    font-size: clamp(14px, 0.875rem + 0.1vw, 16px);
   }
 
   body {
@@ -135,8 +137,11 @@
     transition: all 0.2s ease-in-out;
   }
 
-  button:hover {
-    transform: translateY(-1px);
+  /* Desktop hover - only on devices with fine pointer (mouse) */
+  @media (hover: hover) and (pointer: fine) {
+    button:hover {
+      transform: translateY(-1px);
+    }
   }
 
   button:active {
@@ -326,7 +331,188 @@
     @apply bg-red-500/20 text-red-700 dark:text-red-400;
   }
 
-  /* Tablet-specific optimizations */
+  /* ===========================================
+     RESPONSIVE LAYOUT UTILITIES
+     =========================================== */
+
+  /* Fluid Typography Classes */
+  .text-fluid-xs {
+    font-size: clamp(0.7rem, 0.65rem + 0.25vw, 0.8rem);
+  }
+
+  .text-fluid-sm {
+    font-size: clamp(0.8rem, 0.75rem + 0.25vw, 0.9rem);
+  }
+
+  .text-fluid-base {
+    font-size: clamp(0.875rem, 0.825rem + 0.25vw, 1rem);
+  }
+
+  .text-fluid-lg {
+    font-size: clamp(1rem, 0.9rem + 0.5vw, 1.25rem);
+  }
+
+  .text-fluid-xl {
+    font-size: clamp(1.125rem, 1rem + 0.625vw, 1.5rem);
+  }
+
+  .text-fluid-2xl {
+    font-size: clamp(1.25rem, 1.1rem + 0.75vw, 1.875rem);
+  }
+
+  .text-fluid-3xl {
+    font-size: clamp(1.5rem, 1.25rem + 1.25vw, 2.25rem);
+  }
+
+  .text-fluid-4xl {
+    font-size: clamp(1.875rem, 1.5rem + 1.875vw, 3rem);
+  }
+
+  /* Responsive Container - prevents content stretching on ultra-wide */
+  .responsive-container {
+    @apply w-full mx-auto;
+    max-width: min(100%, 1600px);
+    padding-inline: clamp(0.75rem, 2vw, 2rem);
+  }
+
+  .responsive-container-narrow {
+    @apply w-full mx-auto;
+    max-width: min(100%, 1200px);
+    padding-inline: clamp(0.75rem, 2vw, 2rem);
+  }
+
+  /* Dashboard Grid - CSS Grid for complex layouts */
+  .dashboard-grid {
+    display: grid;
+    gap: clamp(0.75rem, 2vw, 1.5rem);
+    grid-template-columns: 1fr;
+  }
+
+  @media (min-width: 640px) {
+    .dashboard-grid {
+      grid-template-columns: repeat(2, 1fr);
+    }
+  }
+
+  @media (min-width: 1024px) {
+    .dashboard-grid {
+      grid-template-columns: repeat(3, 1fr);
+    }
+  }
+
+  @media (min-width: 1280px) {
+    .dashboard-grid {
+      grid-template-columns: repeat(4, 1fr);
+    }
+  }
+
+  /* Stats Grid - Responsive grid for stat cards */
+  .stats-grid {
+    display: grid;
+    gap: clamp(0.75rem, 2vw, 1.5rem);
+    grid-template-columns: 1fr;
+  }
+
+  @media (min-width: 640px) {
+    .stats-grid {
+      grid-template-columns: repeat(2, 1fr);
+    }
+  }
+
+  @media (min-width: 1024px) {
+    .stats-grid {
+      grid-template-columns: repeat(4, 1fr);
+    }
+  }
+
+  /* Content Grid - For two-column layouts */
+  .content-grid {
+    display: grid;
+    gap: clamp(0.75rem, 2vw, 1.5rem);
+    grid-template-columns: 1fr;
+  }
+
+  @media (min-width: 1024px) {
+    .content-grid {
+      grid-template-columns: repeat(2, 1fr);
+    }
+  }
+
+  /* ===========================================
+     CONTAINER QUERY UTILITIES
+     Use @container for component-level responsiveness
+     =========================================== */
+
+  /* Container Query Card - responds to parent container size */
+  .cq-card {
+    container-type: inline-size;
+    container-name: card;
+  }
+
+  /* Card content that adapts to container width */
+  .cq-card-content {
+    display: grid;
+    gap: 0.75rem;
+    grid-template-columns: 1fr;
+  }
+
+  @container card (min-width: 300px) {
+    .cq-card-content {
+      grid-template-columns: repeat(2, 1fr);
+    }
+  }
+
+  @container card (min-width: 500px) {
+    .cq-card-content {
+      grid-template-columns: repeat(4, 1fr);
+    }
+  }
+
+  /* Stats container for responsive stat displays */
+  .cq-stats {
+    container-type: inline-size;
+    container-name: stats;
+  }
+
+  .cq-stats-grid {
+    display: grid;
+    gap: 0.75rem;
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  @container stats (min-width: 400px) {
+    .cq-stats-grid {
+      grid-template-columns: repeat(4, 1fr);
+    }
+  }
+
+  /* Form container for responsive form layouts */
+  .cq-form {
+    container-type: inline-size;
+    container-name: form;
+  }
+
+  .cq-form-grid {
+    display: grid;
+    gap: 1rem;
+    grid-template-columns: 1fr;
+  }
+
+  @container form (min-width: 400px) {
+    .cq-form-grid {
+      grid-template-columns: repeat(2, 1fr);
+    }
+  }
+
+  @container form (min-width: 600px) {
+    .cq-form-grid {
+      grid-template-columns: repeat(3, 1fr);
+    }
+  }
+
+  /* ===========================================
+     TABLET-SPECIFIC OPTIMIZATIONS
+     =========================================== */
   @media (min-width: 640px) and (max-width: 1024px) {
     /* Optimize spacing for tablets */
     .container {
@@ -354,7 +540,7 @@
     }
   }
 
-  /* Touch-friendly interactions */
+  /* Touch-friendly interactions - tablets and touch devices */
   @media (hover: none) {
     button:hover {
       transform: none;
@@ -372,6 +558,85 @@
 
   .tablet-stack {
     @apply flex flex-col md:flex-row gap-3 md:gap-4;
+  }
+
+  /* ===========================================
+     LARGE SCREEN OPTIMIZATIONS (xl, 2xl)
+     =========================================== */
+  @media (min-width: 1280px) {
+    /* Ensure content doesn't stretch too wide */
+    .main-content {
+      max-width: 1600px;
+      margin-inline: auto;
+    }
+
+    /* Larger touch targets aren't needed - use standard sizing */
+    .btn-touch {
+      @apply h-10;
+    }
+  }
+
+  @media (min-width: 1536px) {
+    /* Ultra-wide optimizations */
+    .dashboard-header {
+      max-width: 1800px;
+      margin-inline: auto;
+    }
+
+    /* Increase gap for better visual balance */
+    .stats-grid,
+    .dashboard-grid {
+      gap: 1.5rem;
+    }
+  }
+
+  /* ===========================================
+     NAVIGATION RESPONSIVE UTILITIES
+     =========================================== */
+
+  /* Sidebar transition classes */
+  .sidebar-enter {
+    @apply transition-transform duration-200 ease-out;
+  }
+
+  .sidebar-backdrop {
+    @apply transition-opacity duration-200 ease-out;
+  }
+
+  /* Navigation item responsive sizing */
+  .nav-item {
+    @apply h-11 md:h-12 px-3 md:px-4;
+    min-height: 44px; /* Touch-friendly minimum */
+  }
+
+  /* ===========================================
+     HOVER STATE UTILITIES
+     =========================================== */
+
+  /* Desktop-only hover effects */
+  @media (hover: hover) and (pointer: fine) {
+    .hover-lift:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    }
+
+    .hover-glow:hover {
+      box-shadow: 0 0 20px rgba(var(--primary), 0.2);
+    }
+
+    .hover-scale:hover {
+      transform: scale(1.02);
+    }
+  }
+
+  /* Touch-friendly active states */
+  @media (hover: none) and (pointer: coarse) {
+    .hover-lift:active,
+    .hover-glow:active,
+    .hover-scale:active {
+      transform: scale(0.98);
+      opacity: 0.9;
+    }
   }
 }
 

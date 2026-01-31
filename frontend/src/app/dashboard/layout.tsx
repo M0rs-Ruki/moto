@@ -65,7 +65,7 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-screen bg-background">
       {/* Mobile/Tablet Header */}
-      <header className="fixed top-0 left-0 right-0 z-50 lg:hidden border-b bg-card">
+      <header className="fixed top-0 left-0 right-0 z-50 lg:hidden border-b bg-card/95 backdrop-blur-sm supports-[backdrop-filter]:bg-card/80">
         <div className="flex items-center justify-between p-3 sm:p-4">
           <div className="flex items-center h-10 sm:h-12">
             <img
@@ -83,7 +83,8 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
             variant="ghost"
             size="icon"
             onClick={() => setSidebarOpen(!sidebarOpen)}
-            className="shrink-0"
+            className="shrink-0 min-h-[44px] min-w-[44px]"
+            aria-label={sidebarOpen ? "Close menu" : "Open menu"}
           >
             {sidebarOpen ? (
               <X className="h-5 w-5" />
@@ -97,15 +98,16 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
       {/* Mobile/Tablet Overlay */}
       {sidebarOpen && (
         <div
-          className="fixed inset-0 z-40 bg-black/50 lg:hidden mt-14 sm:mt-16"
+          className="fixed inset-0 z-40 bg-black/50 lg:hidden mt-14 sm:mt-16 sidebar-backdrop"
           onClick={() => setSidebarOpen(false)}
+          aria-hidden="true"
         />
       )}
 
       <div className="flex">
         {/* Sidebar */}
         <aside
-          className={`fixed left-0 top-0 z-40 h-screen w-64 sm:w-72 border-r bg-gradient-to-b from-card to-card/95 shadow-lg transition-transform duration-200 ease-in-out lg:relative lg:translate-x-0 lg:sticky lg:top-0 lg:h-screen lg:w-64 lg:shadow-none lg:z-auto ${
+          className={`fixed left-0 top-0 z-40 h-screen w-[280px] sm:w-72 md:w-80 border-r bg-gradient-to-b from-card to-card/95 shadow-lg sidebar-enter lg:relative lg:translate-x-0 lg:sticky lg:top-0 lg:h-screen lg:w-64 xl:w-72 lg:shadow-none lg:z-auto ${
             sidebarOpen
               ? "translate-x-0 pt-14 sm:pt-16 lg:pt-0"
               : "-translate-x-full"
@@ -138,7 +140,7 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
             </a>
 
             {/* Navigation */}
-            <nav className="flex-1 flex flex-col items-start space-y-1 w-full overflow-y-auto">
+            <nav className="flex-1 flex flex-col items-start space-y-1 w-full overflow-y-auto px-1">
               {/* Dashboard */}
               {hasPermission("dashboard") && (
                 <Link
@@ -149,7 +151,7 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
                 >
                   <Button
                     variant={pathname === "/dashboard" ? "secondary" : "ghost"}
-                    className="w-full h-12 justify-start relative"
+                    className="w-full h-12 md:h-11 justify-start relative min-h-[44px]"
                   >
                     <LayoutDashboard
                       className="h-5 w-5 mr-3 flex-shrink-0"
@@ -182,7 +184,7 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
                         ? "secondary"
                         : "ghost"
                     }
-                    className="w-full h-12 justify-start relative"
+                    className="w-full h-12 md:h-11 justify-start relative min-h-[44px]"
                   >
                     <DoorOpen
                       className="h-5 w-5 mr-3 flex-shrink-0"
@@ -215,7 +217,7 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
                         ? "secondary"
                         : "ghost"
                     }
-                    className="w-full h-12 justify-start relative"
+                    className="w-full h-12 md:h-11 justify-start relative min-h-[44px]"
                   >
                     <MessageSquare
                       className="h-5 w-5 mr-3 flex-shrink-0"
@@ -248,7 +250,7 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
                         ? "secondary"
                         : "ghost"
                     }
-                    className="w-full h-12 justify-start relative"
+                    className="w-full h-12 md:h-11 justify-start relative min-h-[44px]"
                   >
                     <MapPin
                       className="h-5 w-5 mr-3 flex-shrink-0"
@@ -281,7 +283,7 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
                         ? "secondary"
                         : "ghost"
                     }
-                    className="w-full h-12 justify-start relative"
+                    className="w-full h-12 md:h-11 justify-start relative min-h-[44px]"
                   >
                     <Package
                       className="h-5 w-5 mr-3 flex-shrink-0"
@@ -314,7 +316,7 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
                         ? "secondary"
                         : "ghost"
                     }
-                    className="w-full h-12 justify-start relative"
+                    className="w-full h-12 md:h-11 justify-start relative min-h-[44px]"
                   >
                     <FileSpreadsheet
                       className="h-5 w-5 mr-3 flex-shrink-0"
@@ -350,7 +352,7 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
                           ? "secondary"
                           : "ghost"
                       }
-                      className="w-full h-12 justify-start relative"
+                      className="w-full h-12 md:h-11 justify-start relative min-h-[44px]"
                     >
                       <Globe
                         className="h-5 w-5 mr-3 flex-shrink-0"
@@ -383,7 +385,7 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
                         ? "secondary"
                         : "ghost"
                     }
-                    className="w-full h-12 justify-start relative"
+                    className="w-full h-12 md:h-11 justify-start relative min-h-[44px]"
                   >
                     <Users
                       className="h-5 w-5 mr-3 flex-shrink-0"
@@ -423,59 +425,62 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
         </aside>
 
         {/* Main content */}
-        <main className="flex-1 w-full bg-gradient-to-br from-background to-muted/30 mt-14 sm:mt-16 lg:mt-0 p-3 sm:p-4 md:p-6 lg:p-8">
-          {/* Breadcrumb & Profile Box */}
-          <div className="mb-4 sm:mb-6 border bg-card rounded-lg px-3 sm:px-4 md:px-6 lg:px-8 py-3 sm:py-4 flex flex-row items-center justify-between shadow-sm gap-3 sm:gap-4">
-            <div className="flex-1 min-w-0 flex items-center">
-              <Breadcrumb />
-            </div>
-            {/* User Profile Picture */}
-            <button
-              onClick={() => router.push("/dashboard/global-settings")}
-              className="flex items-center gap-2 sm:gap-3 hover:opacity-80 transition-opacity shrink-0"
-              title="Click to go to settings"
-            >
-              {user?.profilePicture ? (
-                <div
-                  className="w-7 h-7 sm:w-8 sm:h-8 rounded-md overflow-hidden border-2"
-                  style={{ borderColor: "#1976B8" }}
-                >
-                  <img
-                    src={
-                      user.profilePicture.startsWith("http")
-                        ? user.profilePicture
-                        : `/${user.profilePicture}`
-                    }
-                    alt="Profile"
-                    className="w-full h-full object-cover"
-                  />
-                </div>
-              ) : (
-                <div
-                  className="w-7 h-7 sm:w-8 sm:h-8 rounded-md flex items-center justify-center text-xs font-bold text-white"
-                  style={{ backgroundColor: "#1976B8" }}
-                >
-                  Admin
-                </div>
-              )}
-              <div className="hidden sm:flex flex-col items-start leading-tight">
-                <span className="text-sm font-medium text-foreground">
-                  {user?.email?.split("@")[0] || "User"}
-                </span>
-                {/* <span className="text-xs text-muted-foreground">
-                  {user?.dealership?.name
-                    ? `${user.dealership.name}${
-                        user.dealership.location
-                          ? " · " + user.dealership.location
-                          : ""
-                      }`
-                    : "No dealership assigned"}
-                </span> */}
+        <main className="flex-1 w-full bg-gradient-to-br from-background to-muted/30 mt-14 sm:mt-16 lg:mt-0 p-3 sm:p-4 md:p-6 lg:p-8 xl:p-10">
+          {/* Responsive container to prevent content stretching */}
+          <div className="max-w-[1800px] mx-auto">
+            {/* Breadcrumb & Profile Box */}
+            <div className="mb-4 sm:mb-6 lg:mb-8 border bg-card rounded-lg px-3 sm:px-4 md:px-6 lg:px-8 py-3 sm:py-4 flex flex-row items-center justify-between shadow-sm gap-3 sm:gap-4">
+              <div className="flex-1 min-w-0 flex items-center">
+                <Breadcrumb />
               </div>
-            </button>
+              {/* User Profile Picture */}
+              <button
+                onClick={() => router.push("/dashboard/global-settings")}
+                className="flex items-center gap-2 sm:gap-3 hover:opacity-80 transition-opacity shrink-0 min-h-[44px]"
+                title="Click to go to settings"
+              >
+                {user?.profilePicture ? (
+                  <div
+                    className="w-8 h-8 sm:w-9 sm:h-9 md:w-10 md:h-10 rounded-md overflow-hidden border-2"
+                    style={{ borderColor: "#1976B8" }}
+                  >
+                    <img
+                      src={
+                        user.profilePicture.startsWith("http")
+                          ? user.profilePicture
+                          : `/${user.profilePicture}`
+                      }
+                      alt="Profile"
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                ) : (
+                  <div
+                    className="w-8 h-8 sm:w-9 sm:h-9 md:w-10 md:h-10 rounded-md flex items-center justify-center text-xs font-bold text-white"
+                    style={{ backgroundColor: "#1976B8" }}
+                  >
+                    Admin
+                  </div>
+                )}
+                <div className="hidden sm:flex flex-col items-start leading-tight">
+                  <span className="text-sm md:text-base font-medium text-foreground">
+                    {user?.email?.split("@")[0] || "User"}
+                  </span>
+                  {/* <span className="text-xs text-muted-foreground">
+                    {user?.dealership?.name
+                      ? `${user.dealership.name}${
+                          user.dealership.location
+                            ? " · " + user.dealership.location
+                            : ""
+                        }`
+                      : "No dealership assigned"}
+                  </span> */}
+                </div>
+              </button>
+            </div>
+            {/* Page content */}
+            <div>{children}</div>
           </div>
-          {/* Page content */}
-          <div>{children}</div>
         </main>
       </div>
     </div>

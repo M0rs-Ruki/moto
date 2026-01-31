@@ -54,12 +54,12 @@ function LoginContent() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background p-3 sm:p-4 md:p-6">
-      <div className="absolute top-3 right-3 sm:top-4 sm:right-4 z-50">
+    <div className="min-h-screen flex items-center justify-center bg-background p-3 sm:p-4 md:p-6 lg:p-8">
+      <div className="absolute top-3 right-3 sm:top-4 sm:right-4 md:top-6 md:right-6 z-50">
         <ThemeSwitcher />
       </div>
 
-      <Card className="w-full max-w-md mx-auto">
+      <Card className="w-full max-w-[min(90vw,28rem)] xl:max-w-lg mx-auto">
         <CardHeader className="space-y-3 sm:space-y-4">
           {/* Logo */}
           <div className="flex justify-center mb-1 sm:mb-2">
@@ -68,7 +68,7 @@ function LoginContent() {
               alt="Autopluse Logo"
               width={120}
               height={96}
-              className="h-20 sm:h-24 w-auto object-contain dark:hidden"
+              className="h-20 sm:h-24 md:h-28 w-auto object-contain dark:hidden"
               priority
             />
             <Image
@@ -76,14 +76,14 @@ function LoginContent() {
               alt="Autopluse Logo"
               width={120}
               height={96}
-              className="h-20 sm:h-24 w-auto object-contain hidden dark:block"
+              className="h-20 sm:h-24 md:h-28 w-auto object-contain hidden dark:block"
               priority
             />
           </div>
-          <CardTitle className="text-lg sm:text-xl md:text-2xl text-center font-semibold leading-tight">
+          <CardTitle className="text-fluid-lg text-center font-semibold leading-tight">
             WhatsApp-powered CRM For Smarter Dealership Management
           </CardTitle>
-          <CardDescription className="text-xs sm:text-sm text-center">
+          <CardDescription className="text-xs sm:text-sm md:text-base text-center">
             AutoPulse by{" "}
             <a
               href="https://prominds.digital/"
@@ -135,17 +135,20 @@ function LoginContent() {
                       setLoginData({ ...loginData, password: e.target.value })
                     }
                     required
-                    className="text-sm pr-10"
+                    className="text-sm pr-12"
                   />
                   <button
                     type="button"
                     onClick={() => setShowPassword(!showPassword)}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                    className="absolute right-1 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors p-2 min-h-[44px] min-w-[44px] flex items-center justify-center"
+                    aria-label={
+                      showPassword ? "Hide password" : "Show password"
+                    }
                   >
                     {showPassword ? (
-                      <EyeOff className="h-4 w-4" />
+                      <EyeOff className="h-4 w-4 sm:h-5 sm:w-5" />
                     ) : (
-                      <Eye className="h-4 w-4" />
+                      <Eye className="h-4 w-4 sm:h-5 sm:w-5" />
                     )}
                   </button>
                 </div>
@@ -153,7 +156,7 @@ function LoginContent() {
 
               <Button
                 type="submit"
-                className="w-full text-sm sm:text-base"
+                className="w-full text-sm sm:text-base min-h-[44px]"
                 disabled={loading}
               >
                 {loading ? "Logging in..." : "Login"}
