@@ -45,22 +45,39 @@ export class ExportService {
   }
 
   /**
+   * Get readable range label
+   */
+  private getRangeLabel(range: DateRange): string {
+    const rangeLabels: Record<DateRange, string> = {
+      "1m": "Last 1 Month",
+      "3m": "Last 3 Months",
+      "6m": "Last 6 Months",
+      "1y": "Last 1 Year",
+    };
+    return rangeLabels[range] || "Last 1 Month";
+  }
+
+  /**
    * Generate filename with date range info
    */
   private generateFilename(type: ExportType, range: DateRange): string {
     const rangeLabels: Record<DateRange, string> = {
-      "1m": "1-month",
-      "3m": "3-months",
-      "6m": "6-months",
-      "1y": "1-year",
+      "1m": "Last_1_Month",
+      "3m": "Last_3_Months",
+      "6m": "Last_6_Months",
+      "1y": "Last_1_Year",
     };
     const typeLabels: Record<ExportType, string> = {
-      visitors: "Daily-Walkins",
-      "digital-enquiry": "Digital-Enquiry",
-      "field-inquiry": "Field-Inquiry",
-      "delivery-tickets": "Delivery-Update",
+      visitors: "Daily_Walkins",
+      "digital-enquiry": "Digital_Enquiry",
+      "field-inquiry": "Field_Inquiry",
+      "delivery-tickets": "Delivery_Update",
     };
-    const timestamp = new Date().toISOString().split("T")[0];
+    const now = new Date();
+    const day = String(now.getDate()).padStart(2, "0");
+    const month = now.toLocaleString("en-US", { month: "short" });
+    const year = now.getFullYear();
+    const timestamp = `${day}_${month}_${year}`;
     return `${typeLabels[type]}_${rangeLabels[range]}_${timestamp}.xlsx`;
   }
 
@@ -116,22 +133,28 @@ export class ExportService {
           .join(", ") || "";
 
       return {
-        Date: this.formatDate(visitor.createdAt),
+        "S.No": 0, // Will be filled later
         "First Name": visitor.firstName,
         "Last Name": visitor.lastName,
         "WhatsApp Number": visitor.whatsappNumber,
-        Email: visitor.email || "",
-        Address: visitor.address || "",
-        "Interested Models": models,
-        "Interested Variants": variants,
-        "Visit Reason": latestSession?.reason || "",
-        Status: latestSession?.status || "",
-        Feedback: latestSession?.feedback || "",
-        "Test Drive Models": testDriveModels,
+        Email: visitor.email || "-",
+        Address: visitor.address || "-",
+        "Interested Models": models || "-",
+        "Interested Variants": variants || "-",
+        "Visit Reason": latestSession?.reason || "-",
+        Status: latestSession?.status || "-",
+        Feedback: latestSession?.feedback || "-",
+        "Test Drive Models": testDriveModels || "-",
+        Date: this.formatDate(visitor.createdAt),
       };
     });
 
-    return this.createExcelBuffer(data, "Visitors", "visitors", range);
+    // Add serial numbers
+    data.forEach((row, index) => {
+      row["S.No"] = index + 1;
+    });
+
+    return this.createExcelBuffer(data, "Daily Walkins", "visitors", range);
   }
 
   /**
@@ -161,20 +184,26 @@ export class ExportService {
     });
 
     const data = enquiries.map((enquiry) => ({
-      Date: this.formatDate(enquiry.createdAt),
+      "S.No": 0, // Will be filled later
       "First Name": enquiry.firstName,
       "Last Name": enquiry.lastName,
       "WhatsApp Number": enquiry.whatsappNumber,
-      Email: enquiry.email || "",
-      Address: enquiry.address || "",
-      Reason: enquiry.reason,
-      "Lead Scope": enquiry.leadScope,
-      Model: enquiry.model?.name || enquiry.modelText || "",
-      Variant: enquiry.variant?.name || "",
-      "Lead Source": enquiry.leadSource?.name || enquiry.sourceText || "",
+      Email: enquiry.email || "-",
+      Address: enquiry.address || "-",
+      Reason: enquiry.reason || "-",
+      "Lead Scope": enquiry.leadScope || "-",
+      Model: enquiry.model?.name || enquiry.modelText || "-",
+      Variant: enquiry.variant?.name || "-",
+      "Lead Source": enquiry.leadSource?.name || enquiry.sourceText || "-",
       Status: enquiry.sessions[0]?.status || "active",
-      Notes: enquiry.sessions[0]?.notes || "",
+      Notes: enquiry.sessions[0]?.notes || "-",
+      Date: this.formatDate(enquiry.createdAt),
     }));
+
+    // Add serial numbers
+    data.forEach((row, index) => {
+      row["S.No"] = index + 1;
+    });
 
     return this.createExcelBuffer(
       data,
@@ -211,20 +240,26 @@ export class ExportService {
     });
 
     const data = inquiries.map((inquiry) => ({
-      Date: this.formatDate(inquiry.createdAt),
+      "S.No": 0, // Will be filled later
       "First Name": inquiry.firstName,
       "Last Name": inquiry.lastName,
       "WhatsApp Number": inquiry.whatsappNumber,
-      Email: inquiry.email || "",
-      Address: inquiry.address || "",
-      Reason: inquiry.reason,
-      "Lead Scope": inquiry.leadScope,
-      Model: inquiry.model?.name || "",
-      Variant: inquiry.variant?.name || "",
-      "Lead Source": inquiry.leadSource?.name || "",
+      Email: inquiry.email || "-",
+      Address: inquiry.address || "-",
+      Reason: inquiry.reason || "-",
+      "Lead Scope": inquiry.leadScope || "-",
+      Model: inquiry.model?.name || "-",
+      Variant: inquiry.variant?.name || "-",
+      "Lead Source": inquiry.leadSource?.name || "-",
       Status: inquiry.sessions[0]?.status || "active",
-      Notes: inquiry.sessions[0]?.notes || "",
+      Notes: inquiry.sessions[0]?.notes || "-",
+      Date: this.formatDate(inquiry.createdAt),
     }));
+
+    // Add serial numbers
+    data.forEach((row, index) => {
+      row["S.No"] = index + 1;
+    });
 
     return this.createExcelBuffer(
       data,
@@ -256,31 +291,37 @@ export class ExportService {
     });
 
     const data = tickets.map((ticket) => ({
-      "Date Created": this.formatDate(ticket.createdAt),
-      "Delivery Date": this.formatDate(ticket.deliveryDate),
+      "S.No": 0, // Will be filled later
       "First Name": ticket.firstName,
       "Last Name": ticket.lastName,
       "WhatsApp Number": ticket.whatsappNumber,
-      Email: ticket.email || "",
-      Address: ticket.address || "",
-      Model: ticket.model?.name || "",
-      Variant: ticket.variant?.name || "",
-      Description: ticket.description || "",
-      Status: ticket.status,
+      Email: ticket.email || "-",
+      Address: ticket.address || "-",
+      Model: ticket.model?.name || "-",
+      Variant: ticket.variant?.name || "-",
+      Description: ticket.description || "-",
+      Status: ticket.status || "-",
       "Message Sent": ticket.messageSent ? "Yes" : "No",
       "Completion Sent": ticket.completionSent ? "Yes" : "No",
+      "Delivery Date": this.formatDate(ticket.deliveryDate),
+      "Date Created": this.formatDate(ticket.createdAt),
     }));
+
+    // Add serial numbers
+    data.forEach((row, index) => {
+      row["S.No"] = index + 1;
+    });
 
     return this.createExcelBuffer(
       data,
-      "Delivery Tickets",
+      "Delivery Update",
       "delivery-tickets",
       range,
     );
   }
 
   /**
-   * Create Excel buffer from data
+   * Create Excel buffer from data with professional formatting
    */
   private createExcelBuffer(
     data: Record<string, string | number>[],
@@ -288,23 +329,65 @@ export class ExportService {
     type: ExportType,
     range: DateRange,
   ): ExportResult {
-    const worksheet = XLSX.utils.json_to_sheet(data);
+    // Create title and info rows
+    const rangeLabel = this.getRangeLabel(range);
+    const exportDate = new Date().toLocaleDateString("en-IN", {
+      day: "2-digit",
+      month: "long",
+      year: "numeric",
+    });
+    const totalRecords = data.length;
+
+    // Get column headers
+    const headers = data.length > 0 ? Object.keys(data[0]) : [];
+    const numColumns = headers.length;
+
+    // Create worksheet data with title rows
+    const wsData: (string | number)[][] = [
+      // Title row
+      [sheetName, ...Array(numColumns - 1).fill("")],
+      // Info row
+      [
+        `Data Range: ${rangeLabel}`,
+        "",
+        `Export Date: ${exportDate}`,
+        "",
+        `Total Records: ${totalRecords}`,
+        ...Array(Math.max(0, numColumns - 5)).fill(""),
+      ],
+      // Empty row for spacing
+      Array(numColumns).fill(""),
+      // Header row
+      headers,
+      // Data rows
+      ...data.map((row) => headers.map((h) => row[h] ?? "")),
+    ];
+
+    const worksheet = XLSX.utils.aoa_to_sheet(wsData);
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, sheetName);
 
-    // Auto-size columns
-    const maxWidths: Record<string, number> = {};
-    if (data.length > 0) {
-      Object.keys(data[0]).forEach((key) => {
-        maxWidths[key] = Math.max(
-          key.length,
-          ...data.map((row) => String(row[key] || "").length),
-        );
-      });
-      worksheet["!cols"] = Object.values(maxWidths).map((w) => ({
-        wch: Math.min(w + 2, 50),
-      }));
+    // Auto-size columns based on content
+    const maxWidths: number[] = headers.map((header, colIdx) => {
+      const headerLen = header.length;
+      const maxDataLen = data.reduce((max, row) => {
+        const cellLen = String(row[header] || "").length;
+        return Math.max(max, cellLen);
+      }, 0);
+      return Math.min(Math.max(headerLen, maxDataLen) + 2, 40);
+    });
+
+    // Ensure first column (S.No) is at least 6 characters
+    if (maxWidths.length > 0) {
+      maxWidths[0] = Math.max(maxWidths[0], 6);
     }
+
+    worksheet["!cols"] = maxWidths.map((w) => ({ wch: w }));
+
+    // Merge title cell across all columns
+    worksheet["!merges"] = [
+      { s: { r: 0, c: 0 }, e: { r: 0, c: numColumns - 1 } },
+    ];
 
     const buffer = XLSX.write(workbook, { type: "buffer", bookType: "xlsx" });
     const filename = this.generateFilename(type, range);
