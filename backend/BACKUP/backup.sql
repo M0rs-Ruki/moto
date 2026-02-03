@@ -2,7 +2,7 @@
 -- PostgreSQL database dump
 --
 
-\restrict Ub5Jqh3PVenbI7W89JHSHg22EdrWcV7aXFRnM2pVgWrWDS3JX8WAEvKWsEZANsC
+\restrict JQh0uflwai8OsoJumikcaWheMz8eROlkipb43nqD9XTcQAMnOGCgQfmTqDhMrGG
 
 -- Dumped from database version 15.15 (Debian 15.15-1.pgdg13+1)
 -- Dumped by pg_dump version 18.1 (Ubuntu 18.1-1.pgdg24.04+2)
@@ -55,7 +55,8 @@ ALTER TYPE public."BulkUploadJobStatus" OWNER TO "utkalUser";
 
 CREATE TYPE public."UserRole" AS ENUM (
     'admin',
-    'user'
+    'user',
+    'super_admin'
 );
 
 
@@ -79,7 +80,7 @@ CREATE TABLE public."BulkUploadJob" (
     "successCount" integer DEFAULT 0 NOT NULL,
     "errorCount" integer DEFAULT 0 NOT NULL,
     "failedRows" jsonb,
-    "dealershipId" text NOT NULL,
+    "dealershipId" text,
     "createdAt" timestamp(3) without time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
     "updatedAt" timestamp(3) without time zone NOT NULL,
     "completedAt" timestamp(3) without time zone
@@ -115,7 +116,8 @@ CREATE TABLE public."Dealership" (
     location text NOT NULL,
     "createdAt" timestamp(3) without time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
     "updatedAt" timestamp(3) without time zone NOT NULL,
-    "showroomNumber" text
+    "showroomNumber" text,
+    "organizationId" text
 );
 
 
@@ -136,7 +138,7 @@ CREATE TABLE public."DeliveryTicket" (
     "deliveryDate" timestamp(3) without time zone NOT NULL,
     "messageSent" boolean DEFAULT false NOT NULL,
     "whatsappContactId" text,
-    "dealershipId" text NOT NULL,
+    "dealershipId" text,
     "modelId" text NOT NULL,
     "createdAt" timestamp(3) without time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
     "updatedAt" timestamp(3) without time zone NOT NULL,
@@ -162,7 +164,7 @@ CREATE TABLE public."DigitalEnquiry" (
     reason text NOT NULL,
     "leadScope" text DEFAULT 'warm'::text NOT NULL,
     "whatsappContactId" text,
-    "dealershipId" text NOT NULL,
+    "dealershipId" text,
     "leadSourceId" text,
     "interestedModelId" text,
     "createdAt" timestamp(3) without time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
@@ -205,7 +207,7 @@ CREATE TABLE public."FieldInquiry" (
     reason text NOT NULL,
     "leadScope" text DEFAULT 'warm'::text NOT NULL,
     "whatsappContactId" text,
-    "dealershipId" text NOT NULL,
+    "dealershipId" text,
     "leadSourceId" text,
     "interestedModelId" text,
     "interestedVariantId" text,
@@ -241,13 +243,54 @@ CREATE TABLE public."LeadSource" (
     name text NOT NULL,
     "order" integer DEFAULT 0 NOT NULL,
     "isDefault" boolean DEFAULT false NOT NULL,
-    "dealershipId" text NOT NULL,
+    "dealershipId" text,
     "createdAt" timestamp(3) without time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
     "updatedAt" timestamp(3) without time zone NOT NULL
 );
 
 
 ALTER TABLE public."LeadSource" OWNER TO "utkalUser";
+
+--
+-- Name: OrgFeatureToggle; Type: TABLE; Schema: public; Owner: utkalUser
+--
+
+CREATE TABLE public."OrgFeatureToggle" (
+    id text NOT NULL,
+    "organizationId" text NOT NULL,
+    dashboard boolean DEFAULT true NOT NULL,
+    "dailyWalkinsVisitors" boolean DEFAULT true NOT NULL,
+    "dailyWalkinsSessions" boolean DEFAULT true NOT NULL,
+    "digitalEnquiry" boolean DEFAULT true NOT NULL,
+    "fieldInquiry" boolean DEFAULT true NOT NULL,
+    "deliveryUpdate" boolean DEFAULT true NOT NULL,
+    "exportExcel" boolean DEFAULT true NOT NULL,
+    "settingsProfile" boolean DEFAULT true NOT NULL,
+    "settingsVehicleModels" boolean DEFAULT true NOT NULL,
+    "settingsLeadSources" boolean DEFAULT true NOT NULL,
+    "settingsWhatsApp" boolean DEFAULT true NOT NULL,
+    "createdAt" timestamp(3) without time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    "updatedAt" timestamp(3) without time zone NOT NULL
+);
+
+
+ALTER TABLE public."OrgFeatureToggle" OWNER TO "utkalUser";
+
+--
+-- Name: Organization; Type: TABLE; Schema: public; Owner: utkalUser
+--
+
+CREATE TABLE public."Organization" (
+    id text NOT NULL,
+    name text NOT NULL,
+    slug text NOT NULL,
+    "isActive" boolean DEFAULT true NOT NULL,
+    "createdAt" timestamp(3) without time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    "updatedAt" timestamp(3) without time zone NOT NULL
+);
+
+
+ALTER TABLE public."Organization" OWNER TO "utkalUser";
 
 --
 -- Name: ScheduledMessage; Type: TABLE; Schema: public; Owner: utkalUser
@@ -297,7 +340,8 @@ CREATE TABLE public."User" (
     theme text DEFAULT 'light'::text NOT NULL,
     "profilePicture" text,
     "isActive" boolean DEFAULT true NOT NULL,
-    role public."UserRole" DEFAULT 'user'::public."UserRole" NOT NULL
+    role public."UserRole" DEFAULT 'user'::public."UserRole" NOT NULL,
+    "organizationId" text
 );
 
 
@@ -335,7 +379,7 @@ ALTER TABLE public."UserPermission" OWNER TO "utkalUser";
 CREATE TABLE public."VehicleCategory" (
     id text NOT NULL,
     name text NOT NULL,
-    "dealershipId" text NOT NULL,
+    "dealershipId" text,
     "createdAt" timestamp(3) without time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
     "updatedAt" timestamp(3) without time zone NOT NULL
 );
@@ -386,7 +430,7 @@ CREATE TABLE public."Visitor" (
     email text,
     address text,
     "whatsappContactId" text,
-    "dealershipId" text NOT NULL,
+    "dealershipId" text,
     "createdAt" timestamp(3) without time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
     "updatedAt" timestamp(3) without time zone NOT NULL
 );
@@ -438,7 +482,7 @@ CREATE TABLE public."WhatsAppTemplate" (
     "templateName" text NOT NULL,
     language text DEFAULT 'en_US'::text NOT NULL,
     type text NOT NULL,
-    "dealershipId" text NOT NULL,
+    "dealershipId" text,
     "createdAt" timestamp(3) without time zone DEFAULT CURRENT_TIMESTAMP NOT NULL,
     "updatedAt" timestamp(3) without time zone NOT NULL,
     section text DEFAULT 'global'::text
@@ -470,36 +514,43 @@ ALTER TABLE public._prisma_migrations OWNER TO "utkalUser";
 --
 
 COPY public."BulkUploadJob" (id, "jobId", type, status, "totalRows", "processedRows", "successCount", "errorCount", "failedRows", "dealershipId", "createdAt", "updatedAt", "completedAt") FROM stdin;
-cmkwvsbel001rr10ly17ezu8y	4fd4e3c4-c793-4fea-8342-1f808fffc818	digital_enquiry	COMPLETED	10	10	10	0	\N	cmivgorqg00009y5iyf5y9s5b	2026-01-27 17:39:23.709	2026-01-27 17:39:34.419	2026-01-27 17:39:34.419
-cmkr22j6800009yn1to29kr1d	b8d1dfe6-675c-43cf-b545-bf1ed5ead263	digital_enquiry	COMPLETED	10	10	10	0	null	cmivgorqg00009y5iyf5y9s5b	2026-01-23 15:48:40.976	2026-01-23 15:48:54.068	2026-01-23 15:48:54.068
-cmky66kty00009yq3yhjdc13g	6d52e00e-b3bf-4e4a-b2c7-3d206a5aeefc	digital_enquiry	QUEUED	10	0	0	0	\N	cmivgorqg00009y5iyf5y9s5b	2026-01-28 15:18:11.446	2026-01-28 15:18:11.446	\N
-cmkr23kms000l9yn16co4crwa	f2110753-4ecf-43ea-b80a-915b26ecbc5f	digital_enquiry	COMPLETED	10	10	10	0	null	cmivgorqg00009y5iyf5y9s5b	2026-01-23 15:49:29.524	2026-01-23 15:49:44.037	2026-01-23 15:49:44.037
-cmky67x4q00019yq35a9q6nvu	4236f4c1-9290-486e-aafe-927706a8ebda	digital_enquiry	QUEUED	10	0	0	0	\N	cmivgorqg00009y5iyf5y9s5b	2026-01-28 15:19:14.042	2026-01-28 15:19:14.042	\N
-cmkr254bt00009yq007tka1m0	95fec569-1121-436f-8b50-ad0cbb28c255	digital_enquiry	COMPLETED	10	10	10	0	null	cmivgorqg00009y5iyf5y9s5b	2026-01-23 15:50:41.705	2026-01-23 15:50:55.631	2026-01-23 15:50:55.631
-cmky68y6i00029yq3tlf88876	6acd738b-2f6d-4b2d-8ad3-affaa5d0e9be	digital_enquiry	QUEUED	10	0	0	0	\N	cmivgorqg00009y5iyf5y9s5b	2026-01-28 15:20:02.058	2026-01-28 15:20:02.058	\N
-cmkr26398000l9yq0heslpkjn	c0b2aad3-55d3-4fb5-8532-2872b999c845	digital_enquiry	COMPLETED	10	10	10	0	null	cmivgorqg00009y5iyf5y9s5b	2026-01-23 15:51:26.972	2026-01-23 15:51:41.755	2026-01-23 15:51:41.755
-cmky6ecnx00009ydfye3tjfni	adad797f-4ea6-4be9-8685-3c2e8255ac0d	digital_enquiry	QUEUED	10	0	0	0	\N	cmivgorqg00009y5iyf5y9s5b	2026-01-28 15:24:14.11	2026-01-28 15:24:14.11	\N
-cmkr2gan700009ydm6jhrfsdp	dff03c70-4a0b-46cc-b6c5-00e61c96f043	digital_enquiry	COMPLETED	10	10	10	0	null	cmivgorqg00009y5iyf5y9s5b	2026-01-23 15:59:23.108	2026-01-23 15:59:51.842	2026-01-23 15:59:51.842
-cmkwqfi4200009yar1pbvsfim	df541732-5003-43d1-bf0c-278c7d5dd2c6	digital_enquiry	COMPLETED	10	10	10	0	\N	cmivgorqg00009y5iyf5y9s5b	2026-01-27 15:09:27.794	2026-01-27 15:09:56.016	2026-01-27 15:09:56.016
-cmkwutyws0000n30k4h7u3hzg	94a6f79b-a82f-4e0e-bc6a-f676366428c0	digital_enquiry	QUEUED	10	0	0	0	\N	cmivgorqg00009y5iyf5y9s5b	2026-01-27 17:12:41.212	2026-01-27 17:12:41.212	\N
-cmkwvi5r80001n30k1uhvsunf	18305b9d-7680-4b0c-98e5-2032fd6fa526	digital_enquiry	QUEUED	10	0	0	0	\N	cmivgorqg00009y5iyf5y9s5b	2026-01-27 17:31:29.759	2026-01-27 17:31:29.759	\N
-cmkwvjfav0000r10lew1lq7mq	02586dda-4bdf-4df0-8d44-0116d3be3e16	digital_enquiry	COMPLETED	10	10	10	0	\N	cmivgorqg00009y5iyf5y9s5b	2026-01-27 17:32:28.855	2026-01-27 17:32:40.739	2026-01-27 17:32:40.739
-cmky8ah5z00009yn7fljrfymq	296d86a3-bf62-4735-805c-c31f8f062f98	digital_enquiry	COMPLETED	10	10	10	0	\N	cmivgorqg00009y5iyf5y9s5b	2026-01-28 16:17:12.551	2026-01-28 16:17:58.424	2026-01-28 16:17:58.424
-cmkwvqnqu000lr10lu2889wjt	6aeafb8a-8904-40fd-a2c4-60c54c0402ce	digital_enquiry	COMPLETED	10	10	10	0	\N	cmivgorqg00009y5iyf5y9s5b	2026-01-27 17:38:06.39	2026-01-27 17:38:17.88	2026-01-27 17:38:17.88
-cmky72joe00009yqm9vcn5eyn	37e6f995-ec37-4cf0-8eab-7f0286f0b5a3	digital_enquiry	COMPLETED	10	10	10	0	\N	cmivgorqg00009y5iyf5y9s5b	2026-01-28 15:43:02.942	2026-01-28 15:43:35.566	2026-01-28 15:43:35.566
-cmkwvr9yi0016r10ldyoa69ol	7c8e9647-aa8d-4de4-bb89-d530bdcca367	digital_enquiry	COMPLETED	10	10	10	0	\N	cmivgorqg00009y5iyf5y9s5b	2026-01-27 17:38:35.178	2026-01-27 17:38:47.197	2026-01-27 17:38:47.197
-cmky7agpy00009yxo27x3bnnu	defc38b8-78d6-41f8-bb14-fc3e1ffaf90a	digital_enquiry	COMPLETED	10	10	10	0	\N	cmivgorqg00009y5iyf5y9s5b	2026-01-28 15:49:12.358	2026-01-28 15:49:53.065	2026-01-28 15:49:53.065
-cmky7kwd000009yzk43w3e1ch	a79a6f15-5354-465e-9531-55f0a4b3aa53	digital_enquiry	COMPLETED	10	10	10	0	\N	cmivgorqg00009y5iyf5y9s5b	2026-01-28 15:57:19.189	2026-01-28 15:58:02.545	2026-01-28 15:58:02.545
-cmky7osx800159yzk0wkkiizw	1a24a5eb-7e3a-4523-80d2-80154eb402e3	digital_enquiry	COMPLETED	10	10	10	0	\N	cmivgorqg00009y5iyf5y9s5b	2026-01-28 16:00:21.356	2026-01-28 16:00:45.516	2026-01-28 16:00:45.516
-cmky7x3ta00009ynljfo89btv	b36f0a04-6962-433c-b83a-3ac87b73b672	digital_enquiry	COMPLETED	10	10	10	0	\N	cmivgorqg00009y5iyf5y9s5b	2026-01-28 16:06:48.718	2026-01-28 16:07:15.763	2026-01-28 16:07:15.763
-cml11v77400009yuqemkxu2sg	67b51cdc-5ef8-4ff0-9999-3ef30dec7348	digital_enquiry	COMPLETED	10	10	10	0	\N	cmivgorqg00009y5iyf5y9s5b	2026-01-30 15:40:40.624	2026-01-30 15:49:14.843	2026-01-30 15:49:14.843
-cml13avwq00009yx6iiv49q7s	e1a23325-efa5-41fb-af70-5fd2f3d31769	digital_enquiry	COMPLETED	10	10	10	0	\N	cmivgorqg00009y5iyf5y9s5b	2026-01-30 16:20:52.106	2026-01-30 16:21:54.718	2026-01-30 16:21:54.718
+cml2jng6m00009yifcthlfy8e	8b1b6e35-81c0-4257-84f9-298c322452de	digital_enquiry	QUEUED	10	0	0	0	\N	cmivgorqg00009y5iyf5y9s5b	2026-01-31 16:46:18.163	2026-01-31 16:46:18.163	\N
+cml2jqdqz00009yiggzvh2qjj	a678445c-fd6b-475a-8576-0051e21a8563	digital_enquiry	QUEUED	10	0	0	0	\N	cmivgorqg00009y5iyf5y9s5b	2026-01-31 16:48:35.099	2026-01-31 16:48:35.099	\N
+cml2jwl2900009ysucg4d6wpw	ebaefe0b-d97a-4a19-8ab6-0ef5ba6b139a	digital_enquiry	PROCESSING	10	0	0	0	\N	cmivgorqg00009y5iyf5y9s5b	2026-01-31 16:53:24.396	2026-01-31 16:53:24.968	\N
+cml69p8h3009wqn0ku05i2q65	0a325c46-6509-4676-8e74-6549d9f71e38	digital_enquiry	COMPLETED	2	0	2	0	\N	cmk130qz40000l704z6fc2alp	2026-02-03 07:18:50.151	2026-02-03 07:18:53.212	2026-02-03 07:18:53.212
 cml0i5edq000apo0k7kul4zl7	4ce75216-e791-4b4c-b641-851f37f25a2a	digital_enquiry	COMPLETED	72	70	72	0	\N	cmk130qz40000l704z6fc2alp	2026-01-30 06:28:44.174	2026-01-30 06:30:27.476	2026-01-30 06:30:27.476
 cmkzgsmru0014me0kgmrv8oif	46b79f30-146c-473e-bae9-7868a6d6d5dc	digital_enquiry	COMPLETED	95	90	95	0	\N	cmk130qz40000l704z6fc2alp	2026-01-29 13:03:02.73	2026-01-29 13:04:57.213	2026-01-29 13:04:57.213
-cmkzmxico00009y3p4q4k7mbk	b7a33cbf-fbf9-437c-97f3-a6d018f7975a	digital_enquiry	COMPLETED	10	10	10	0	\N	cmivgorqg00009y5iyf5y9s5b	2026-01-29 15:54:47.976	2026-01-29 15:55:17.247	2026-01-29 15:55:17.247
-cml12z4ma00009yfunhbhgfpr	fe29cb65-2fe5-450a-b5fe-884602ed9902	digital_enquiry	COMPLETED	10	10	10	0	\N	cmivgorqg00009y5iyf5y9s5b	2026-01-30 16:11:43.522	2026-01-30 16:12:13.377	2026-01-30 16:12:13.377
-cml0i89n6004bpo0kiwx5p1k3	6ac95864-e772-4811-bf64-90329ea9aadc	digital_enquiry	COMPLETED	10	10	10	0	\N	cmivgorqg00009y5iyf5y9s5b	2026-01-30 06:30:58.002	2026-01-30 06:31:10.474	2026-01-30 06:31:10.474
-cml11sbum00009yayrarh5h9d	0862b619-852b-4ac4-9ad8-1fdb37a1bbd3	digital_enquiry	QUEUED	10	0	0	0	\N	cmivgorqg00009y5iyf5y9s5b	2026-01-30 15:38:26.686	2026-01-30 15:38:26.686	\N
+cmkwvsbel001rr10ly17ezu8y	4fd4e3c4-c793-4fea-8342-1f808fffc818	digital_enquiry	COMPLETED	10	10	10	0	\N	cmivgorqg00009y5iyf5y9s5b	2026-01-27 17:39:23.709	2026-01-31 15:07:02.255	2026-01-27 17:39:34.419
+cmkr22j6800009yn1to29kr1d	b8d1dfe6-675c-43cf-b545-bf1ed5ead263	digital_enquiry	COMPLETED	10	10	10	0	null	cmivgorqg00009y5iyf5y9s5b	2026-01-23 15:48:40.976	2026-01-31 15:07:02.255	2026-01-23 15:48:54.068
+cmky66kty00009yq3yhjdc13g	6d52e00e-b3bf-4e4a-b2c7-3d206a5aeefc	digital_enquiry	QUEUED	10	0	0	0	\N	cmivgorqg00009y5iyf5y9s5b	2026-01-28 15:18:11.446	2026-01-31 15:07:02.255	\N
+cmkr23kms000l9yn16co4crwa	f2110753-4ecf-43ea-b80a-915b26ecbc5f	digital_enquiry	COMPLETED	10	10	10	0	null	cmivgorqg00009y5iyf5y9s5b	2026-01-23 15:49:29.524	2026-01-31 15:07:02.255	2026-01-23 15:49:44.037
+cmky67x4q00019yq35a9q6nvu	4236f4c1-9290-486e-aafe-927706a8ebda	digital_enquiry	QUEUED	10	0	0	0	\N	cmivgorqg00009y5iyf5y9s5b	2026-01-28 15:19:14.042	2026-01-31 15:07:02.255	\N
+cmkr254bt00009yq007tka1m0	95fec569-1121-436f-8b50-ad0cbb28c255	digital_enquiry	COMPLETED	10	10	10	0	null	cmivgorqg00009y5iyf5y9s5b	2026-01-23 15:50:41.705	2026-01-31 15:07:02.255	2026-01-23 15:50:55.631
+cmky68y6i00029yq3tlf88876	6acd738b-2f6d-4b2d-8ad3-affaa5d0e9be	digital_enquiry	QUEUED	10	0	0	0	\N	cmivgorqg00009y5iyf5y9s5b	2026-01-28 15:20:02.058	2026-01-31 15:07:02.255	\N
+cmkr26398000l9yq0heslpkjn	c0b2aad3-55d3-4fb5-8532-2872b999c845	digital_enquiry	COMPLETED	10	10	10	0	null	cmivgorqg00009y5iyf5y9s5b	2026-01-23 15:51:26.972	2026-01-31 15:07:02.255	2026-01-23 15:51:41.755
+cmky6ecnx00009ydfye3tjfni	adad797f-4ea6-4be9-8685-3c2e8255ac0d	digital_enquiry	QUEUED	10	0	0	0	\N	cmivgorqg00009y5iyf5y9s5b	2026-01-28 15:24:14.11	2026-01-31 15:07:02.255	\N
+cmkr2gan700009ydm6jhrfsdp	dff03c70-4a0b-46cc-b6c5-00e61c96f043	digital_enquiry	COMPLETED	10	10	10	0	null	cmivgorqg00009y5iyf5y9s5b	2026-01-23 15:59:23.108	2026-01-31 15:07:02.255	2026-01-23 15:59:51.842
+cmkwqfi4200009yar1pbvsfim	df541732-5003-43d1-bf0c-278c7d5dd2c6	digital_enquiry	COMPLETED	10	10	10	0	\N	cmivgorqg00009y5iyf5y9s5b	2026-01-27 15:09:27.794	2026-01-31 15:07:02.255	2026-01-27 15:09:56.016
+cmkwutyws0000n30k4h7u3hzg	94a6f79b-a82f-4e0e-bc6a-f676366428c0	digital_enquiry	QUEUED	10	0	0	0	\N	cmivgorqg00009y5iyf5y9s5b	2026-01-27 17:12:41.212	2026-01-31 15:07:02.255	\N
+cmkwvi5r80001n30k1uhvsunf	18305b9d-7680-4b0c-98e5-2032fd6fa526	digital_enquiry	QUEUED	10	0	0	0	\N	cmivgorqg00009y5iyf5y9s5b	2026-01-27 17:31:29.759	2026-01-31 15:07:02.255	\N
+cmkwvjfav0000r10lew1lq7mq	02586dda-4bdf-4df0-8d44-0116d3be3e16	digital_enquiry	COMPLETED	10	10	10	0	\N	cmivgorqg00009y5iyf5y9s5b	2026-01-27 17:32:28.855	2026-01-31 15:07:02.255	2026-01-27 17:32:40.739
+cmky8ah5z00009yn7fljrfymq	296d86a3-bf62-4735-805c-c31f8f062f98	digital_enquiry	COMPLETED	10	10	10	0	\N	cmivgorqg00009y5iyf5y9s5b	2026-01-28 16:17:12.551	2026-01-31 15:07:02.255	2026-01-28 16:17:58.424
+cmkwvqnqu000lr10lu2889wjt	6aeafb8a-8904-40fd-a2c4-60c54c0402ce	digital_enquiry	COMPLETED	10	10	10	0	\N	cmivgorqg00009y5iyf5y9s5b	2026-01-27 17:38:06.39	2026-01-31 15:07:02.255	2026-01-27 17:38:17.88
+cmky72joe00009yqm9vcn5eyn	37e6f995-ec37-4cf0-8eab-7f0286f0b5a3	digital_enquiry	COMPLETED	10	10	10	0	\N	cmivgorqg00009y5iyf5y9s5b	2026-01-28 15:43:02.942	2026-01-31 15:07:02.255	2026-01-28 15:43:35.566
+cmkwvr9yi0016r10ldyoa69ol	7c8e9647-aa8d-4de4-bb89-d530bdcca367	digital_enquiry	COMPLETED	10	10	10	0	\N	cmivgorqg00009y5iyf5y9s5b	2026-01-27 17:38:35.178	2026-01-31 15:07:02.255	2026-01-27 17:38:47.197
+cmky7agpy00009yxo27x3bnnu	defc38b8-78d6-41f8-bb14-fc3e1ffaf90a	digital_enquiry	COMPLETED	10	10	10	0	\N	cmivgorqg00009y5iyf5y9s5b	2026-01-28 15:49:12.358	2026-01-31 15:07:02.255	2026-01-28 15:49:53.065
+cmky7kwd000009yzk43w3e1ch	a79a6f15-5354-465e-9531-55f0a4b3aa53	digital_enquiry	COMPLETED	10	10	10	0	\N	cmivgorqg00009y5iyf5y9s5b	2026-01-28 15:57:19.189	2026-01-31 15:07:02.255	2026-01-28 15:58:02.545
+cmky7osx800159yzk0wkkiizw	1a24a5eb-7e3a-4523-80d2-80154eb402e3	digital_enquiry	COMPLETED	10	10	10	0	\N	cmivgorqg00009y5iyf5y9s5b	2026-01-28 16:00:21.356	2026-01-31 15:07:02.255	2026-01-28 16:00:45.516
+cmky7x3ta00009ynljfo89btv	b36f0a04-6962-433c-b83a-3ac87b73b672	digital_enquiry	COMPLETED	10	10	10	0	\N	cmivgorqg00009y5iyf5y9s5b	2026-01-28 16:06:48.718	2026-01-31 15:07:02.255	2026-01-28 16:07:15.763
+cml11v77400009yuqemkxu2sg	67b51cdc-5ef8-4ff0-9999-3ef30dec7348	digital_enquiry	COMPLETED	10	10	10	0	\N	cmivgorqg00009y5iyf5y9s5b	2026-01-30 15:40:40.624	2026-01-31 15:07:02.255	2026-01-30 15:49:14.843
+cml13avwq00009yx6iiv49q7s	e1a23325-efa5-41fb-af70-5fd2f3d31769	digital_enquiry	COMPLETED	10	10	10	0	\N	cmivgorqg00009y5iyf5y9s5b	2026-01-30 16:20:52.106	2026-01-31 15:07:02.255	2026-01-30 16:21:54.718
+cmkzmxico00009y3p4q4k7mbk	b7a33cbf-fbf9-437c-97f3-a6d018f7975a	digital_enquiry	COMPLETED	10	10	10	0	\N	cmivgorqg00009y5iyf5y9s5b	2026-01-29 15:54:47.976	2026-01-31 15:07:02.255	2026-01-29 15:55:17.247
+cml12z4ma00009yfunhbhgfpr	fe29cb65-2fe5-450a-b5fe-884602ed9902	digital_enquiry	COMPLETED	10	10	10	0	\N	cmivgorqg00009y5iyf5y9s5b	2026-01-30 16:11:43.522	2026-01-31 15:07:02.255	2026-01-30 16:12:13.377
+cml0i89n6004bpo0kiwx5p1k3	6ac95864-e772-4811-bf64-90329ea9aadc	digital_enquiry	COMPLETED	10	10	10	0	\N	cmivgorqg00009y5iyf5y9s5b	2026-01-30 06:30:58.002	2026-01-31 15:07:02.255	2026-01-30 06:31:10.474
+cml11sbum00009yayrarh5h9d	0862b619-852b-4ac4-9ad8-1fdb37a1bbd3	digital_enquiry	QUEUED	10	0	0	0	\N	cmivgorqg00009y5iyf5y9s5b	2026-01-30 15:38:26.686	2026-01-31 15:07:02.255	\N
+cml2jo0d300009yq56g6wv0oe	ae884260-a298-4789-9f54-87ea0ad8f37d	digital_enquiry	QUEUED	10	0	0	0	\N	cmivgorqg00009y5iyf5y9s5b	2026-01-31 16:46:44.439	2026-01-31 16:46:44.439	\N
+cml2jv0of00029y54mj4hd6rq	1e735fa5-a5cf-4696-9ef4-36337a86953e	digital_enquiry	QUEUED	10	0	0	0	\N	cmivgorqg00009y5iyf5y9s5b	2026-01-31 16:52:11.439	2026-01-31 16:52:11.439	\N
+cml5g1q3a0017qn0kaydmfcwl	705ee8b9-935f-4f08-8e44-f27bacf264d6	digital_enquiry	COMPLETED	142	140	142	0	\N	cmk130qz40000l704z6fc2alp	2026-02-02 17:28:44.363	2026-02-02 17:31:38.822	2026-02-02 17:31:38.822
 \.
 
 
@@ -889,6 +940,159 @@ cml13bz8e000d9yih0n5exlir	e1a23325-efa5-41fb-af70-5fd2f3d31769	8	t	\N	\N	2026-01
 cml13c1iu000f9yihum0yh43f	e1a23325-efa5-41fb-af70-5fd2f3d31769	9	t	\N	\N	2026-01-30 16:21:46.039
 cml13c4ol000h9yih9pha39jt	e1a23325-efa5-41fb-af70-5fd2f3d31769	10	t	\N	\N	2026-01-30 16:21:49.935
 cml13c7dn000j9yihp416h50w	e1a23325-efa5-41fb-af70-5fd2f3d31769	11	t	\N	\N	2026-01-30 16:21:53.628
+cml2jwo3t00029ysu5qye7bd4	ebaefe0b-d97a-4a19-8ab6-0ef5ba6b139a	2	t	\N	\N	2026-01-31 16:53:28.457
+cml2jwq5300049ysuk3hmk88r	ebaefe0b-d97a-4a19-8ab6-0ef5ba6b139a	3	t	\N	\N	2026-01-31 16:53:31.095
+cml2jwrw500069ysuuo70zfst	ebaefe0b-d97a-4a19-8ab6-0ef5ba6b139a	4	t	\N	\N	2026-01-31 16:53:33.365
+cml2jwun600089ysumf9rm5gj	ebaefe0b-d97a-4a19-8ab6-0ef5ba6b139a	5	t	\N	\N	2026-01-31 16:53:36.931
+cml2jwx0m000a9ysu198z9q0d	ebaefe0b-d97a-4a19-8ab6-0ef5ba6b139a	6	t	\N	\N	2026-01-31 16:53:40.006
+cml2jwzgn000c9ysuc4n25d0p	ebaefe0b-d97a-4a19-8ab6-0ef5ba6b139a	7	t	\N	\N	2026-01-31 16:53:43.176
+cml2jx1ej000e9ysujavru7p4	ebaefe0b-d97a-4a19-8ab6-0ef5ba6b139a	8	t	\N	\N	2026-01-31 16:53:45.691
+cml2jx3lj000g9ysu59elbs9o	ebaefe0b-d97a-4a19-8ab6-0ef5ba6b139a	9	t	\N	\N	2026-01-31 16:53:48.535
+cml2jx5v1000i9ysuasvjkpnm	ebaefe0b-d97a-4a19-8ab6-0ef5ba6b139a	10	t	\N	\N	2026-01-31 16:53:51.469
+cml5g1s2i0019qn0k1ej3x052	705ee8b9-935f-4f08-8e44-f27bacf264d6	2	t	\N	\N	2026-02-02 17:28:46.938
+cml5g1syj001bqn0kj9sw8492	705ee8b9-935f-4f08-8e44-f27bacf264d6	3	t	\N	\N	2026-02-02 17:28:48.091
+cml5g1u3u001dqn0kuxjtv7tr	705ee8b9-935f-4f08-8e44-f27bacf264d6	4	t	\N	\N	2026-02-02 17:28:49.578
+cml5g1v40001fqn0kyyejbww0	705ee8b9-935f-4f08-8e44-f27bacf264d6	5	t	\N	\N	2026-02-02 17:28:50.881
+cml5g1vx1001hqn0ksj0fpktw	705ee8b9-935f-4f08-8e44-f27bacf264d6	6	t	\N	\N	2026-02-02 17:28:51.925
+cml5g1x53001jqn0kp7zc1hdl	705ee8b9-935f-4f08-8e44-f27bacf264d6	7	t	\N	\N	2026-02-02 17:28:53.511
+cml5g1y3i001lqn0k4k57jkw8	705ee8b9-935f-4f08-8e44-f27bacf264d6	8	t	\N	\N	2026-02-02 17:28:54.75
+cml5g1z9d001nqn0k5awx5m6l	705ee8b9-935f-4f08-8e44-f27bacf264d6	9	t	\N	\N	2026-02-02 17:28:56.258
+cml5g20c5001pqn0kxzite4zo	705ee8b9-935f-4f08-8e44-f27bacf264d6	10	t	\N	\N	2026-02-02 17:28:57.654
+cml5g2182001rqn0knmyrlosf	705ee8b9-935f-4f08-8e44-f27bacf264d6	11	t	\N	\N	2026-02-02 17:28:58.803
+cml5g225z001tqn0kj846h9ho	705ee8b9-935f-4f08-8e44-f27bacf264d6	12	t	\N	\N	2026-02-02 17:29:00.023
+cml5g239e001vqn0kr3ow4spm	705ee8b9-935f-4f08-8e44-f27bacf264d6	13	t	\N	\N	2026-02-02 17:29:01.442
+cml5g249m001xqn0ke3ivj1c6	705ee8b9-935f-4f08-8e44-f27bacf264d6	14	t	\N	\N	2026-02-02 17:29:02.746
+cml5g256t001zqn0k7phr584j	705ee8b9-935f-4f08-8e44-f27bacf264d6	15	t	\N	\N	2026-02-02 17:29:03.942
+cml5g26610021qn0kib3d8yql	705ee8b9-935f-4f08-8e44-f27bacf264d6	16	t	\N	\N	2026-02-02 17:29:05.209
+cml5g277u0023qn0kl5ywvuox	705ee8b9-935f-4f08-8e44-f27bacf264d6	17	t	\N	\N	2026-02-02 17:29:06.571
+cml5g28b70025qn0k6lb9jy1e	705ee8b9-935f-4f08-8e44-f27bacf264d6	18	t	\N	\N	2026-02-02 17:29:07.987
+cml5g29ji0027qn0k0nx75wen	705ee8b9-935f-4f08-8e44-f27bacf264d6	19	t	\N	\N	2026-02-02 17:29:09.583
+cml5g2aoo0029qn0k8wc0pgd3	705ee8b9-935f-4f08-8e44-f27bacf264d6	20	t	\N	\N	2026-02-02 17:29:11.064
+cml5g2bo3002bqn0k58ekdmhh	705ee8b9-935f-4f08-8e44-f27bacf264d6	21	t	\N	\N	2026-02-02 17:29:12.339
+cml5g2cjj002dqn0kpxj850ln	705ee8b9-935f-4f08-8e44-f27bacf264d6	22	t	\N	\N	2026-02-02 17:29:13.471
+cml5g2dm7002fqn0kyiek1s1h	705ee8b9-935f-4f08-8e44-f27bacf264d6	23	t	\N	\N	2026-02-02 17:29:14.863
+cml5g2eea002hqn0k1ew3uo6f	705ee8b9-935f-4f08-8e44-f27bacf264d6	24	t	\N	\N	2026-02-02 17:29:15.874
+cml5g2fgs002jqn0k7ta6x4oj	705ee8b9-935f-4f08-8e44-f27bacf264d6	25	t	\N	\N	2026-02-02 17:29:17.26
+cml5g2g6o002lqn0kuvopwhgv	705ee8b9-935f-4f08-8e44-f27bacf264d6	26	t	\N	\N	2026-02-02 17:29:18.192
+cml5g2kvn002vqn0k6i7kwviw	705ee8b9-935f-4f08-8e44-f27bacf264d6	31	t	\N	\N	2026-02-02 17:29:24.275
+cml5g2lia002xqn0kqdik6qy7	705ee8b9-935f-4f08-8e44-f27bacf264d6	32	t	\N	\N	2026-02-02 17:29:25.091
+cml5g2nxy0033qn0kb4gqfl6c	705ee8b9-935f-4f08-8e44-f27bacf264d6	35	t	\N	\N	2026-02-02 17:29:28.246
+cml5g2rfj003bqn0kfd6bm4cl	705ee8b9-935f-4f08-8e44-f27bacf264d6	39	t	\N	\N	2026-02-02 17:29:32.768
+cml5g2tnk003hqn0k90id65r2	705ee8b9-935f-4f08-8e44-f27bacf264d6	42	t	\N	\N	2026-02-02 17:29:35.648
+cml5g2ulf003jqn0kp5fejj3v	705ee8b9-935f-4f08-8e44-f27bacf264d6	43	t	\N	\N	2026-02-02 17:29:36.868
+cml5g2xmg003pqn0k7w8r3oln	705ee8b9-935f-4f08-8e44-f27bacf264d6	46	t	\N	\N	2026-02-02 17:29:40.792
+cml5g2ygr003rqn0khuwgqtf5	705ee8b9-935f-4f08-8e44-f27bacf264d6	47	t	\N	\N	2026-02-02 17:29:41.884
+cml5g2zk7003tqn0kj9pgslkk	705ee8b9-935f-4f08-8e44-f27bacf264d6	48	t	\N	\N	2026-02-02 17:29:43.304
+cml5g30dr003vqn0kygry2oog	705ee8b9-935f-4f08-8e44-f27bacf264d6	49	t	\N	\N	2026-02-02 17:29:44.367
+cml5g311h003xqn0k4prvqxtm	705ee8b9-935f-4f08-8e44-f27bacf264d6	50	t	\N	\N	2026-02-02 17:29:45.221
+cml5g34800043qn0kiv9fdiiw	705ee8b9-935f-4f08-8e44-f27bacf264d6	53	t	\N	\N	2026-02-02 17:29:49.344
+cml5g36dk0047qn0kwwxi1val	705ee8b9-935f-4f08-8e44-f27bacf264d6	55	t	\N	\N	2026-02-02 17:29:52.136
+cml5g37kr0049qn0kjfiqxw6d	705ee8b9-935f-4f08-8e44-f27bacf264d6	56	t	\N	\N	2026-02-02 17:29:53.691
+cml5g38gn004bqn0kgx3a79wp	705ee8b9-935f-4f08-8e44-f27bacf264d6	57	t	\N	\N	2026-02-02 17:29:54.84
+cml5g3b6y004hqn0k499e9aek	705ee8b9-935f-4f08-8e44-f27bacf264d6	60	t	\N	\N	2026-02-02 17:29:58.378
+cml5g3etn004pqn0kev5nl8jo	705ee8b9-935f-4f08-8e44-f27bacf264d6	64	t	\N	\N	2026-02-02 17:30:03.083
+cml5g3fpw004rqn0kbudvl4qq	705ee8b9-935f-4f08-8e44-f27bacf264d6	65	t	\N	\N	2026-02-02 17:30:04.244
+cml5g3gpk004tqn0kq5q06eg1	705ee8b9-935f-4f08-8e44-f27bacf264d6	66	t	\N	\N	2026-02-02 17:30:05.528
+cml5g3hix004vqn0k9let0dua	705ee8b9-935f-4f08-8e44-f27bacf264d6	67	t	\N	\N	2026-02-02 17:30:06.586
+cml5g3jm5004zqn0ks44kk7u6	705ee8b9-935f-4f08-8e44-f27bacf264d6	69	t	\N	\N	2026-02-02 17:30:09.293
+cml5g3ldt0053qn0k20x7vlmj	705ee8b9-935f-4f08-8e44-f27bacf264d6	71	t	\N	\N	2026-02-02 17:30:11.586
+cml5g3oyz005bqn0kepzts8ic	705ee8b9-935f-4f08-8e44-f27bacf264d6	75	t	\N	\N	2026-02-02 17:30:16.235
+cml5g3qha005fqn0kqhrn05ea	705ee8b9-935f-4f08-8e44-f27bacf264d6	77	t	\N	\N	2026-02-02 17:30:18.191
+cml5g3rfh005hqn0kzvte2rlq	705ee8b9-935f-4f08-8e44-f27bacf264d6	78	t	\N	\N	2026-02-02 17:30:19.421
+cml5g2h1d002nqn0kxdjwkdjq	705ee8b9-935f-4f08-8e44-f27bacf264d6	27	t	\N	\N	2026-02-02 17:29:19.297
+cml5g2i05002pqn0ksjond8m5	705ee8b9-935f-4f08-8e44-f27bacf264d6	28	t	\N	\N	2026-02-02 17:29:20.549
+cml5g2itx002rqn0k1qj34epq	705ee8b9-935f-4f08-8e44-f27bacf264d6	29	t	\N	\N	2026-02-02 17:29:21.621
+cml5g2jn1002tqn0kb3i4luyv	705ee8b9-935f-4f08-8e44-f27bacf264d6	30	t	\N	\N	2026-02-02 17:29:22.669
+cml5g2mfl002zqn0kdaij22la	705ee8b9-935f-4f08-8e44-f27bacf264d6	33	t	\N	\N	2026-02-02 17:29:26.289
+cml5g2n7a0031qn0kipwbcl11	705ee8b9-935f-4f08-8e44-f27bacf264d6	34	t	\N	\N	2026-02-02 17:29:27.287
+cml5g2ost0035qn0k79szgofx	705ee8b9-935f-4f08-8e44-f27bacf264d6	36	t	\N	\N	2026-02-02 17:29:29.358
+cml5g2pme0037qn0k8z1q0oiv	705ee8b9-935f-4f08-8e44-f27bacf264d6	37	t	\N	\N	2026-02-02 17:29:30.423
+cml5g2qi00039qn0kyfcbk1yb	705ee8b9-935f-4f08-8e44-f27bacf264d6	38	t	\N	\N	2026-02-02 17:29:31.561
+cml5g2sb1003dqn0kzrk28gk7	705ee8b9-935f-4f08-8e44-f27bacf264d6	40	t	\N	\N	2026-02-02 17:29:33.902
+cml5g2svk003fqn0kk9j37jvn	705ee8b9-935f-4f08-8e44-f27bacf264d6	41	t	\N	\N	2026-02-02 17:29:34.641
+cml5g2vi7003lqn0kardxxkxy	705ee8b9-935f-4f08-8e44-f27bacf264d6	44	t	\N	\N	2026-02-02 17:29:38.048
+cml5g2wc4003nqn0kdtgc83k1	705ee8b9-935f-4f08-8e44-f27bacf264d6	45	t	\N	\N	2026-02-02 17:29:39.124
+cml5g32ba003zqn0kifgr3yrg	705ee8b9-935f-4f08-8e44-f27bacf264d6	51	t	\N	\N	2026-02-02 17:29:46.87
+cml5g33dw0041qn0kpqu0sqm2	705ee8b9-935f-4f08-8e44-f27bacf264d6	52	t	\N	\N	2026-02-02 17:29:48.26
+cml5g354m0045qn0kmr0my9d6	705ee8b9-935f-4f08-8e44-f27bacf264d6	54	t	\N	\N	2026-02-02 17:29:50.519
+cml5g398w004dqn0kypzcstwd	705ee8b9-935f-4f08-8e44-f27bacf264d6	58	t	\N	\N	2026-02-02 17:29:55.856
+cml5g3aac004fqn0kmug3gs0m	705ee8b9-935f-4f08-8e44-f27bacf264d6	59	t	\N	\N	2026-02-02 17:29:57.204
+cml5g3by2004jqn0kcuv7fbje	705ee8b9-935f-4f08-8e44-f27bacf264d6	61	t	\N	\N	2026-02-02 17:29:59.354
+cml5g3cul004lqn0knvzrwb5b	705ee8b9-935f-4f08-8e44-f27bacf264d6	62	t	\N	\N	2026-02-02 17:30:00.526
+cml5g3dqk004nqn0kifmbc0u4	705ee8b9-935f-4f08-8e44-f27bacf264d6	63	t	\N	\N	2026-02-02 17:30:01.676
+cml5g3ijt004xqn0kwfhwn2f7	705ee8b9-935f-4f08-8e44-f27bacf264d6	68	t	\N	\N	2026-02-02 17:30:07.914
+cml5g3klk0051qn0ki8w29rh2	705ee8b9-935f-4f08-8e44-f27bacf264d6	70	t	\N	\N	2026-02-02 17:30:10.568
+cml5g3mh50055qn0k7h4y7fn6	705ee8b9-935f-4f08-8e44-f27bacf264d6	72	t	\N	\N	2026-02-02 17:30:13.001
+cml5g3ncw0057qn0kivwzkn3e	705ee8b9-935f-4f08-8e44-f27bacf264d6	73	t	\N	\N	2026-02-02 17:30:14.145
+cml5g3o4w0059qn0knk1sdnb4	705ee8b9-935f-4f08-8e44-f27bacf264d6	74	t	\N	\N	2026-02-02 17:30:15.153
+cml5g3ppx005dqn0k6es6yr38	705ee8b9-935f-4f08-8e44-f27bacf264d6	76	t	\N	\N	2026-02-02 17:30:17.206
+cml5g3sb2005jqn0ky6ztb9rg	705ee8b9-935f-4f08-8e44-f27bacf264d6	79	t	\N	\N	2026-02-02 17:30:20.558
+cml5g3tb0005lqn0kxyobw7el	705ee8b9-935f-4f08-8e44-f27bacf264d6	80	t	\N	\N	2026-02-02 17:30:21.853
+cml5g3ucg005nqn0kmo1wrvys	705ee8b9-935f-4f08-8e44-f27bacf264d6	81	t	\N	\N	2026-02-02 17:30:23.2
+cml5g3vki005pqn0k3svnj7pf	705ee8b9-935f-4f08-8e44-f27bacf264d6	82	t	\N	\N	2026-02-02 17:30:24.787
+cml5g3weo005rqn0ktu8mwi5p	705ee8b9-935f-4f08-8e44-f27bacf264d6	83	t	\N	\N	2026-02-02 17:30:25.873
+cml5g3xk7005tqn0kkvdlr8i6	705ee8b9-935f-4f08-8e44-f27bacf264d6	84	t	\N	\N	2026-02-02 17:30:27.368
+cml5g3yd3005vqn0k3jsmo9ph	705ee8b9-935f-4f08-8e44-f27bacf264d6	85	t	\N	\N	2026-02-02 17:30:28.407
+cml5g3z4n005xqn0k0hk0d8q8	705ee8b9-935f-4f08-8e44-f27bacf264d6	86	t	\N	\N	2026-02-02 17:30:29.399
+cml5g40ew005zqn0k8zg51g3w	705ee8b9-935f-4f08-8e44-f27bacf264d6	87	t	\N	\N	2026-02-02 17:30:31.065
+cml5g41pg0061qn0kfj35mc4x	705ee8b9-935f-4f08-8e44-f27bacf264d6	88	t	\N	\N	2026-02-02 17:30:32.74
+cml5g42di0063qn0khbsopetf	705ee8b9-935f-4f08-8e44-f27bacf264d6	89	t	\N	\N	2026-02-02 17:30:33.606
+cml5g43o80065qn0kbfz7vrma	705ee8b9-935f-4f08-8e44-f27bacf264d6	90	t	\N	\N	2026-02-02 17:30:35.288
+cml5g44mo0067qn0kd751mw5p	705ee8b9-935f-4f08-8e44-f27bacf264d6	91	t	\N	\N	2026-02-02 17:30:36.528
+cml5g45jw0069qn0kcfypjqew	705ee8b9-935f-4f08-8e44-f27bacf264d6	92	t	\N	\N	2026-02-02 17:30:37.724
+cml5g46ed006bqn0kgip42eu0	705ee8b9-935f-4f08-8e44-f27bacf264d6	93	t	\N	\N	2026-02-02 17:30:38.822
+cml5g47aj006dqn0kur57p5v5	705ee8b9-935f-4f08-8e44-f27bacf264d6	94	t	\N	\N	2026-02-02 17:30:39.979
+cml5g484x006fqn0k7ecdrhew	705ee8b9-935f-4f08-8e44-f27bacf264d6	95	t	\N	\N	2026-02-02 17:30:41.073
+cml5g4913006hqn0krd4paw3j	705ee8b9-935f-4f08-8e44-f27bacf264d6	96	t	\N	\N	2026-02-02 17:30:42.231
+cml5g49z9006jqn0km9yk6rpk	705ee8b9-935f-4f08-8e44-f27bacf264d6	97	t	\N	\N	2026-02-02 17:30:43.462
+cml5g4ayx006lqn0ksx9d2s8q	705ee8b9-935f-4f08-8e44-f27bacf264d6	98	t	\N	\N	2026-02-02 17:30:44.745
+cml5g4bsr006nqn0klxif0li7	705ee8b9-935f-4f08-8e44-f27bacf264d6	99	t	\N	\N	2026-02-02 17:30:45.819
+cml5g4cp1006pqn0kqsp2qn6u	705ee8b9-935f-4f08-8e44-f27bacf264d6	100	t	\N	\N	2026-02-02 17:30:46.981
+cml5g4dih006rqn0k0xsewbd3	705ee8b9-935f-4f08-8e44-f27bacf264d6	101	t	\N	\N	2026-02-02 17:30:48.041
+cml5g4enx006tqn0kaysfoerx	705ee8b9-935f-4f08-8e44-f27bacf264d6	102	t	\N	\N	2026-02-02 17:30:49.534
+cml5g4fml006vqn0kiz0g8t04	705ee8b9-935f-4f08-8e44-f27bacf264d6	103	t	\N	\N	2026-02-02 17:30:50.781
+cml5g4gvf006xqn0ktjk96nha	705ee8b9-935f-4f08-8e44-f27bacf264d6	104	t	\N	\N	2026-02-02 17:30:52.395
+cml5g4hxo006zqn0k6x723gtr	705ee8b9-935f-4f08-8e44-f27bacf264d6	105	t	\N	\N	2026-02-02 17:30:53.773
+cml5g4ivj0071qn0kgdfm9kgu	705ee8b9-935f-4f08-8e44-f27bacf264d6	106	t	\N	\N	2026-02-02 17:30:54.991
+cml5g4jpq0073qn0ka5yrz4iw	705ee8b9-935f-4f08-8e44-f27bacf264d6	107	t	\N	\N	2026-02-02 17:30:56.079
+cml5g4kiy0075qn0knxn8phey	705ee8b9-935f-4f08-8e44-f27bacf264d6	108	t	\N	\N	2026-02-02 17:30:57.131
+cml5g4lk80077qn0k3dcmxsct	705ee8b9-935f-4f08-8e44-f27bacf264d6	109	t	\N	\N	2026-02-02 17:30:58.473
+cml5g4mfs0079qn0ket65eahl	705ee8b9-935f-4f08-8e44-f27bacf264d6	110	t	\N	\N	2026-02-02 17:30:59.608
+cml5g4ncn007bqn0kbu8moztz	705ee8b9-935f-4f08-8e44-f27bacf264d6	111	t	\N	\N	2026-02-02 17:31:00.791
+cml5g4oa2007dqn0kmwuzjzgi	705ee8b9-935f-4f08-8e44-f27bacf264d6	112	t	\N	\N	2026-02-02 17:31:01.994
+cml5g4pd3007fqn0k31dl85l6	705ee8b9-935f-4f08-8e44-f27bacf264d6	113	t	\N	\N	2026-02-02 17:31:03.399
+cml5g4q8i007hqn0k781ytzxe	705ee8b9-935f-4f08-8e44-f27bacf264d6	114	t	\N	\N	2026-02-02 17:31:04.531
+cml5g4rcb007jqn0k15ocvfa9	705ee8b9-935f-4f08-8e44-f27bacf264d6	115	t	\N	\N	2026-02-02 17:31:05.963
+cml5g4s8j007lqn0kgu6n5ymf	705ee8b9-935f-4f08-8e44-f27bacf264d6	116	t	\N	\N	2026-02-02 17:31:07.124
+cml5g4t22007nqn0kaot74zgv	705ee8b9-935f-4f08-8e44-f27bacf264d6	117	t	\N	\N	2026-02-02 17:31:08.186
+cml5g4tzf007pqn0ke4uckwhw	705ee8b9-935f-4f08-8e44-f27bacf264d6	118	t	\N	\N	2026-02-02 17:31:09.388
+cml5g4uxd007rqn0kglcogznp	705ee8b9-935f-4f08-8e44-f27bacf264d6	119	t	\N	\N	2026-02-02 17:31:10.609
+cml5g4vqb007tqn0kyax2s1jw	705ee8b9-935f-4f08-8e44-f27bacf264d6	120	t	\N	\N	2026-02-02 17:31:11.651
+cml5g4wmm007vqn0kh2tisjh9	705ee8b9-935f-4f08-8e44-f27bacf264d6	121	t	\N	\N	2026-02-02 17:31:12.814
+cml5g4xgf007xqn0k9vcrn0um	705ee8b9-935f-4f08-8e44-f27bacf264d6	122	t	\N	\N	2026-02-02 17:31:13.887
+cml5g4yqo007zqn0kgwf8ov6x	705ee8b9-935f-4f08-8e44-f27bacf264d6	123	t	\N	\N	2026-02-02 17:31:15.552
+cml5g4zs30081qn0k78aa7m7a	705ee8b9-935f-4f08-8e44-f27bacf264d6	124	t	\N	\N	2026-02-02 17:31:16.9
+cml5g50mw0083qn0klr955vdv	705ee8b9-935f-4f08-8e44-f27bacf264d6	125	t	\N	\N	2026-02-02 17:31:18.009
+cml5g51g80085qn0k1o668dg5	705ee8b9-935f-4f08-8e44-f27bacf264d6	126	t	\N	\N	2026-02-02 17:31:19.064
+cml5g527o0087qn0kx7ef1pqp	705ee8b9-935f-4f08-8e44-f27bacf264d6	127	t	\N	\N	2026-02-02 17:31:20.052
+cml5g542z008bqn0k1oxng0l5	705ee8b9-935f-4f08-8e44-f27bacf264d6	129	t	\N	\N	2026-02-02 17:31:22.475
+cml5g54ws008dqn0kvvy5buvx	705ee8b9-935f-4f08-8e44-f27bacf264d6	130	t	\N	\N	2026-02-02 17:31:23.548
+cml5g59aa008nqn0khx0stv2t	705ee8b9-935f-4f08-8e44-f27bacf264d6	135	t	\N	\N	2026-02-02 17:31:29.219
+cml5g5b58008rqn0k6hwn1dsc	705ee8b9-935f-4f08-8e44-f27bacf264d6	137	t	\N	\N	2026-02-02 17:31:31.628
+cml5g5czj008vqn0kmhzb23br	705ee8b9-935f-4f08-8e44-f27bacf264d6	139	t	\N	\N	2026-02-02 17:31:34.015
+cml5g5dtm008xqn0k171px9sq	705ee8b9-935f-4f08-8e44-f27bacf264d6	140	t	\N	\N	2026-02-02 17:31:35.098
+cml5g531c0089qn0korxov12x	705ee8b9-935f-4f08-8e44-f27bacf264d6	128	t	\N	\N	2026-02-02 17:31:21.12
+cml5g55sj008fqn0kvwo63s91	705ee8b9-935f-4f08-8e44-f27bacf264d6	131	t	\N	\N	2026-02-02 17:31:24.692
+cml5g56mx008hqn0kaqsdnwns	705ee8b9-935f-4f08-8e44-f27bacf264d6	132	t	\N	\N	2026-02-02 17:31:25.785
+cml5g57fr008jqn0k2ur14ndw	705ee8b9-935f-4f08-8e44-f27bacf264d6	133	t	\N	\N	2026-02-02 17:31:26.823
+cml5g58dx008lqn0kqmks2jni	705ee8b9-935f-4f08-8e44-f27bacf264d6	134	t	\N	\N	2026-02-02 17:31:28.053
+cml5g5ad3008pqn0kylnvofow	705ee8b9-935f-4f08-8e44-f27bacf264d6	136	t	\N	\N	2026-02-02 17:31:30.615
+cml5g5c43008tqn0kkank76vl	705ee8b9-935f-4f08-8e44-f27bacf264d6	138	t	\N	\N	2026-02-02 17:31:32.884
+cml5g5ep4008zqn0kswp310g7	705ee8b9-935f-4f08-8e44-f27bacf264d6	141	t	\N	\N	2026-02-02 17:31:36.232
+cml5g5fnt0091qn0kyrmdrmss	705ee8b9-935f-4f08-8e44-f27bacf264d6	142	t	\N	\N	2026-02-02 17:31:37.482
+cml5g5goz0093qn0k06p7bj3x	705ee8b9-935f-4f08-8e44-f27bacf264d6	143	t	\N	\N	2026-02-02 17:31:38.82
+cml69p9v9009yqn0kv46mz3t9	0a325c46-6509-4676-8e74-6549d9f71e38	2	t	\N	\N	2026-02-03 07:18:51.957
+cml69pau200a0qn0k5xbl6t72	0a325c46-6509-4676-8e74-6549d9f71e38	3	t	\N	\N	2026-02-03 07:18:53.21
 \.
 
 
@@ -896,9 +1100,9 @@ cml13c7dn000j9yihp416h50w	e1a23325-efa5-41fb-af70-5fd2f3d31769	11	t	\N	\N	2026-0
 -- Data for Name: Dealership; Type: TABLE DATA; Schema: public; Owner: utkalUser
 --
 
-COPY public."Dealership" (id, name, location, "createdAt", "updatedAt", "showroomNumber") FROM stdin;
-cmivgorqg00009y5iyf5y9s5b	Utkal Mahindra	Mancheswar, Rasulgarh, Bhubaneswar	2025-12-07 08:29:33.16	2026-01-05 11:29:47.213	9595959590
-cmk130qz40000l704z6fc2alp	Utkal Mahindra	Mancheswar	2026-01-05 11:33:16.816	2026-01-05 12:36:57.562	7008985634
+COPY public."Dealership" (id, name, location, "createdAt", "updatedAt", "showroomNumber", "organizationId") FROM stdin;
+cmk130qz40000l704z6fc2alp	Utkal Mahindra	Mancheswar	2026-01-05 11:33:16.816	2026-01-31 15:33:39.566	7008985634	cml2g3oru00009ymtudcd8add
+cmivgorqg00009y5iyf5y9s5b	Mors 	Mancheswar, Rasulgarh, Bhubaneswar	2025-12-07 08:29:33.16	2026-01-31 15:34:43.177	9595959590	cml2h21jm00009y0tnq43jzk7
 \.
 
 
@@ -911,9 +1115,15 @@ cml0pu9bd005kpo0kfef1mlgh	SOUMYASHREE	MOHANTY 	9437903466	soumyshree@gmail.com	B
 cml0pvwko005mpo0kbdriwq7z	Rakesh swain	Swain	7978585992	swain79somya@gmail.com	Bbsr	Delivery 	2026-01-30 00:00:00	t	\N	cmk130qz40000l704z6fc2alp	cmk13n14k000fjs04n7s2wdb7	2026-01-30 10:05:18.12	2026-01-30 10:05:19.593	\N	f	active
 cml0pxkzj005opo0k920vi234	Rakesh 	Test	7978585992	swain79somya@gmail.com	Bbsr	Delivery 	2026-01-30 00:00:00	t	\N	cmk130qz40000l704z6fc2alp	cmk13mrb90003lc04v9gamlr0	2026-01-30 10:06:36.415	2026-01-30 10:06:37.59	\N	f	active
 cml0pzxn9005qpo0kfa001oql	TILITAMA	SAHOO 	9437771385	tilotama@gmail.com	BBSR 	\N	2026-01-30 00:00:00	t	\N	cmk130qz40000l704z6fc2alp	cmk13mis60007js04xgg2p6bl	2026-01-30 10:08:26.133	2026-01-30 10:08:27.371	\N	f	active
-cml143fez00019ywhfib3h3bx	Anup	Pradhan	7735322819	anuppradhan929@gmail.com	bbsr	hello	2026-01-30 00:00:00	t	\N	cmivgorqg00009y5iyf5y9s5b	cmiztrp3m0007jo04qq6wkfgl	2026-01-30 16:43:03.659	2026-01-30 16:43:21.283	\N	t	closed
+cml6bxccp00aiqn0kucz1qdh0	ARAKHITA	NAYAK	9938516092	\N	\N	\N	2026-02-03 00:00:00	t	\N	cmk130qz40000l704z6fc2alp	cml6bw1k000agqn0kjkvc2314	2026-02-03 08:21:07.657	2026-02-03 08:21:09.172	\N	f	active
 cml1yw80o000eqi0k3w72ay1y	ASISH KUMAR 	SATAPATHY 	7751066039	asishkumar@gmail.com	\N	\N	2026-01-31 00:00:00	t	\N	cmk130qz40000l704z6fc2alp	cmk13nsjz0009js04ckim7hte	2026-01-31 07:05:15.672	2026-01-31 07:05:17.201	\N	f	active
 cml1yxgtb000gqi0kwbp9x1vb	MANOJ KUMAR 	NAYAK 	9853879815	manojkumar@gmail.com	\N	\N	2026-01-31 00:00:00	t	\N	cmk130qz40000l704z6fc2alp	cmk13mis60007js04xgg2p6bl	2026-01-31 07:06:13.726	2026-01-31 07:06:15.269	\N	f	active
+cml143fez00019ywhfib3h3bx	Anup	Pradhan	7735322819	anuppradhan929@gmail.com	bbsr	hello	2026-01-30 00:00:00	t	\N	cmivgorqg00009y5iyf5y9s5b	cmiztrp3m0007jo04qq6wkfgl	2026-01-30 16:43:03.659	2026-01-31 15:07:00.426	\N	t	closed
+cml6c0t3s00akqn0kc2kqwy2m	AMBIKA PRASAD	MOHAPATRA 	9777579195	\N	\N	\N	2026-02-04 00:00:00	t	\N	cmk130qz40000l704z6fc2alp	cmk13n14k000fjs04n7s2wdb7	2026-02-03 08:23:49.336	2026-02-03 08:23:50.512	\N	f	active
+cml2jtjgi00019y548pkbwv99	Anup	Pradhan	7735322819	anuppradhan929@gmail.com	\N	\N	2026-01-31 00:00:00	t	\N	cmivgorqg00009y5iyf5y9s5b	cmiztpjr70001jo044eu3c9m7	2026-01-31 16:51:02.201	2026-01-31 16:51:15.315	\N	t	closed
+cml69ye9o00a2qn0kksiw6xly	Jyotiprakash	Swain	9040099131	ijpswain@gmail.com	BHUBANESWAR	\N	2026-02-03 00:00:00	t	\N	cmk130qz40000l704z6fc2alp	cmk13o7wv000bjs04kr6sz4b0	2026-02-03 07:25:57.564	2026-02-03 07:25:59.11	\N	f	active
+cml6bs3l400acqn0kh83yicus	SUNIL KUMAR 	PRADHAN 	9439906889	sunilkumar@gmail.com	\N	\N	2026-02-03 00:00:00	t	\N	cmk130qz40000l704z6fc2alp	cmk13mrb90003lc04v9gamlr0	2026-02-03 08:17:03.016	2026-02-03 08:17:04.451	\N	f	active
+cml6bt59i00aeqn0kmtg47npt	RABI NARAYAN 	OJHA	9937790825	rabinarayan@gmail.com	\N	\N	2026-02-03 00:00:00	t	\N	cmk130qz40000l704z6fc2alp	cmk13n14k000fjs04n7s2wdb7	2026-02-03 08:17:51.846	2026-02-03 08:17:53.448	\N	f	active
 \.
 
 
@@ -922,16 +1132,9 @@ cml1yxgtb000gqi0kwbp9x1vb	MANOJ KUMAR 	NAYAK 	9853879815	manojkumar@gmail.com	\N
 --
 
 COPY public."DigitalEnquiry" (id, "firstName", "lastName", "whatsappNumber", email, address, reason, "leadScope", "whatsappContactId", "dealershipId", "leadSourceId", "interestedModelId", "createdAt", "updatedAt", "interestedVariantId", "modelText", "sourceText") FROM stdin;
-cmkr2gb6z00019ydmwc0uv186	John	Doe	7735322819	\N	New York	BE6	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-23 15:59:23.82	2026-01-23 15:59:23.82	\N	\N	\N
-cmkr2gehd00039ydmsqwzpf2h	Jane	Smith	9876543210	\N	Los Angeles	XEV 9E	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-23 15:59:28.082	2026-01-23 15:59:28.082	\N	\N	\N
-cmkr2gg9j00059ydmse6rkarx	Robert	Johnson	5551234567	\N	Chicago	XEV 9S	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-23 15:59:30.391	2026-01-23 15:59:30.391	\N	\N	\N
-cmkr2gl8900079ydmnlwphe38	Mary	Williams	4449876543	\N	Houston	SCORPIO CLASSIC	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-23 15:59:36.826	2026-01-23 15:59:36.826	\N	\N	\N
-cmkr2gmq600099ydmbyulr5z3	David	Brown	3335557777	\N	Phoenix	SCORPIO-N	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-23 15:59:38.766	2026-01-23 15:59:38.766	\N	\N	\N
-cmkr2godp000b9ydmsae1ncx3	Sarah	Davis	2224446666	\N	Philadelphia	THAR 3 DOOR	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-23 15:59:40.909	2026-01-23 15:59:40.909	\N	\N	\N
-cmkr2gq7z000d9ydmz17f7wv1	Michael	Wilson	1113335555	\N	San Antonio	THAR ROXX	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-23 15:59:43.295	2026-01-23 15:59:43.295	\N	\N	\N
-cmkr2gs3e000f9ydmtkobxhlh	Emily	Martinez	9998887777	\N	San Diego	XUV 3XO	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-23 15:59:45.723	2026-01-23 15:59:45.723	\N	\N	\N
-cmkr2gtmt000h9ydmlc2ubwjh	James	Anderson	8887776666	\N	Dallas	XUV 700	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-23 15:59:47.718	2026-01-23 15:59:47.718	\N	\N	\N
-cmkr2gv85000j9ydm88xswjq5	Lisa	Taylor	7776665555	\N	San Jose	BE6	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-23 15:59:49.782	2026-01-23 15:59:49.782	\N	\N	\N
+cml2jwls700019ysuuws4bp1l	John	Doe	7735322819	\N	New York	BE6	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-31 16:53:25.447	2026-01-31 16:53:25.447	\N	BE6	Instagram
+cml2jwoir00039ysu19s80fp7	Jane	Smith	9876543210	\N	Los Angeles	XEV 9E	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-31 16:53:28.996	2026-01-31 16:53:28.996	\N	XEV 9E	Facebook
+cml2jwqb600059ysul6es55ff	Robert	Johnson	5551234567	\N	Chicago	XEV 9S	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-31 16:53:31.314	2026-01-31 16:53:31.314	\N	XEV 9S	Website
 cmkwaejhc007yns0km2ihpr4d	Sasmita	Bhanja .	7894546033	\N	BOMIKHAL	Enquiry from 1/12/2026	cold	\N	cmk130qz40000l704z6fc2alp	cmk13jon50003js04007b2fcy	cmk13o7wv000bjs04kr6sz4b0	2026-01-27 07:40:49.056	2026-01-27 07:40:49.056	\N	\N	\N
 cmkwaekyn007zns0kr1dvos64	Gourikant	Pradhan	9776662009	\N	DUMDUMA	Enquiry from 1/12/2026	cold	\N	cmk130qz40000l704z6fc2alp	cmk13jon50003js04007b2fcy	cmk13o7wv000bjs04kr6sz4b0	2026-01-27 07:40:50.976	2026-01-27 07:40:50.976	\N	\N	\N
 cmkwaelti0080ns0k3y1jmqqq	TRINATH	KANTA	8249337952	\N	KORAPUT	Enquiry from 1/12/2026	cold	\N	cmk130qz40000l704z6fc2alp	cmk13jon50003js04007b2fcy	cmk13nkwk0001js04czooodij	2026-01-27 07:40:52.087	2026-01-27 07:40:52.087	\N	\N	\N
@@ -988,6 +1191,13 @@ cmkwag3ap009qns0k1daqs6y7	P	MISHRA	8144705038	\N	BHUBANESWAR	Enquiry from 1/16/2
 cmkwag45f009rns0kf5y309e1	Abhishek	BARIK	7751073292	\N	KHORDHA	Enquiry from 1/16/2026	cold	\N	cmk130qz40000l704z6fc2alp	cmk13jon50003js04007b2fcy	cmk13ovnl000djs047uy6wdf0	2026-01-27 07:42:02.499	2026-01-27 07:42:02.499	\N	\N	\N
 cmkwag505009sns0ki4jg6k84	DUSYANT	KUMAR	7044075889	\N	SAMBALPUR	Enquiry from 1/16/2026	cold	\N	cmk130qz40000l704z6fc2alp	cmk13jon50003js04007b2fcy	cmk13o7wv000bjs04kr6sz4b0	2026-01-27 07:42:03.605	2026-01-27 07:42:03.605	\N	\N	\N
 cmkwag5q1009tns0k6bnk1wks	GAGAN	KUMAR BEHERA	8338004560	\N	PURI	Enquiry from 1/16/2026	cold	\N	cmk130qz40000l704z6fc2alp	cmk13jon50003js04007b2fcy	cmk13o7wv000bjs04kr6sz4b0	2026-01-27 07:42:04.537	2026-01-27 07:42:04.537	\N	\N	\N
+cml2jwsfj00079ysuqq1nkw99	Mary	Williams	4449876543	\N	Houston	SCORPIO CLASSIC	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-31 16:53:34.063	2026-01-31 16:53:34.063	\N	SCORPIO CLASSIC	Ads
+cml2jwv1f00099ysuub53zfyk	David	Brown	3335557777	\N	Phoenix	SCORPIO-N	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-31 16:53:37.443	2026-01-31 16:53:37.443	\N	SCORPIO-N	Social Media
+cml2jwxkd000b9ysu1s9wwwor	Sarah	Davis	2224446666	\N	Philadelphia	THAR 3 DOOR	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-31 16:53:40.717	2026-01-31 16:53:40.717	\N	THAR 3 DOOR	Customer Word-of-Mouth
+cml2jwzs0000d9ysuyg5zyx0s	Michael	Wilson	1113335555	\N	San Antonio	THAR ROXX	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-31 16:53:43.584	2026-01-31 16:53:43.584	\N	THAR ROXX	Instagram
+cml2jx1m4000f9ysuf5sijabg	Emily	Martinez	9998887777	\N	San Diego	XUV 3XO	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-31 16:53:45.965	2026-01-31 16:53:45.965	\N	XUV 3XO	Website
+cml2jx3sd000h9ysusdy1ijv9	James	Anderson	8887776666	\N	Dallas	XUV 700	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-31 16:53:48.781	2026-01-31 16:53:48.781	\N	XUV 700	Ads
+cml2jx61v000j9ysu60f7u1wu	Lisa	Taylor	7776665555	\N	San Jose	BE6	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-31 16:53:51.716	2026-01-31 16:53:51.716	\N	BE6	Facebook
 cmkwafe9b008wns0kva5crnrg	AKHIL		9014546651	\N	BHUBANESWAR	Enquiry from 1/14/2026	cold	\N	cmk130qz40000l704z6fc2alp	cmk13jon50003js04007b2fcy	cmk13o7wv000bjs04kr6sz4b0	2026-01-27 07:41:28.943	2026-01-27 07:41:28.943	\N	\N	\N
 cmkwafeyn008xns0kvrw7kx88	Biswajit		7008790656	\N	RASULGARH	Enquiry from 1/14/2026	cold	\N	cmk130qz40000l704z6fc2alp	cmk13jon50003js04007b2fcy	cmk13ovnl000djs047uy6wdf0	2026-01-27 07:41:29.855	2026-01-27 07:41:29.855	\N	\N	\N
 cmkwafiji0091ns0k24et8fr1	Suryakanta	Sasmal	8280078826	\N	CUTTACK	Enquiry from 1/14/2026	cold	\N	cmk130qz40000l704z6fc2alp	cmk13jon50003js04007b2fcy	cmk13o7wv000bjs04kr6sz4b0	2026-01-27 07:41:34.495	2026-01-27 07:41:34.495	\N	\N	\N
@@ -1112,6 +1322,37 @@ cmkwaildo00cons0k2dvt4mft	RAJIT	KUMAR	9179424133	\N	BERHAMPUR	Enquiry from 1/22/
 cmkwaisgx00cwns0kzgalq5x2	Jayanta	Narayan Sarangi	9437153732	\N	KHORDHA	Enquiry from 1/23/2026	cold	\N	cmk130qz40000l704z6fc2alp	cmk13jon50003js04007b2fcy	\N	2026-01-27 07:44:07.329	2026-01-27 07:44:07.329	\N	\N	\N
 cmkwaitf600cxns0k9wxu8z5a	RAHUL	SHAH	9178999999	\N	GOPALPUR	Enquiry from 1/23/2026	cold	\N	cmk130qz40000l704z6fc2alp	cmk13jon50003js04007b2fcy	cmk13o7wv000bjs04kr6sz4b0	2026-01-27 07:44:08.563	2026-01-27 07:44:08.563	\N	\N	\N
 cmkwaiu8z00cyns0kt31xzgk9	Jaminee	Mishra	9937022255	\N	MANCHESWAR	Enquiry from 1/23/2026	cold	\N	cmk130qz40000l704z6fc2alp	cmk13jon50003js04007b2fcy	\N	2026-01-27 07:44:09.635	2026-01-27 07:44:09.635	\N	\N	\N
+cml5g1q620018qn0kygl0dsyb	NARAYAN	SAHOO	9937718244	\N	GANJAM	Bolero Neo	WARM	\N	cmk130qz40000l704z6fc2alp	\N	\N	2026-02-02 17:28:44.474	2026-02-02 17:28:44.474	\N	Bolero Neo	DIGITAL
+cml5g1x56001kqn0kxjb3jscf	PINAKI	SAMAL	8456804565	\N	DHENKANAL	XUV 3XO	WARM	\N	cmk130qz40000l704z6fc2alp	\N	\N	2026-02-02 17:28:53.514	2026-02-02 17:28:53.514	\N	XUV 3XO	DIGITAL
+cml5g1y3l001mqn0k9xx0w4lv	JYOTIRANJAN	JENA	9040844252	\N	GADAKANA	Bolero Neo	WARM	\N	cmk130qz40000l704z6fc2alp	\N	\N	2026-02-02 17:28:54.753	2026-02-02 17:28:54.753	\N	Bolero Neo	DIGITAL
+cml5g2262001uqn0k1jmv82o4	SabyasachiMohanty		9040095927	\N	PATIA	XUV 7XO	WARM	\N	cmk130qz40000l704z6fc2alp	\N	\N	2026-02-02 17:29:00.026	2026-02-02 17:29:00.026	\N	XUV 7XO	DIGITAL
+cml5g239h001wqn0kgo2tf2wn	PRASAD	JENA	8249470711	\N	ANGUL	XUV 3XO	WARM	\N	cmk130qz40000l704z6fc2alp	\N	\N	2026-02-02 17:29:01.445	2026-02-02 17:29:01.445	\N	XUV 3XO	DIGITAL
+cml5g249r001yqn0kpyqc999w	TAPAS	BEHERA	6370138664	\N	TAMANDO	Bolero	WARM	\N	cmk130qz40000l704z6fc2alp	\N	\N	2026-02-02 17:29:02.752	2026-02-02 17:29:02.752	\N	Bolero	DIGITAL
+cml5g29jn0028qn0kj2757wl9	Sagar	Kumar Pradhan	7008513161	\N	ANGUL	XUV 7XO	WARM	\N	cmk130qz40000l704z6fc2alp	\N	\N	2026-02-02 17:29:09.587	2026-02-02 17:29:09.587	\N	XUV 7XO	DIGITAL
+cml5g2bo7002cqn0kwt6dd4rt	DIBYA	RASHMI BISWAL	9861174740	\N	ANGUL	Scorpio N	WARM	\N	cmk130qz40000l704z6fc2alp	\N	\N	2026-02-02 17:29:12.343	2026-02-02 17:29:12.343	\N	Scorpio N	DIGITAL
+cml5g2dma002gqn0kjlib09y4	MANOJ	PATRA	9712937982	\N	PATIA	XUV 3XO	WARM	\N	cmk130qz40000l704z6fc2alp	\N	\N	2026-02-02 17:29:14.866	2026-02-02 17:29:14.866	\N	XUV 3XO	DIGITAL
+cml5g2eee002iqn0krz06j1s7	ANIL	KUMAR KAR	7008312052	\N	C S PUR	Bolero Neo	WARM	\N	cmk130qz40000l704z6fc2alp	\N	\N	2026-02-02 17:29:15.879	2026-02-02 17:29:15.879	\N	Bolero Neo	DIGITAL
+cml5g2kvt002wqn0k1qarm2od	Rashmi	Ranjan .	8123769168	\N	BHUBANESWAR	XUV 7XO	WARM	\N	cmk130qz40000l704z6fc2alp	\N	\N	2026-02-02 17:29:24.282	2026-02-02 17:29:24.282	\N	XUV 7XO	DIGITAL
+cml5g2n7c0032qn0krmvmoeeq	PRADEEP	BEURA	8777032173	\N	ATHAGARH	Bolero Neo	WARM	\N	cmk130qz40000l704z6fc2alp	\N	\N	2026-02-02 17:29:27.289	2026-02-02 17:29:27.289	\N	Bolero Neo	DIGITAL
+cml5g2rfn003cqn0kpftbdc8r	Somya	Pani	8249727155	\N	KIIT SQUARE	Scorpio N	WARM	\N	cmk130qz40000l704z6fc2alp	\N	\N	2026-02-02 17:29:32.772	2026-02-02 17:29:32.772	\N	Scorpio N	DIGITAL
+cml5g2svo003gqn0kaes86tmr	Yugant	Behuria	9937569235	\N	PATIA	THAR ROXX	WARM	\N	cmk130qz40000l704z6fc2alp	\N	\N	2026-02-02 17:29:34.645	2026-02-02 17:29:34.645	\N	THAR ROXX	DIGITAL
+cml5g2tnm003iqn0km1hmphy4	INDRAJIT	BHANJA	9348114738	\N	DHENKANAL	XUV 7XO	WARM	\N	cmk130qz40000l704z6fc2alp	\N	\N	2026-02-02 17:29:35.651	2026-02-02 17:29:35.651	\N	XUV 7XO	DIGITAL
+cml5g2uli003kqn0kowu8713j	DANIEL		8290221192	\N	ANUGUL	XUV 3XO	WARM	\N	cmk130qz40000l704z6fc2alp	\N	\N	2026-02-02 17:29:36.871	2026-02-02 17:29:36.871	\N	XUV 3XO	DIGITAL
+cml5g2wc6003oqn0ksig2s2ly	PRAVAT	BEHERA	9556916267	\N	SAMBALPUR	XUV 3XO	WARM	\N	cmk130qz40000l704z6fc2alp	\N	\N	2026-02-02 17:29:39.127	2026-02-02 17:29:39.127	\N	XUV 3XO	DIGITAL
+cml5g2xmi003qqn0kg9eez9up	PRAVAT	PATRA	8939158790	\N	PATIA	XUV 7XO	WARM	\N	cmk130qz40000l704z6fc2alp	\N	\N	2026-02-02 17:29:40.794	2026-02-02 17:29:40.794	\N	XUV 7XO	DIGITAL
+cml5g2zka003uqn0kia5w121e	SUMANT	KUMAR	9032118987	\N	PATIA	XUV 3XO	WARM	\N	cmk130qz40000l704z6fc2alp	\N	\N	2026-02-02 17:29:43.306	2026-02-02 17:29:43.306	\N	XUV 3XO	DIGITAL
+cml5g30dt003wqn0khrssut18	AR	PRADHAN	7008826410	\N	SAILASHREE VIHAR	Scorpio N	WARM	\N	cmk130qz40000l704z6fc2alp	\N	\N	2026-02-02 17:29:44.369	2026-02-02 17:29:44.369	\N	Scorpio N	DIGITAL
+cml5g33dz0042qn0kxlvkwen1	GOUTAM	SAHOO	9337353388	\N	SAILASHREE VIHAR	Scorpio N	WARM	\N	cmk130qz40000l704z6fc2alp	\N	\N	2026-02-02 17:29:48.263	2026-02-02 17:29:48.263	\N	Scorpio N	DIGITAL
+cml5g36do0048qn0k5qubuzjs	ITISHREE	DAS	7735287981	\N	PATIA	Scorpio Classic	WARM	\N	cmk130qz40000l704z6fc2alp	\N	\N	2026-02-02 17:29:52.141	2026-02-02 17:29:52.141	\N	Scorpio Classic	DIGITAL
+cml5g37kt004aqn0ktga91bbz	Pramod	patnaik	9439490009	\N	SAILESHREE VIHAR	XUV 7XO	WARM	\N	cmk130qz40000l704z6fc2alp	\N	\N	2026-02-02 17:29:53.693	2026-02-02 17:29:53.693	\N	XUV 7XO	DIGITAL
+cml5g3aae004gqn0ku7jig7sh	Manoranjan	Behara	7377674129	\N	KIIT SQUARE	Bolero	WARM	\N	cmk130qz40000l704z6fc2alp	\N	\N	2026-02-02 17:29:57.207	2026-02-02 17:29:57.207	\N	Bolero	DIGITAL
+cml5g3b70004iqn0ki8d3ee8w	Soumya	Pratim Sahoo	7381654886	\N	PATIA	XUV 7XO	WARM	\N	cmk130qz40000l704z6fc2alp	\N	\N	2026-02-02 17:29:58.381	2026-02-02 17:29:58.381	\N	XUV 7XO	DIGITAL
+cml5g3dqm004oqn0k4l3jd6bv	Avijit	Patra	9649003234	\N	KIIT	XUV 7XO	WARM	\N	cmk130qz40000l704z6fc2alp	\N	\N	2026-02-02 17:30:01.679	2026-02-02 17:30:01.679	\N	XUV 7XO	DIGITAL
+cml5g3etq004qqn0krvh1vsj2	SUSHANT	KUMAR DASH	8489646476	\N	HYDRABAD	XUV 7XO	WARM	\N	cmk130qz40000l704z6fc2alp	\N	\N	2026-02-02 17:30:03.086	2026-02-02 17:30:03.086	\N	XUV 7XO	DIGITAL
+cml5g3fq1004sqn0kn7blxpxp	Silu	Kumar Palai	9938000666	\N	INFO CITY	XUV 7XO	WARM	\N	cmk130qz40000l704z6fc2alp	\N	\N	2026-02-02 17:30:04.249	2026-02-02 17:30:04.249	\N	XUV 7XO	DIGITAL
+cml5g3gpn004uqn0klbhmuicx	SIDHARTHA	KUMAR NAYAK	8093252068	\N	GOTHAPATNA	XUV 7XO	WARM	\N	cmk130qz40000l704z6fc2alp	\N	\N	2026-02-02 17:30:05.531	2026-02-02 17:30:05.531	\N	XUV 7XO	DIGITAL
+cml5g3ijw004yqn0kvvzpwony	Siddhant	Sahoo	7750847056	\N	BBSR	XUV 7XO	WARM	\N	cmk130qz40000l704z6fc2alp	\N	\N	2026-02-02 17:30:07.916	2026-02-02 17:30:07.916	\N	XUV 7XO	DIGITAL
+cml5g3jm70050qn0k3kuc1fua	DEVI	SANKAR	9986809564	\N	BANGLORE	XUV 7XO	WARM	\N	cmk130qz40000l704z6fc2alp	\N	\N	2026-02-02 17:30:09.296	2026-02-02 17:30:09.296	\N	XUV 7XO	DIGITAL
 cmkwairo800cvns0kwoar4qgm	S	PRADHAN	7008786353	\N	SAHEED NAGAR	Enquiry from 1/23/2026	cold	\N	cmk130qz40000l704z6fc2alp	cmk13jon50003js04007b2fcy	\N	2026-01-27 07:44:06.297	2026-01-27 07:44:06.297	\N	\N	\N
 cmkwaiv2g00czns0kgsgxgso7	HIMANSHU	DIGAL	8260906694	\N	SALIASAHI	Enquiry from 1/23/2026	cold	\N	cmk130qz40000l704z6fc2alp	cmk13jon50003js04007b2fcy	cmk13mrb90003lc04v9gamlr0	2026-01-27 07:44:10.697	2026-01-27 07:44:10.697	\N	\N	\N
 cmkwaiw3u00d0ns0ki92fx2lk	CHINTU	RANA	6372735279	\N	MAYURBHANJ	Enquiry from 1/23/2026	cold	\N	cmk130qz40000l704z6fc2alp	cmk13jon50003js04007b2fcy	cmk13nkwk0001js04czooodij	2026-01-27 07:44:12.043	2026-01-27 07:44:12.043	\N	\N	\N
@@ -1153,117 +1394,109 @@ cmkwajpj400dzns0kg6emjjxz	Shibnarayan	Samantasinghar	7016299983	\N	BHUBANESWAR	E
 cmkwajqa900e0ns0k1zd0nac7	JB	RAMNA	7416342016	\N	RAJASTHAN	Enquiry from 1/27/2026	cold	\N	cmk130qz40000l704z6fc2alp	cmk13jon50003js04007b2fcy	\N	2026-01-27 07:44:51.154	2026-01-27 07:44:51.154	\N	\N	\N
 cmkwajqxa00e1ns0ksohb36tu	GOURAV	SAMAL	6372914036	\N	BARBIL	Enquiry from 1/27/2026	cold	\N	cmk130qz40000l704z6fc2alp	cmk13jon50003js04007b2fcy	cmk13nkwk0001js04czooodij	2026-01-27 07:44:51.983	2026-01-27 07:44:51.983	\N	\N	\N
 cmkwajruz00e2ns0kf1kx7ibi	ABHIJIT	SAHOO	9238906509	\N	PAHALA	Enquiry from 1/27/2026	cold	\N	cmk130qz40000l704z6fc2alp	cmk13jon50003js04007b2fcy	cmk13nkwk0001js04czooodij	2026-01-27 07:44:53.196	2026-01-27 07:44:53.196	\N	\N	\N
+cml5g1s2t001aqn0k6okollj5	ABHAYA	ROUT	8095875886	\N	PATIA	Scorpio N	WARM	\N	cmk130qz40000l704z6fc2alp	\N	\N	2026-02-02 17:28:46.949	2026-02-02 17:28:46.949	\N	Scorpio N	DIGITAL
+cml5g1syo001cqn0kp2hci9ic	SATYAJEET	BISWAL	8114864765	\N	ANGUL	Scorpio N	WARM	\N	cmk130qz40000l704z6fc2alp	\N	\N	2026-02-02 17:28:48.096	2026-02-02 17:28:48.096	\N	Scorpio N	DIGITAL
+cml5g1u3x001eqn0kop6kr5yg	RAJESH	KUMAR MALLICK	9348568833	\N	DUMDUMA	Scorpio Classic	WARM	\N	cmk130qz40000l704z6fc2alp	\N	\N	2026-02-02 17:28:49.581	2026-02-02 17:28:49.581	\N	Scorpio Classic	DIGITAL
+cml5g1v44001gqn0k3musjirq	MANAS	BEHERA	8984641065	\N	PATIA	XUV 3XO	WARM	\N	cmk130qz40000l704z6fc2alp	\N	\N	2026-02-02 17:28:50.884	2026-02-02 17:28:50.884	\N	XUV 3XO	DIGITAL
+cml5g1vx4001iqn0kcqjt53cy	HIMANSU	PRADHAN	6372592910	\N	SUM HOSPITAL	Scorpio Classic	WARM	\N	cmk130qz40000l704z6fc2alp	\N	\N	2026-02-02 17:28:51.928	2026-02-02 17:28:51.928	\N	Scorpio Classic	DIGITAL
+cml5g1z9h001oqn0k3rv6mfyl	KRISHNA	CHANDRA MISHRA	9337388968	\N	CHANDAK	Bolero Neo	WARM	\N	cmk130qz40000l704z6fc2alp	\N	\N	2026-02-02 17:28:56.261	2026-02-02 17:28:56.261	\N	Bolero Neo	DIGITAL
+cml5g20cb001qqn0km92nq2rd	SUKANT	SAMAL	7842301986	\N	PATIA	XUV 3XO	WARM	\N	cmk130qz40000l704z6fc2alp	\N	\N	2026-02-02 17:28:57.659	2026-02-02 17:28:57.659	\N	XUV 3XO	DIGITAL
+cml5g2188001sqn0kqo77dn8u	Soumya	Ranjan	7735092106	\N	ANGUL	THAR ROXX	WARM	\N	cmk130qz40000l704z6fc2alp	\N	\N	2026-02-02 17:28:58.808	2026-02-02 17:28:58.808	\N	THAR ROXX	DIGITAL
+cml5g256x0020qn0k8tdfkpl2	SAMIR		7908977171	\N	PATIA	Bolero Neo	WARM	\N	cmk130qz40000l704z6fc2alp	\N	\N	2026-02-02 17:29:03.945	2026-02-02 17:29:03.945	\N	Bolero Neo	DIGITAL
+cml5g26650022qn0kt1uglgdf	SANKET	MOHANTY	8260364292	\N	PATIA	THAR	WARM	\N	cmk130qz40000l704z6fc2alp	\N	\N	2026-02-02 17:29:05.213	2026-02-02 17:29:05.213	\N	THAR	DIGITAL
+cml5g277y0024qn0k6x2m0lhr	Bibhudatta	Jena	9438434241	\N	BHUBANESWAR	XUV 7XO	WARM	\N	cmk130qz40000l704z6fc2alp	\N	\N	2026-02-02 17:29:06.574	2026-02-02 17:29:06.574	\N	XUV 7XO	DIGITAL
+cml5g28b90026qn0k78ovmkw5	BIBEK		9900468844	\N	BANGALORE	XUV 7XO	WARM	\N	cmk130qz40000l704z6fc2alp	\N	\N	2026-02-02 17:29:07.989	2026-02-02 17:29:07.989	\N	XUV 7XO	DIGITAL
+cml5g2aor002aqn0kfc4w5yrh	BIBHU	DUTTA	7411539119	\N	ANGUL	XUV 7XO	WARM	\N	cmk130qz40000l704z6fc2alp	\N	\N	2026-02-02 17:29:11.067	2026-02-02 17:29:11.067	\N	XUV 7XO	DIGITAL
+cml5g2cjn002eqn0knxizfvw5	RAJESH	DAS	7978986926	\N	BARANG	XUV 3XO	WARM	\N	cmk130qz40000l704z6fc2alp	\N	\N	2026-02-02 17:29:13.475	2026-02-02 17:29:13.475	\N	XUV 3XO	DIGITAL
+cml5g2fgu002kqn0kty78j560	SUSHANT	ACHARAY	8951866365	\N	BANGALORE	Scorpio N	WARM	\N	cmk130qz40000l704z6fc2alp	\N	\N	2026-02-02 17:29:17.263	2026-02-02 17:29:17.263	\N	Scorpio N	DIGITAL
+cml5g2g6q002mqn0kej3m7pct	Dipak	RANJAN DAS	9777606011	\N	PATIA	XUV 3XO	WARM	\N	cmk130qz40000l704z6fc2alp	\N	\N	2026-02-02 17:29:18.195	2026-02-02 17:29:18.195	\N	XUV 3XO	DIGITAL
+cml5g2h1k002oqn0knwz16f78	BISHNU	BARIK	8763784166	\N	PATIA	XUV 7XO	WARM	\N	cmk130qz40000l704z6fc2alp	\N	\N	2026-02-02 17:29:19.304	2026-02-02 17:29:19.304	\N	XUV 7XO	DIGITAL
+cml5g2i07002qqn0k50xr914r	LELIN		7894148960	\N	PATIA	THAR	WARM	\N	cmk130qz40000l704z6fc2alp	\N	\N	2026-02-02 17:29:20.552	2026-02-02 17:29:20.552	\N	THAR	DIGITAL
+cml5g2iu3002sqn0kw9heqmaf	Kishore	Chandra Nayak .	9437211923	\N	BHUBANESWAR	XUV 3XO	WARM	\N	cmk130qz40000l704z6fc2alp	\N	\N	2026-02-02 17:29:21.627	2026-02-02 17:29:21.627	\N	XUV 3XO	DIGITAL
+cml5g2jn4002uqn0ku2sezoit	Yash	Roy	8584859668	\N	ANGUL	THAR	WARM	\N	cmk130qz40000l704z6fc2alp	\N	\N	2026-02-02 17:29:22.672	2026-02-02 17:29:22.672	\N	THAR	DIGITAL
+cml5g2lid002yqn0kdp04lpg7	Sunil	Tripathy	9178471714	\N	SONEPUR	XUV 7XO	WARM	\N	cmk130qz40000l704z6fc2alp	\N	\N	2026-02-02 17:29:25.094	2026-02-02 17:29:25.094	\N	XUV 7XO	DIGITAL
+cml5g2mfq0030qn0kra4oug9e	SUDHAKAR	RAO	9439190096	\N	KORAPUT	THAR	WARM	\N	cmk130qz40000l704z6fc2alp	\N	\N	2026-02-02 17:29:26.295	2026-02-02 17:29:26.295	\N	THAR	DIGITAL
+cml5g2ny00034qn0k2gsdqrqt	ADITYA	RUPCHAND	7853984558	\N	PATIA	Scorpio N	WARM	\N	cmk130qz40000l704z6fc2alp	\N	\N	2026-02-02 17:29:28.249	2026-02-02 17:29:28.249	\N	Scorpio N	DIGITAL
+cml5g2osw0036qn0koigvt91i	JAGDESH	SARANGI	9078628883	\N	SAILASHREE	XUV 7XO	WARM	\N	cmk130qz40000l704z6fc2alp	\N	\N	2026-02-02 17:29:29.36	2026-02-02 17:29:29.36	\N	XUV 7XO	DIGITAL
+cml5g2pmi0038qn0karos4n4d	RAHUL	KUMAR BEHERA	7978069142	\N	C S PUR	THAR	WARM	\N	cmk130qz40000l704z6fc2alp	\N	\N	2026-02-02 17:29:30.427	2026-02-02 17:29:30.427	\N	THAR	DIGITAL
+cml5g2qi3003aqn0kwccyyycd	Biswajit	Lenka	7540904441	\N	BBSR	XUV 7XO	WARM	\N	cmk130qz40000l704z6fc2alp	\N	\N	2026-02-02 17:29:31.563	2026-02-02 17:29:31.563	\N	XUV 7XO	DIGITAL
+cml5g2sb4003eqn0kciz58hm0	AMRESH	BEHERA	9556914770	\N	NANDAN BIHAR	Scorpio Classic	WARM	\N	cmk130qz40000l704z6fc2alp	\N	\N	2026-02-02 17:29:33.904	2026-02-02 17:29:33.904	\N	Scorpio Classic	DIGITAL
+cml5g2vib003mqn0kdbakgma1	KULAMANI	BAG	9556185430	\N	CHANDAKA	Scorpio N	WARM	\N	cmk130qz40000l704z6fc2alp	\N	\N	2026-02-02 17:29:38.05	2026-02-02 17:29:38.05	\N	Scorpio N	DIGITAL
+cml5g2ygw003sqn0kqyo3gi02	HETRAM		9414481436	\N	DELHI	Scorpio N	WARM	\N	cmk130qz40000l704z6fc2alp	\N	\N	2026-02-02 17:29:41.888	2026-02-02 17:29:41.888	\N	Scorpio N	DIGITAL
+cml5g311k003yqn0kk4g3hxsi	PRAVAT	RANJAN NAURA	9938090533	\N	TRIDENT COLLEGE	XUV 7XO	WARM	\N	cmk130qz40000l704z6fc2alp	\N	\N	2026-02-02 17:29:45.224	2026-02-02 17:29:45.224	\N	XUV 7XO	DIGITAL
+cml5g32bh0040qn0kpwu8tsi7	RAHUL	SAHU	8249675101	\N	BHUBANESWAR	XUV 7XO	WARM	\N	cmk130qz40000l704z6fc2alp	\N	\N	2026-02-02 17:29:46.877	2026-02-02 17:29:46.877	\N	XUV 7XO	DIGITAL
+cml5g34820044qn0kk0n2ayz7	KAMAL		9959098368	\N	MAITRI VIHAR	Bolero Neo	WARM	\N	cmk130qz40000l704z6fc2alp	\N	\N	2026-02-02 17:29:49.347	2026-02-02 17:29:49.347	\N	Bolero Neo	DIGITAL
+cml5g354r0046qn0k6j6ukfjn	Amit	Dubey	9078293706	\N	PATIA	Scorpio N	WARM	\N	cmk130qz40000l704z6fc2alp	\N	\N	2026-02-02 17:29:50.523	2026-02-02 17:29:50.523	\N	Scorpio N	DIGITAL
+cml5g38gr004cqn0k1zp3eymq	CHINMAYA	SAHOO	7873476377	\N	DHENKANAL	Bolero Neo	WARM	\N	cmk130qz40000l704z6fc2alp	\N	\N	2026-02-02 17:29:54.843	2026-02-02 17:29:54.843	\N	Bolero Neo	DIGITAL
+cml5g398y004eqn0kj0m2n4l4	Sanjay	Kumar Bhoi	7008174349	\N	BHARATPUR	XUV 7XO	WARM	\N	cmk130qz40000l704z6fc2alp	\N	\N	2026-02-02 17:29:55.859	2026-02-02 17:29:55.859	\N	XUV 7XO	DIGITAL
+cml5g3by7004kqn0kyof3d9et	Karun		8895268107	\N	Banglore	THAR	WARM	\N	cmk130qz40000l704z6fc2alp	\N	\N	2026-02-02 17:29:59.359	2026-02-02 17:29:59.359	\N	THAR	DIGITAL
+cml5g3cup004mqn0k22kzq1sj	prasanta	Kumar Biswal	9437108195	\N	PATIA	XUV 7XO	WARM	\N	cmk130qz40000l704z6fc2alp	\N	\N	2026-02-02 17:30:00.529	2026-02-02 17:30:00.529	\N	XUV 7XO	DIGITAL
+cml5g3hj1004wqn0k8g87ub2z	SHEKH	TOUKIR	7049326058	\N	MADHYA PRADESH	Scorpio N	WARM	\N	cmk130qz40000l704z6fc2alp	\N	\N	2026-02-02 17:30:06.589	2026-02-02 17:30:06.589	\N	Scorpio N	DIGITAL
+cml5g3mh80056qn0kjtbtsd4z	UNNAT	DIGAL	8763131397	\N	BHUBANESWAR	Scorpio N	WARM	\N	cmk130qz40000l704z6fc2alp	\N	\N	2026-02-02 17:30:13.004	2026-02-02 17:30:13.004	\N	Scorpio N	DIGITAL
+cml5g3ncz0058qn0kviodge8v	LORESH	BAG	8093345683	\N	NILADARI VIHAR	XUV 7XO	WARM	\N	cmk130qz40000l704z6fc2alp	\N	\N	2026-02-02 17:30:14.148	2026-02-02 17:30:14.148	\N	XUV 7XO	DIGITAL
+cml5g3oz2005cqn0ko8jc3lye	KIRTI		7004192891	\N	SAILASHREE VIHAR	XUV 7XO	WARM	\N	cmk130qz40000l704z6fc2alp	\N	\N	2026-02-02 17:30:16.238	2026-02-02 17:30:16.238	\N	XUV 7XO	DIGITAL
+cml5g3rfj005iqn0kalcx4i1k	ANJAN	CHOUDHRY	9040469921	\N	ATHAGARH	XUV 7XO	WARM	\N	cmk130qz40000l704z6fc2alp	\N	\N	2026-02-02 17:30:19.424	2026-02-02 17:30:19.424	\N	XUV 7XO	DIGITAL
 cmkwajsn400e3ns0kddvq5lsh	DHARMENDRA	MEHER	9668512833	\N	KALAHANDI	Enquiry from 1/27/2026	cold	\N	cmk130qz40000l704z6fc2alp	cmk13jon50003js04007b2fcy	cmk13o7wv000bjs04kr6sz4b0	2026-01-27 07:44:54.208	2026-01-27 07:44:54.208	\N	\N	\N
-cmkwqfj4o00019yarifxooso7	John	Doe	7735322819	\N	New York	BE6	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-27 15:09:29.113	2026-01-27 15:09:29.113	\N	\N	\N
-cmkwqfnes00039yarb6qd0tjt	Jane	Smith	9876543210	\N	Los Angeles	XEV 9E	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-27 15:09:34.66	2026-01-27 15:09:34.66	\N	\N	\N
-cmkwqfp5a00059yarpgmz4hk6	Robert	Johnson	5551234567	\N	Chicago	XEV 9S	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-27 15:09:36.911	2026-01-27 15:09:36.911	\N	\N	\N
-cmkwqfqq000079yarrrgvmiqr	Mary	Williams	4449876543	\N	Houston	SCORPIO CLASSIC	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-27 15:09:38.953	2026-01-27 15:09:38.953	\N	\N	\N
-cmkwqfs5b00099yary43h5wsa	David	Brown	3335557777	\N	Phoenix	SCORPIO-N	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-27 15:09:40.8	2026-01-27 15:09:40.8	\N	\N	\N
-cmkwqfur3000b9yaryifq63l6	Sarah	Davis	2224446666	\N	Philadelphia	THAR 3 DOOR	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-27 15:09:44.175	2026-01-27 15:09:44.175	\N	\N	\N
-cmkwqfwiy000d9yarpqxhd2v2	Michael	Wilson	1113335555	\N	San Antonio	THAR ROXX	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-27 15:09:46.474	2026-01-27 15:09:46.474	\N	\N	\N
-cmkwqfyv4000f9yaroig2vx16	Emily	Martinez	9998887777	\N	San Diego	XUV 3XO	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-27 15:09:49.505	2026-01-27 15:09:49.505	\N	\N	\N
-cmkwqg0kn000h9yarperyuvsp	James	Anderson	8887776666	\N	Dallas	XUV 700	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-27 15:09:51.72	2026-01-27 15:09:51.72	\N	\N	\N
-cmkwqg29a000j9yarfrze7d5c	Lisa	Taylor	7776665555	\N	San Jose	BE6	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-27 15:09:53.902	2026-01-27 15:09:53.902	\N	\N	\N
-cmkwvjfbn0001r10lwswhtxqc	John	Doe	7735322819	\N	New York	BE6	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-27 17:32:28.883	2026-01-27 17:32:28.883	\N	\N	\N
-cmkwvjgrw0003r10llglqz8d2	Jane	Smith	9876543210	\N	Los Angeles	XEV 9E	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-27 17:32:30.764	2026-01-27 17:32:30.764	\N	\N	\N
-cmkwvjhkn0005r10la703pws9	Robert	Johnson	5551234567	\N	Chicago	XEV 9S	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-27 17:32:31.799	2026-01-27 17:32:31.799	\N	\N	\N
-cmkwvjifk0007r10l2k8vd5d6	Mary	Williams	4449876543	\N	Houston	SCORPIO CLASSIC	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-27 17:32:32.912	2026-01-27 17:32:32.912	\N	\N	\N
-cmkwvjjbd0009r10leagotopq	David	Brown	3335557777	\N	Phoenix	SCORPIO-N	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-27 17:32:34.057	2026-01-27 17:32:34.057	\N	\N	\N
-cmkwvjk24000br10ljnr8uma7	Sarah	Davis	2224446666	\N	Philadelphia	THAR 3 DOOR	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-27 17:32:35.02	2026-01-27 17:32:35.02	\N	\N	\N
-cmkwvjky4000dr10lfe96a4vz	Michael	Wilson	1113335555	\N	San Antonio	THAR ROXX	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-27 17:32:36.172	2026-01-27 17:32:36.172	\N	\N	\N
-cmkwvjlrx000fr10l1ngkuxqs	Emily	Martinez	9998887777	\N	San Diego	XUV 3XO	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-27 17:32:37.245	2026-01-27 17:32:37.245	\N	\N	\N
-cmkwvjmj0000hr10lr2n2ztf7	James	Anderson	8887776666	\N	Dallas	XUV 700	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-27 17:32:38.22	2026-01-27 17:32:38.22	\N	\N	\N
-cmkwvjnio000jr10l8agkn2va	Lisa	Taylor	7776665555	\N	San Jose	BE6	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-27 17:32:39.505	2026-01-27 17:32:39.505	\N	\N	\N
-cmkwvqnr3000mr10lxskpowz4	John	Doe	7735322819	\N	New York	BE6	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-27 17:38:06.399	2026-01-27 17:38:06.399	\N	\N	\N
-cmkwvqora000or10lv3889imp	Jane	Smith	9876543210	\N	Los Angeles	XEV 9E	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-27 17:38:07.702	2026-01-27 17:38:07.702	\N	\N	\N
-cmkwvqphj000qr10l1tvdzrzt	Robert	Johnson	5551234567	\N	Chicago	XEV 9S	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-27 17:38:08.648	2026-01-27 17:38:08.648	\N	\N	\N
-cmkwvqqlz000sr10lncg8m6sg	Mary	Williams	4449876543	\N	Houston	SCORPIO CLASSIC	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-27 17:38:10.103	2026-01-27 17:38:10.103	\N	\N	\N
-cmkwvqrd0000ur10lachsv1m4	David	Brown	3335557777	\N	Phoenix	SCORPIO-N	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-27 17:38:11.077	2026-01-27 17:38:11.077	\N	\N	\N
-cmkwvqshk000wr10lpoqxl0g6	Sarah	Davis	2224446666	\N	Philadelphia	THAR 3 DOOR	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-27 17:38:12.537	2026-01-27 17:38:12.537	\N	\N	\N
-cmkwvqt8m000yr10l1tfqmsa3	Michael	Wilson	1113335555	\N	San Antonio	THAR ROXX	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-27 17:38:13.51	2026-01-27 17:38:13.51	\N	\N	\N
-cmkwvqtwa0010r10lc4ztcjlw	Emily	Martinez	9998887777	\N	San Diego	XUV 3XO	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-27 17:38:14.362	2026-01-27 17:38:14.362	\N	\N	\N
-cmkwvqul70012r10l4jb1ec8n	James	Anderson	8887776666	\N	Dallas	XUV 700	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-27 17:38:15.259	2026-01-27 17:38:15.259	\N	\N	\N
-cmkwvqvqr0014r10lm5ujsmvl	Lisa	Taylor	7776665555	\N	San Jose	BE6	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-27 17:38:16.756	2026-01-27 17:38:16.756	\N	\N	\N
-cmkwvr9yp0017r10lz26fcb38	John	Doe	7735322819	\N	New York	BE6	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-27 17:38:35.185	2026-01-27 17:38:35.185	\N	\N	\N
-cmkwvrb290019r10l4rfh2yn8	Jane	Smith	9876543210	\N	Los Angeles	XEV 9E	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-27 17:38:36.609	2026-01-27 17:38:36.609	\N	\N	\N
-cmkwvrbsl001br10ljk120xwp	Robert	Johnson	5551234567	\N	Chicago	XEV 9S	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-27 17:38:37.557	2026-01-27 17:38:37.557	\N	\N	\N
-cmkwvrcxc001dr10lwk05hqqg	Mary	Williams	4449876543	\N	Houston	SCORPIO CLASSIC	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-27 17:38:39.024	2026-01-27 17:38:39.024	\N	\N	\N
-cmkwvrdo6001fr10lw6h1q7qx	David	Brown	3335557777	\N	Phoenix	SCORPIO-N	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-27 17:38:39.99	2026-01-27 17:38:39.99	\N	\N	\N
-cmkwvrek6001hr10l0es1e9wn	Sarah	Davis	2224446666	\N	Philadelphia	THAR 3 DOOR	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-27 17:38:41.143	2026-01-27 17:38:41.143	\N	\N	\N
-cmkwvrfb4001jr10lt8p15a99	Michael	Wilson	1113335555	\N	San Antonio	THAR ROXX	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-27 17:38:42.112	2026-01-27 17:38:42.112	\N	\N	\N
-cmkwvrg4x001lr10lccp8aai3	Emily	Martinez	9998887777	\N	San Diego	XUV 3XO	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-27 17:38:43.185	2026-01-27 17:38:43.185	\N	\N	\N
-cmkwvrh2g001nr10lqp6wngdt	James	Anderson	8887776666	\N	Dallas	XUV 700	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-27 17:38:44.393	2026-01-27 17:38:44.393	\N	\N	\N
-cmkwvrhu6001pr10lghwx3att	Lisa	Taylor	7776665555	\N	San Jose	BE6	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-27 17:38:45.391	2026-01-27 17:38:45.391	\N	\N	\N
-cmkwvsbet001sr10li8uv49ao	John	Doe	7735322819	\N	New York	BE6	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-27 17:39:23.718	2026-01-27 17:39:23.718	\N	\N	\N
-cmkwvscmx001ur10lqaogb1ws	Jane	Smith	9876543210	\N	Los Angeles	XEV 9E	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-27 17:39:25.305	2026-01-27 17:39:25.305	\N	\N	\N
-cmkwvsdgr001wr10lrdun49rg	Robert	Johnson	5551234567	\N	Chicago	XEV 9S	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-27 17:39:26.38	2026-01-27 17:39:26.38	\N	\N	\N
-cmkwvse7d001yr10lwc8h5q5l	Mary	Williams	4449876543	\N	Houston	SCORPIO CLASSIC	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-27 17:39:27.337	2026-01-27 17:39:27.337	\N	\N	\N
-cmkwvsey90020r10lmjhu8t3t	David	Brown	3335557777	\N	Phoenix	SCORPIO-N	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-27 17:39:28.305	2026-01-27 17:39:28.305	\N	\N	\N
-cmkwvsfpn0022r10l8dd4fnh2	Sarah	Davis	2224446666	\N	Philadelphia	THAR 3 DOOR	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-27 17:39:29.292	2026-01-27 17:39:29.292	\N	\N	\N
-cmkwvsghk0024r10lf24ucu08	Michael	Wilson	1113335555	\N	San Antonio	THAR ROXX	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-27 17:39:30.296	2026-01-27 17:39:30.296	\N	\N	\N
-cmkwvsh8n0026r10l2yib2l23	Emily	Martinez	9998887777	\N	San Diego	XUV 3XO	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-27 17:39:31.271	2026-01-27 17:39:31.271	\N	\N	\N
-cmkwvsi3j0028r10ls82ezhis	James	Anderson	8887776666	\N	Dallas	XUV 700	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-27 17:39:32.383	2026-01-27 17:39:32.383	\N	\N	\N
-cmkwvsiws002ar10li80xngbj	Lisa	Taylor	7776665555	\N	San Jose	BE6	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-27 17:39:33.436	2026-01-27 17:39:33.436	\N	\N	\N
-cmky72k8b00019yqm2m7s972r	John	Doe	1234567890	\N	New York	BE6	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-28 15:43:03.66	2026-01-28 15:43:03.66	\N	\N	\N
-cmky72o1o00039yqmrh0w0p2n	Jane	Smith	9876543210	\N	Los Angeles	XEV 9E	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-28 15:43:08.604	2026-01-28 15:43:08.604	\N	\N	\N
-cmky72rxh00059yqmnayj75mw	Robert	Johnson	5551234567	\N	Chicago	XEV 9S	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-28 15:43:13.637	2026-01-28 15:43:13.637	\N	\N	\N
-cmky72ul500079yqmkzmev2bi	Mary	Williams	4449876543	\N	Houston	SCORPIO CLASSIC	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-28 15:43:17.081	2026-01-28 15:43:17.081	\N	\N	\N
-cmky72x4200099yqmk1ano45y	David	Brown	3335557777	\N	Phoenix	SCORPIO-N	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-28 15:43:20.355	2026-01-28 15:43:20.355	\N	\N	\N
-cmky72zm9000b9yqmvmx84s42	Sarah	Davis	2224446666	\N	Philadelphia	THAR 3 DOOR	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-28 15:43:23.601	2026-01-28 15:43:23.601	\N	\N	\N
-cmky731jf000d9yqm3kqid2ld	Michael	Wilson	1113335555	\N	San Antonio	THAR ROXX	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-28 15:43:26.092	2026-01-28 15:43:26.092	\N	\N	\N
-cmky733e8000f9yqm08u84b1r	Emily	Martinez	9998887777	\N	San Diego	XUV 3XO	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-28 15:43:28.497	2026-01-28 15:43:28.497	\N	\N	\N
-cmky7357r000h9yqmquy3lw2w	James	Anderson	8887776666	\N	Dallas	XUV 700	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-28 15:43:30.855	2026-01-28 15:43:30.855	\N	\N	\N
-cmky736vu000j9yqmy0q8rpn2	Lisa	Taylor	7776665555	\N	San Jose	BE6	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-28 15:43:33.018	2026-01-28 15:43:33.018	\N	\N	\N
-cmky7ahw400019yxo52s22wwl	John	Doe	1234567890	\N	New York	BE6	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-28 15:49:13.877	2026-01-28 15:49:13.877	\N	\N	\N
-cmky7am3800039yxofzb4vqdd	Jane	Smith	9876543210	\N	Los Angeles	XEV 9E	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-28 15:49:19.316	2026-01-28 15:49:19.316	\N	\N	\N
-cmky7aogo00059yxoh1h9hjgz	Robert	Johnson	5551234567	\N	Chicago	XEV 9S	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-28 15:49:22.392	2026-01-28 15:49:22.392	\N	\N	\N
-cmky7arpb00079yxoca12vz6n	Mary	Williams	4449876543	\N	Houston	SCORPIO CLASSIC	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-28 15:49:26.184	2026-01-28 15:49:26.184	\N	\N	\N
-cmky7aury00099yxob3aartug	David	Brown	3335557777	\N	Phoenix	SCORPIO-N	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-28 15:49:30.575	2026-01-28 15:49:30.575	\N	\N	\N
-cmky7axxi000b9yxohvb7cmwe	Sarah	Davis	2224446666	\N	Philadelphia	THAR 3 DOOR	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-28 15:49:34.662	2026-01-28 15:49:34.662	\N	\N	\N
-cmky7b0op000d9yxo5k96jdnl	Michael	Wilson	1113335555	\N	San Antonio	THAR ROXX	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-28 15:49:38.233	2026-01-28 15:49:38.233	\N	\N	\N
-cmky7b3om000f9yxoa9cvph2m	Emily	Martinez	9998887777	\N	San Diego	XUV 3XO	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-28 15:49:42.119	2026-01-28 15:49:42.119	\N	\N	\N
-cmky7b6g4000h9yxo1x9z4cmn	James	Anderson	8887776666	\N	Dallas	XUV 700	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-28 15:49:45.7	2026-01-28 15:49:45.7	\N	\N	\N
-cmky7b94m000j9yxooc4rt8ia	Lisa	Taylor	7776665555	\N	San Jose	BE6	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-28 15:49:49.174	2026-01-28 15:49:49.174	\N	\N	\N
-cmky7kx1g00019yzkztxer9q4	John	Doe	1234567890	\N	New York	BE6	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-28 15:57:20.069	2026-01-28 15:57:20.069	\N	\N	\N
-cmky7l0ti00039yzkrip4lt5s	Jane	Smith	9876543210	\N	Los Angeles	XEV 9E	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-28 15:57:24.966	2026-01-28 15:57:24.966	\N	\N	\N
-cmky7l52n00059yzk2flo1hj4	Robert	Johnson	5551234567	\N	Chicago	XEV 9S	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-28 15:57:30.479	2026-01-28 15:57:30.479	\N	\N	\N
-cmky7l7h200079yzk86vcl5if	Mary	Williams	4449876543	\N	Houston	SCORPIO CLASSIC	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-28 15:57:33.59	2026-01-28 15:57:33.59	\N	\N	\N
-cmky7lak600099yzktgqwomff	David	Brown	3335557777	\N	Phoenix	SCORPIO-N	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-28 15:57:37.59	2026-01-28 15:57:37.59	\N	\N	\N
-cmky7ldel000b9yzke5jd0qzt	Sarah	Davis	2224446666	\N	Philadelphia	THAR 3 DOOR	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-28 15:57:41.277	2026-01-28 15:57:41.277	\N	\N	\N
-cmky7lgen000d9yzk49rqywa7	Michael	Wilson	1113335555	\N	San Antonio	THAR ROXX	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-28 15:57:45.167	2026-01-28 15:57:45.167	\N	\N	\N
-cmky7ljhr000f9yzka67j15x3	Emily	Martinez	9998887777	\N	San Diego	XUV 3XO	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-28 15:57:49.167	2026-01-28 15:57:49.167	\N	\N	\N
-cmky7ln07000h9yzkals43m8c	James	Anderson	8887776666	\N	Dallas	XUV 700	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-28 15:57:53.719	2026-01-28 15:57:53.719	\N	\N	\N
-cmky7lqhy000j9yzkk76f4cl4	Lisa	Taylor	7776665555	\N	San Jose	BE6	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-28 15:57:58.247	2026-01-28 15:57:58.247	\N	\N	\N
-cmky7otmr00169yzktr2o8vzp	John	Doe	7735322819	\N	New York	BE6	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-28 16:00:22.177	2026-01-28 16:00:22.177	\N	\N	\N
-cmky7owt400189yzkwwabg28f	Jane	Smith	9876543210	\N	Los Angeles	XEV 9E	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-28 16:00:26.392	2026-01-28 16:00:26.392	\N	\N	\N
-cmky7oyae001a9yzk1rvnp4z8	Robert	Johnson	5551234567	\N	Chicago	XEV 9S	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-28 16:00:28.311	2026-01-28 16:00:28.311	\N	\N	\N
-cmky7ozph001c9yzk16ufslvv	Mary	Williams	4449876543	\N	Houston	SCORPIO CLASSIC	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-28 16:00:30.149	2026-01-28 16:00:30.149	\N	\N	\N
-cmky7p1j5001e9yzk43amppei	David	Brown	3335557777	\N	Phoenix	SCORPIO-N	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-28 16:00:32.514	2026-01-28 16:00:32.514	\N	\N	\N
-cmky7p3i9001g9yzk4lmnfggp	Sarah	Davis	2224446666	\N	Philadelphia	THAR 3 DOOR	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-28 16:00:35.073	2026-01-28 16:00:35.073	\N	\N	\N
-cmky7p569001i9yzkzc5c6afs	Michael	Wilson	1113335555	\N	San Antonio	THAR ROXX	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-28 16:00:37.233	2026-01-28 16:00:37.233	\N	\N	\N
-cmky7p6r0001k9yzk4dvvizgb	Emily	Martinez	9998887777	\N	San Diego	XUV 3XO	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-28 16:00:39.277	2026-01-28 16:00:39.277	\N	\N	\N
-cmky7p8er001m9yzkdaa39qd2	James	Anderson	8887776666	\N	Dallas	XUV 700	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-28 16:00:41.427	2026-01-28 16:00:41.427	\N	\N	\N
-cmky7p9zh001o9yzk2u23e7mk	Lisa	Taylor	7776665555	\N	San Jose	BE6	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-28 16:00:43.469	2026-01-28 16:00:43.469	\N	\N	\N
-cmky7x4a600019ynlzgkdxqvk	John	Doe	1234567890	\N	New York	BE6	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-28 16:06:49.327	2026-01-28 16:06:49.327	\N	\N	\N
-cmky7x7gw00039ynlp567kfow	Jane	Smith	9876543210	\N	Los Angeles	XEV 9E	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-28 16:06:53.456	2026-01-28 16:06:53.456	\N	\N	\N
-cmky7x9d400059ynlaqww5ugo	Robert	Johnson	5551234567	\N	Chicago	XEV 9S	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-28 16:06:55.912	2026-01-28 16:06:55.912	\N	\N	\N
-cmky7xav600079ynl2fr6mz39	Mary	Williams	4449876543	\N	Houston	SCORPIO CLASSIC	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-28 16:06:57.858	2026-01-28 16:06:57.858	\N	\N	\N
-cmky7xcoq00099ynlxezoe1wb	David	Brown	3335557777	\N	Phoenix	SCORPIO-N	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-28 16:07:00.219	2026-01-28 16:07:00.219	\N	\N	\N
-cmky7xei2000b9ynl0n3xmw53	Sarah	Davis	2224446666	\N	Philadelphia	THAR 3 DOOR	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-28 16:07:02.57	2026-01-28 16:07:02.57	\N	\N	\N
-cmky7xgk1000d9ynlzf14huiu	Michael	Wilson	1113335555	\N	San Antonio	THAR ROXX	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-28 16:07:05.233	2026-01-28 16:07:05.233	\N	\N	\N
-cmky7xj5f000f9ynlorhiq1fq	Emily	Martinez	9998887777	\N	San Diego	XUV 3XO	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-28 16:07:08.595	2026-01-28 16:07:08.595	\N	\N	\N
-cmky7xl51000h9ynlfgxpmzy9	James	Anderson	8887776666	\N	Dallas	XUV 700	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-28 16:07:11.174	2026-01-28 16:07:11.174	\N	\N	\N
-cmky7xmpl000j9ynlxgfwgp2k	Lisa	Taylor	7776665555	\N	San Jose	BE6	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-28 16:07:13.209	2026-01-28 16:07:13.209	\N	\N	\N
-cmky8ai9200019yn7gqhkap1n	John	Doe	1234567890	\N	New York	BE6	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-28 16:17:13.959	2026-01-28 16:17:13.959	\N	\N	\N
-cmky8anbs00039yn7ag1ubre3	Jane	Smith	9876543210	\N	Los Angeles	XEV 9E	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-28 16:17:20.537	2026-01-28 16:17:20.537	\N	\N	\N
-cmky8aq4q00059yn7j3ytcxtu	Robert	Johnson	5551234567	\N	Chicago	XEV 9S	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-28 16:17:24.17	2026-01-28 16:17:24.17	\N	\N	\N
-cmky8asu100079yn7vc7k3yoj	Mary	Williams	4449876543	\N	Houston	SCORPIO CLASSIC	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-28 16:17:27.674	2026-01-28 16:17:27.674	\N	\N	\N
-cmky8b0rd00099yn7endxwd7f	David	Brown	3335557777	\N	Phoenix	SCORPIO-N	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-28 16:17:37.945	2026-01-28 16:17:37.945	\N	\N	\N
-cmky8b45o000b9yn7z22nn3fk	Sarah	Davis	2224446666	\N	Philadelphia	THAR 3 DOOR	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-28 16:17:42.349	2026-01-28 16:17:42.349	\N	\N	\N
-cmky8b6ue000d9yn7580z8q7s	Michael	Wilson	1113335555	\N	San Antonio	THAR ROXX	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-28 16:17:45.83	2026-01-28 16:17:45.83	\N	\N	\N
-cmky8b8qj000f9yn7748afr4g	Emily	Martinez	9998887777	\N	San Diego	XUV 3XO	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-28 16:17:48.283	2026-01-28 16:17:48.283	\N	\N	\N
-cmky8bbi4000h9yn7ojku8azx	James	Anderson	8887776666	\N	Dallas	XUV 700	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-28 16:17:51.868	2026-01-28 16:17:51.868	\N	\N	\N
-cmky8bdze000j9yn73hk5oc3f	Lisa	Taylor	7776665555	\N	San Jose	BE6	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-28 16:17:55.083	2026-01-28 16:17:55.083	\N	\N	\N
+cml5g3klm0052qn0kihhb6qne	ASHOK	SAHOO	7381231122	\N	PATIA	XUV 7XO	WARM	\N	cmk130qz40000l704z6fc2alp	\N	\N	2026-02-02 17:30:10.57	2026-02-02 17:30:10.57	\N	XUV 7XO	DIGITAL
+cml5g3ldx0054qn0ke1aawrqz	PRATUSH	KUMAR	9590349590	\N	SHREEVIHAR	XUV 7XO	WARM	\N	cmk130qz40000l704z6fc2alp	\N	\N	2026-02-02 17:30:11.589	2026-02-02 17:30:11.589	\N	XUV 7XO	DIGITAL
+cml5g3o4z005aqn0k6bt7x8b2	Siba	Santosh khuntia	9937056700	\N	PATIA	XUV 7XO	WARM	\N	cmk130qz40000l704z6fc2alp	\N	\N	2026-02-02 17:30:15.156	2026-02-02 17:30:15.156	\N	XUV 7XO	DIGITAL
+cml5g3pq0005eqn0k3zo0i940	Piyush	Mohanty	9437178405	\N	PATIA	XUV 7XO	WARM	\N	cmk130qz40000l704z6fc2alp	\N	\N	2026-02-02 17:30:17.208	2026-02-02 17:30:17.208	\N	XUV 7XO	DIGITAL
+cml5g3qhe005gqn0k9p2wfzum	Abhishek	Tripathy	8260241245	\N	PATIA	XUV 7XO	WARM	\N	cmk130qz40000l704z6fc2alp	\N	\N	2026-02-02 17:30:18.194	2026-02-02 17:30:18.194	\N	XUV 7XO	DIGITAL
+cml5g3sb9005kqn0kirun5vjg	KULAMANI	SAHOO	7846806378	\N	ANGUL	XUV 7XO	WARM	\N	cmk130qz40000l704z6fc2alp	\N	\N	2026-02-02 17:30:20.565	2026-02-02 17:30:20.565	\N	XUV 7XO	DIGITAL
+cml5g3tb6005mqn0k1do0aqc5	Sunil	Saw	7004436678	\N	ANDHARI	XUV 7XO	WARM	\N	cmk130qz40000l704z6fc2alp	\N	\N	2026-02-02 17:30:21.858	2026-02-02 17:30:21.858	\N	XUV 7XO	DIGITAL
+cml5g3ucn005oqn0kkmgtftet	Somya	Ranjan Pani	9692191921	\N	BHANJANAGAR	THAR ROXX	WARM	\N	cmk130qz40000l704z6fc2alp	\N	\N	2026-02-02 17:30:23.207	2026-02-02 17:30:23.207	\N	THAR ROXX	DIGITAL
+cml5g3xkb005uqn0kzpbbikg5	SANU	NAYAK	8371331689	\N	ATHAGARH	Scorpio Classic	WARM	\N	cmk130qz40000l704z6fc2alp	\N	\N	2026-02-02 17:30:27.371	2026-02-02 17:30:27.371	\N	Scorpio Classic	DIGITAL
+cml5g40ez0060qn0kznkbrl0w	SUBHAYAN	DAS	9040097731	\N	PATIA	XUV 3XO	WARM	\N	cmk130qz40000l704z6fc2alp	\N	\N	2026-02-02 17:30:31.067	2026-02-02 17:30:31.067	\N	XUV 3XO	DIGITAL
+cml5g41pj0062qn0kzl52kfq0	Keshab	Kumar	9938242024	\N	PATIA	XUV 7XO	WARM	\N	cmk130qz40000l704z6fc2alp	\N	\N	2026-02-02 17:30:32.743	2026-02-02 17:30:32.743	\N	XUV 7XO	DIGITAL
+cml5g42dk0064qn0k0o5jgoav	SANKAR	SAHOO	6372528491	\N	DHENKANAL	Bolero	WARM	\N	cmk130qz40000l704z6fc2alp	\N	\N	2026-02-02 17:30:33.608	2026-02-02 17:30:33.608	\N	Bolero	DIGITAL
+cml5g44mr0068qn0kamejoztc	DEEPAK	KUMAR SAHOO	7978414849	\N	ANUGUL	Scorpio N	WARM	\N	cmk130qz40000l704z6fc2alp	\N	\N	2026-02-02 17:30:36.532	2026-02-02 17:30:36.532	\N	Scorpio N	DIGITAL
+cml5g46eh006cqn0k2s8wza1k	BISWA	PRAKASH SAHOO	7008933590	\N	PATIA	XUV 7XO	WARM	\N	cmk130qz40000l704z6fc2alp	\N	\N	2026-02-02 17:30:38.825	2026-02-02 17:30:38.825	\N	XUV 7XO	DIGITAL
+cml5g4850006gqn0kuco4948i	SOUMYA	RANJAN NAYAK	7653985140	\N	PATIA	THAR ROXX	WARM	\N	cmk130qz40000l704z6fc2alp	\N	\N	2026-02-02 17:30:41.076	2026-02-02 17:30:41.076	\N	THAR ROXX	DIGITAL
+cml5g4ayz006mqn0kjgltxqwn	KUNAL	MEHROTRI	9900060736	\N	BANGLORE	XUV 7XO	WARM	\N	cmk130qz40000l704z6fc2alp	\N	\N	2026-02-02 17:30:44.748	2026-02-02 17:30:44.748	\N	XUV 7XO	DIGITAL
+cml5g4bsx006oqn0k79h6qujt	BIBEK	KUMAR BEY	8249788895	\N	PATIA	Scorpio N	WARM	\N	cmk130qz40000l704z6fc2alp	\N	\N	2026-02-02 17:30:45.826	2026-02-02 17:30:45.826	\N	Scorpio N	DIGITAL
+cml5g4cp4006qqn0klgpz7bkr	SURAJ	MOHAPTRA	8926347775	\N	DHENKANAL	XUV 7XO	WARM	\N	cmk130qz40000l704z6fc2alp	\N	\N	2026-02-02 17:30:46.985	2026-02-02 17:30:46.985	\N	XUV 7XO	DIGITAL
+cml5g4dil006sqn0kegzxh03h	KULDEEP	MOHANTY	7978416852	\N	BBSR	Bolero	WARM	\N	cmk130qz40000l704z6fc2alp	\N	\N	2026-02-02 17:30:48.045	2026-02-02 17:30:48.045	\N	Bolero	DIGITAL
+cml5g4eo0006uqn0kk68lwgak	PRASANT	NAIK	8686879292	\N	ANUGUL	XUV 3XO	WARM	\N	cmk130qz40000l704z6fc2alp	\N	\N	2026-02-02 17:30:49.537	2026-02-02 17:30:49.537	\N	XUV 3XO	DIGITAL
+cml5g4fmo006wqn0kmkjgkfzv	TRILOCHAN	PRADHAN	7205826515	\N	ANUGUL	Bolero Neo	WARM	\N	cmk130qz40000l704z6fc2alp	\N	\N	2026-02-02 17:30:50.784	2026-02-02 17:30:50.784	\N	Bolero Neo	DIGITAL
+cml5g4gvh006yqn0ky2jwd42m	MANI	SINGH	7070903126	\N	C S PUR	THAR	WARM	\N	cmk130qz40000l704z6fc2alp	\N	\N	2026-02-02 17:30:52.398	2026-02-02 17:30:52.398	\N	THAR	DIGITAL
+cml5g4jpt0074qn0k0rvqrrt7	NISAL	SURYAJIT	7735773911	\N	DAMANA	XUV 7XO	WARM	\N	cmk130qz40000l704z6fc2alp	\N	\N	2026-02-02 17:30:56.081	2026-02-02 17:30:56.081	\N	XUV 7XO	DIGITAL
+cml5g4mfu007aqn0kokdggig0	NIRANJAN	SAHOO	9337409842	\N	KIIT	XUV 3XO	WARM	\N	cmk130qz40000l704z6fc2alp	\N	\N	2026-02-02 17:30:59.611	2026-02-02 17:30:59.611	\N	XUV 3XO	DIGITAL
+cml5g4pd6007gqn0kghgdzme2	RAJAN	KAPOOR	7749947743	\N	RAGHUNATHPUR	XUV 7XO	WARM	\N	cmk130qz40000l704z6fc2alp	\N	\N	2026-02-02 17:31:03.402	2026-02-02 17:31:03.402	\N	XUV 7XO	DIGITAL
+cml5g4q8l007iqn0krkgxgos9	NIRANJAN	BEHERA	7608985423	\N	ANUGUL	Bolero Neo	WARM	\N	cmk130qz40000l704z6fc2alp	\N	\N	2026-02-02 17:31:04.533	2026-02-02 17:31:04.533	\N	Bolero Neo	DIGITAL
+cml5g4uxg007sqn0kmfbxixsf	SOURAV	ROUT	9983143338	\N	CS PUR	XUV 3XO	WARM	\N	cmk130qz40000l704z6fc2alp	\N	\N	2026-02-02 17:31:10.612	2026-02-02 17:31:10.612	\N	XUV 3XO	DIGITAL
+cml5g4wmr007wqn0kbghbmu44	KANHA	MAHARANA	7978903981	\N	ANUGUL	XUV 7XO	WARM	\N	cmk130qz40000l704z6fc2alp	\N	\N	2026-02-02 17:31:12.819	2026-02-02 17:31:12.819	\N	XUV 7XO	DIGITAL
+cml5g4yqq0080qn0kekqi06qk	SAFAT	ALI	9937162058	\N	CS PUR	THAR ROXX	WARM	\N	cmk130qz40000l704z6fc2alp	\N	\N	2026-02-02 17:31:15.554	2026-02-02 17:31:15.554	\N	THAR ROXX	DIGITAL
+cml5g4zs60082qn0k0pyzxc3i	GURINDER	SANDHU	9815738117	\N	CHANDIGARH	THAR	WARM	\N	cmk130qz40000l704z6fc2alp	\N	\N	2026-02-02 17:31:16.902	2026-02-02 17:31:16.902	\N	THAR	DIGITAL
+cml5g50mz0084qn0k9tyby2h7	Rachit	Mohanty	9078038832	\N	Kalarahanga	XUV 7XO	WARM	\N	cmk130qz40000l704z6fc2alp	\N	\N	2026-02-02 17:31:18.012	2026-02-02 17:31:18.012	\N	XUV 7XO	DIGITAL
+cml5g3vkl005qqn0k8skzf9ua	RAJESH	JENA	7008878208	\N	ANGUL	XUV 3XO	WARM	\N	cmk130qz40000l704z6fc2alp	\N	\N	2026-02-02 17:30:24.789	2026-02-02 17:30:24.789	\N	XUV 3XO	DIGITAL
+cml5g3wer005sqn0kyun4g6yh	DEEPAK	KUMAR SAHOO	7077823223	\N	PATIA	Bolero	WARM	\N	cmk130qz40000l704z6fc2alp	\N	\N	2026-02-02 17:30:25.876	2026-02-02 17:30:25.876	\N	Bolero	DIGITAL
+cml5g3yd7005wqn0kkpixer96	Sanjaya	Maharana	9853158843	\N	DHENKANAL	XUV 7XO	WARM	\N	cmk130qz40000l704z6fc2alp	\N	\N	2026-02-02 17:30:28.411	2026-02-02 17:30:28.411	\N	XUV 7XO	DIGITAL
+cml5g3z4p005yqn0k43idxnqb	P	PANDA	9620080002	\N	NANDAN BIHAR	XUV 7XO	WARM	\N	cmk130qz40000l704z6fc2alp	\N	\N	2026-02-02 17:30:29.402	2026-02-02 17:30:29.402	\N	XUV 7XO	DIGITAL
+cml5g43ob0066qn0ku9n6vvkw	BAPUN	KUMAR PRADHAN	8895134886	\N	BANGLORE	XUV 3XO	WARM	\N	cmk130qz40000l704z6fc2alp	\N	\N	2026-02-02 17:30:35.292	2026-02-02 17:30:35.292	\N	XUV 3XO	DIGITAL
+cml5g45jz006aqn0klplqaufj	AMITOSH	PATRA	7377519434	\N	PATIA	XUV 7XO	WARM	\N	cmk130qz40000l704z6fc2alp	\N	\N	2026-02-02 17:30:37.727	2026-02-02 17:30:37.727	\N	XUV 7XO	DIGITAL
+cml5g47am006eqn0kaiz45lii	LYHAANOSH	SEKHAR JENA	8456041510	\N	SAILASHREE VIHAR	Scorpio Classic	WARM	\N	cmk130qz40000l704z6fc2alp	\N	\N	2026-02-02 17:30:39.982	2026-02-02 17:30:39.982	\N	Scorpio Classic	DIGITAL
+cml5g4915006iqn0ku3i2bjtz	PRIYANSHU	GUPTA	8018522808	\N	INFOCITY	XUV 3XO	WARM	\N	cmk130qz40000l704z6fc2alp	\N	\N	2026-02-02 17:30:42.234	2026-02-02 17:30:42.234	\N	XUV 3XO	DIGITAL
+cml5g49zc006kqn0k33yig1f5	RAKESH	MOHANTY	9337321941	\N	C S PUR	XUV 7XO	WARM	\N	cmk130qz40000l704z6fc2alp	\N	\N	2026-02-02 17:30:43.465	2026-02-02 17:30:43.465	\N	XUV 7XO	DIGITAL
+cml5g4hxr0070qn0kaz2y5qgg	D	Pattnaik	8249913131	\N	Bangalore	XUV 7XO	WARM	\N	cmk130qz40000l704z6fc2alp	\N	\N	2026-02-02 17:30:53.775	2026-02-02 17:30:53.775	\N	XUV 7XO	DIGITAL
+cml5g4ivl0072qn0kjjm3us7s	RANJIT	DASH	9937764535	\N	DAMANA	XUV 3XO	WARM	\N	cmk130qz40000l704z6fc2alp	\N	\N	2026-02-02 17:30:54.993	2026-02-02 17:30:54.993	\N	XUV 3XO	DIGITAL
+cml5g4kj10076qn0k88n4rahi	CHANDAN	KUMAR DANGA	9668015459	\N	ANUGUL	Scorpio Classic	WARM	\N	cmk130qz40000l704z6fc2alp	\N	\N	2026-02-02 17:30:57.134	2026-02-02 17:30:57.134	\N	Scorpio Classic	DIGITAL
+cml5g4lkb0078qn0k5fbsvt97	PAPU	SAMAL	7008116038	\N	ANUGUL	THAR	WARM	\N	cmk130qz40000l704z6fc2alp	\N	\N	2026-02-02 17:30:58.476	2026-02-02 17:30:58.476	\N	THAR	DIGITAL
+cml5g4ncr007cqn0k4b1awcvi	SAHIL	RAJ PATRA	8327701274	\N	PATIA	THAR ROXX	WARM	\N	cmk130qz40000l704z6fc2alp	\N	\N	2026-02-02 17:31:00.795	2026-02-02 17:31:00.795	\N	THAR ROXX	DIGITAL
+cml5g4oa4007eqn0kgbm8luch	SAMAYA	MOHAPATRA	7008377115	\N	PATIA	XUV 3XO	WARM	\N	cmk130qz40000l704z6fc2alp	\N	\N	2026-02-02 17:31:01.997	2026-02-02 17:31:01.997	\N	XUV 3XO	DIGITAL
+cml5g4rce007kqn0klspnixhb	.	SUNIL	8249948425	\N	BBSR	XUV 7XO	WARM	\N	cmk130qz40000l704z6fc2alp	\N	\N	2026-02-02 17:31:05.967	2026-02-02 17:31:05.967	\N	XUV 7XO	DIGITAL
+cml5g4s8m007mqn0k7ek9m4x3	PRASANT	DAS	9900623836	\N	ROURKELA	XUV 7XO	WARM	\N	cmk130qz40000l704z6fc2alp	\N	\N	2026-02-02 17:31:07.126	2026-02-02 17:31:07.126	\N	XUV 7XO	DIGITAL
+cml5g4t24007oqn0kfzhnwyzu	subah	bal	6370160768	\N	PATIA	XUV 7XO	WARM	\N	cmk130qz40000l704z6fc2alp	\N	\N	2026-02-02 17:31:08.188	2026-02-02 17:31:08.188	\N	XUV 7XO	DIGITAL
+cml5g4tzi007qqn0kh7ubwwwm	BIKASH	MOHAPATRA	9827553651	\N	ANUGUL	Bolero Neo	WARM	\N	cmk130qz40000l704z6fc2alp	\N	\N	2026-02-02 17:31:09.39	2026-02-02 17:31:09.39	\N	Bolero Neo	DIGITAL
+cml5g4vqd007uqn0kt7qwoxq0	AKASH	KUMAR	6370114844	\N	KIIT	XUV 7XO	WARM	\N	cmk130qz40000l704z6fc2alp	\N	\N	2026-02-02 17:31:11.653	2026-02-02 17:31:11.653	\N	XUV 7XO	DIGITAL
+cml5g4xgk007yqn0kq9h6g6rb	Santoshkumar	Routray	9777791033	\N	BARANG	Scorpio Classic	WARM	\N	cmk130qz40000l704z6fc2alp	\N	\N	2026-02-02 17:31:13.892	2026-02-02 17:31:13.892	\N	Scorpio Classic	DIGITAL
+cml5g51ga0086qn0kxu4zwauw	SAMBIT	BEHERA	9861480344	\N	PATIA	THAR ROXX	WARM	\N	cmk130qz40000l704z6fc2alp	\N	\N	2026-02-02 17:31:19.066	2026-02-02 17:31:19.066	\N	THAR ROXX	DIGITAL
+cml5g527r0088qn0kkgpd2l6d	ATUL	SINGH	8249017971	\N	BANGLORE	THAR ROXX	WARM	\N	cmk130qz40000l704z6fc2alp	\N	\N	2026-02-02 17:31:20.055	2026-02-02 17:31:20.055	\N	THAR ROXX	DIGITAL
+cml5g531g008aqn0k02o1toj9	RISAB	KUMAR SAHOO	7978933563	\N	KORAPUT	XUV 7XO	WARM	\N	cmk130qz40000l704z6fc2alp	\N	\N	2026-02-02 17:31:21.124	2026-02-02 17:31:21.124	\N	XUV 7XO	DIGITAL
+cml5g5436008cqn0kjfhiucax	M	K SAHOO	9438008595	\N	TALCHER	XUV 3XO	WARM	\N	cmk130qz40000l704z6fc2alp	\N	\N	2026-02-02 17:31:22.482	2026-02-02 17:31:22.482	\N	XUV 3XO	DIGITAL
+cml5g57ft008kqn0kurbskhgj	RAHUL	AGARWAL	9778924765	\N	RAGHUNATHPUR	XUV 7XO	WARM	\N	cmk130qz40000l704z6fc2alp	\N	\N	2026-02-02 17:31:26.826	2026-02-02 17:31:26.826	\N	XUV 7XO	DIGITAL
+cml5g58dz008mqn0k8grtala8	MAYANK	RAY	6263854838	\N	PATIA	XUV 3XO	WARM	\N	cmk130qz40000l704z6fc2alp	\N	\N	2026-02-02 17:31:28.056	2026-02-02 17:31:28.056	\N	XUV 3XO	DIGITAL
+cml5g5czl008wqn0kekxkne7u	SASWAT	SINGH	9078313413	\N	C S PUR	Scorpio N	WARM	\N	cmk130qz40000l704z6fc2alp	\N	\N	2026-02-02 17:31:34.018	2026-02-02 17:31:34.018	\N	Scorpio N	DIGITAL
+cml5g5fnx0092qn0k1oprxb0e	SRABAN	SUBHUDHI	9692599058	\N	NANDANKANANA ROAD	XUV 7XO	WARM	\N	cmk130qz40000l704z6fc2alp	\N	\N	2026-02-02 17:31:37.485	2026-02-02 17:31:37.485	\N	XUV 7XO	DIGITAL
 cmkzgsmu20015me0k77mzjy2d	Deepak	tamal	9938474882	\N	KUJANGA	Scorpio Classic	WARM	\N	cmk130qz40000l704z6fc2alp	\N	\N	2026-01-29 13:03:02.811	2026-01-29 13:03:02.811	\N	\N	\N
 cmkzgsok60017me0k1u4q6tdm	BIJAY	KUMAR	9776670666	\N	CUTTACK	Scorpio Classic	WARM	\N	cmk130qz40000l704z6fc2alp	\N	\N	2026-01-29 13:03:05.046	2026-01-29 13:03:05.046	\N	\N	\N
 cmkzgspkw0019me0k51t7gke1	Babul	Sahoo	7749033378	\N	PARADEEP	Bolero Neo	WARM	\N	cmk130qz40000l704z6fc2alp	\N	\N	2026-01-29 13:03:06.368	2026-01-29 13:03:06.368	\N	\N	\N
@@ -1335,6 +1568,15 @@ cmkzguvci005zme0k1ll1l9su	SK	ASAR ALI	7749091781	\N	JAGATSINGHPUR	Scorpio N	WARM
 cmkzguyq40067me0kextt85ik	JOURNALIST	TARUN DASH	7008789709	\N	BARIPADA	XUV 3XO	WARM	\N	cmk130qz40000l704z6fc2alp	\N	\N	2026-01-29 13:04:51.532	2026-01-29 13:04:51.532	\N	\N	\N
 cmkzguzo30069me0kz4mt74pp	RAKESH	BIHARI	7653011501	\N	JAJPUR ROAD	XUV 7XO	WARM	\N	cmk130qz40000l704z6fc2alp	\N	\N	2026-01-29 13:04:52.755	2026-01-29 13:04:52.755	\N	\N	\N
 cmkzgv0xi006bme0khakiz7pg	K	SIBRAM	8908755817	\N	CDA SEC-13	XUV 3XO	WARM	\N	cmk130qz40000l704z6fc2alp	\N	\N	2026-01-29 13:04:54.39	2026-01-29 13:04:54.39	\N	\N	\N
+cml5g54wu008eqn0k2vzwc3na	SANDIP	SUBHANKAR	7008021223	\N	C S PUR	XUV 7XO	WARM	\N	cmk130qz40000l704z6fc2alp	\N	\N	2026-02-02 17:31:23.55	2026-02-02 17:31:23.55	\N	XUV 7XO	DIGITAL
+cml5g55sp008gqn0kk7r6ck1k	TAPAN	GIRI	8093044901	\N	RAGHUNATHPUR	XUV 3XO	WARM	\N	cmk130qz40000l704z6fc2alp	\N	\N	2026-02-02 17:31:24.697	2026-02-02 17:31:24.697	\N	XUV 3XO	DIGITAL
+cml5g56mz008iqn0km3nbss7s	YASYITA	RAJ SARANGI	8637252268	\N	PATIA	XUV 7XO	WARM	\N	cmk130qz40000l704z6fc2alp	\N	\N	2026-02-02 17:31:25.787	2026-02-02 17:31:25.787	\N	XUV 7XO	DIGITAL
+cml5g59ad008oqn0kjh8o1h5x	SHREYANSH	NAYAK	9777548266	\N	PATIA	XUV 7XO	WARM	\N	cmk130qz40000l704z6fc2alp	\N	\N	2026-02-02 17:31:29.221	2026-02-02 17:31:29.221	\N	XUV 7XO	DIGITAL
+cml5g5ad6008qqn0kjvmkum84	SAGAR	BISWAL	8144162237	\N	RAGHUNATHPUR	XUV 3XO	WARM	\N	cmk130qz40000l704z6fc2alp	\N	\N	2026-02-02 17:31:30.618	2026-02-02 17:31:30.618	\N	XUV 3XO	DIGITAL
+cml5g5b5a008sqn0kbek54nah	SAROJ	KUMAR MOHANTY	7008216386	\N	CS PUR	XUV 3XO	WARM	\N	cmk130qz40000l704z6fc2alp	\N	\N	2026-02-02 17:31:31.631	2026-02-02 17:31:31.631	\N	XUV 3XO	DIGITAL
+cml5g5c46008uqn0ksur7fpe5	SOMYA	RANJAN SWAIN	9372804525	\N	PATIA	XUV 3XO	WARM	\N	cmk130qz40000l704z6fc2alp	\N	\N	2026-02-02 17:31:32.886	2026-02-02 17:31:32.886	\N	XUV 3XO	DIGITAL
+cml5g5dto008yqn0kj3tey4gm	MANISHA	SAHU	9827696490	\N	NILADARI VIHAR	XUV 7XO	WARM	\N	cmk130qz40000l704z6fc2alp	\N	\N	2026-02-02 17:31:35.101	2026-02-02 17:31:35.101	\N	XUV 7XO	DIGITAL
+cml5g5ep90090qn0k2hfzj4wt	PRADYUMNA	SAHOO	7847090115	\N	INFOCITY	XUV 3XO	WARM	\N	cmk130qz40000l704z6fc2alp	\N	\N	2026-02-02 17:31:36.237	2026-02-02 17:31:36.237	\N	XUV 3XO	DIGITAL
 cmkzgtthq003nme0kyvka4d5y	Biswajit	Mohanty	9778313982	\N	CUTTACK	XUV 3XO	WARM	\N	cmk130qz40000l704z6fc2alp	\N	\N	2026-01-29 13:03:58.095	2026-01-29 13:03:58.095	\N	\N	\N
 cmkzgtue9003pme0kwrxwkl4h	FAMSAD	KHAN	9776146786	\N	BALESWAR	Scorpio N	WARM	\N	cmk130qz40000l704z6fc2alp	\N	\N	2026-01-29 13:03:59.265	2026-01-29 13:03:59.265	\N	\N	\N
 cmkzgtx5w003vme0kgidvws3q	Tanweer	Alam	8709612729	\N	PARADEEP	XUV 3XO	WARM	\N	cmk130qz40000l704z6fc2alp	\N	\N	2026-01-29 13:04:02.852	2026-01-29 13:04:02.852	\N	\N	\N
@@ -1359,16 +1601,7 @@ cmkzguw4h0061me0kq4jqo5ik	Sano	Jyoti Prakash	8249388910	\N	NUA BAZAR	XUV 3XO	WAR
 cmkzguwxw0063me0k0bfyzlxi	ABHISEK	KUMAR	7853985816	\N	JAJPUR	Scorpio N	WARM	\N	cmk130qz40000l704z6fc2alp	\N	\N	2026-01-29 13:04:49.221	2026-01-29 13:04:49.221	\N	\N	\N
 cmkzguxxs0065me0kf63d5l8y	SIBA	NANDA PADHI	8637231604	\N	JAJPUR	Scorpio N	WARM	\N	cmk130qz40000l704z6fc2alp	\N	\N	2026-01-29 13:04:50.513	2026-01-29 13:04:50.513	\N	\N	\N
 cmkzgv238006dme0ktkepfqvc	SEKH	JAHUR	7609805668	\N	CUTTACK	Bolero Neo	WARM	\N	cmk130qz40000l704z6fc2alp	\N	\N	2026-01-29 13:04:55.892	2026-01-29 13:04:55.892	\N	\N	\N
-cmkzmxj1a00019y3py4q44u25	John	Doe	7735322819	\N	New York	BE6	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-29 15:54:48.862	2026-01-29 15:54:48.862	\N	\N	\N
-cmkzmxmdd00039y3p74izofoj	Jane	Smith	9876543210	\N	Los Angeles	XEV 9E	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-29 15:54:53.186	2026-01-29 15:54:53.186	\N	\N	\N
-cmkzmxol000059y3pmvgocqso	Robert	Johnson	5551234567	\N	Chicago	XEV 9S	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-29 15:54:56.053	2026-01-29 15:54:56.053	\N	\N	\N
-cmkzmxqzn00079y3p8mnrxsek	Mary	Williams	4449876543	\N	Houston	SCORPIO CLASSIC	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-29 15:54:59.172	2026-01-29 15:54:59.172	\N	\N	\N
-cmkzmxsxf00099y3pi1gr5vq5	David	Brown	3335557777	\N	Phoenix	SCORPIO-N	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-29 15:55:01.684	2026-01-29 15:55:01.684	\N	\N	\N
-cmkzmxuqu000b9y3ptzp1g6qb	Sarah	Davis	2224446666	\N	Philadelphia	THAR 3 DOOR	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-29 15:55:04.038	2026-01-29 15:55:04.038	\N	\N	\N
-cmkzmxwst000d9y3pva3qb0rz	Michael	Wilson	1113335555	\N	San Antonio	THAR ROXX	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-29 15:55:06.701	2026-01-29 15:55:06.701	\N	\N	\N
-cmkzmxyrv000f9y3pdyh25pxz	Emily	Martinez	9998887777	\N	San Diego	XUV 3XO	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-29 15:55:09.26	2026-01-29 15:55:09.26	\N	\N	\N
-cmkzmy0tu000h9y3pc1p6ik8i	James	Anderson	8887776666	\N	Dallas	XUV 700	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-29 15:55:11.923	2026-01-29 15:55:11.923	\N	\N	\N
-cmkzmy2nn000j9y3pn1melsfp	Lisa	Taylor	7776665555	\N	San Jose	BE6	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-29 15:55:14.292	2026-01-29 15:55:14.292	\N	\N	\N
+cml69p8ij009xqn0ksfxrxe4f	ABHILASH	PANDA	9090090150	\N	BHUBANESWAR	BE 6	WARM	\N	cmk130qz40000l704z6fc2alp	\N	\N	2026-02-03 07:18:50.203	2026-02-03 07:18:50.203	\N	BE 6	DIGITAL
 cml0i5efv000bpo0kbc5b5i0k	AJIT	KUMAR KAR	9438505592	\N	KHORDHA	XEV 9S	WARM	\N	cmk130qz40000l704z6fc2alp	\N	\N	2026-01-30 06:28:44.252	2026-01-30 06:28:44.252	\N	\N	\N
 cml0i5g1g000dpo0ki9yfe05f	Dr	Sangram Keshari Swain	9437493949	\N	RASULGARH	XEV 9S	WARM	\N	cmk130qz40000l704z6fc2alp	\N	\N	2026-01-30 06:28:46.325	2026-01-30 06:28:46.325	\N	\N	\N
 cml0i5gxg000fpo0kgns0ucji	PRABIN	SAHOO	9828272756	\N	SUNDARPADA	XEV 9S	WARM	\N	cmk130qz40000l704z6fc2alp	\N	\N	2026-01-30 06:28:47.476	2026-01-30 06:28:47.476	\N	\N	\N
@@ -1396,6 +1629,7 @@ cml0i64oq001ppo0k1ip29o6c	HITESH	NAYAK	8895771618	\N	PATRAPADA	XEV 9S	WARM	\N	cm
 cml0i671f001tpo0k87wotkup	SANGRAM	PATRA	9937069757	\N	CHAKEISIANI	XEV 9S	WARM	\N	cmk130qz40000l704z6fc2alp	\N	\N	2026-01-30 06:29:21.316	2026-01-30 06:29:21.316	\N	\N	\N
 cml0i6a86001zpo0k8mbwm0ae	Preetam	Pattnaik	6371466218	\N	BHUBANESWAR	BE 6	WARM	\N	cmk130qz40000l704z6fc2alp	\N	\N	2026-01-30 06:29:25.447	2026-01-30 06:29:25.447	\N	\N	\N
 cml0i6ea90027po0kcjcnbsid	Deepak	Satapathy	9938668884	\N	BHUBANESWAR	BE 6	WARM	\N	cmk130qz40000l704z6fc2alp	\N	\N	2026-01-30 06:29:30.706	2026-01-30 06:29:30.706	\N	\N	\N
+cml69p9ve009zqn0k3d7t5u3c	JYOTEPRAKASH	SWAIN	9040099131	\N	SAHEED NAGAR	XEV 9E	WARM	\N	cmk130qz40000l704z6fc2alp	\N	\N	2026-02-03 07:18:51.963	2026-02-03 07:18:51.963	\N	XEV 9E	DIGITAL
 cml0i62xq001lpo0kq52elasu	PRUTHIV	RAJ TRIPATHY	9945000861	\N	NAYAPALI	XEV 9S	WARM	\N	cmk130qz40000l704z6fc2alp	\N	\N	2026-01-30 06:29:15.998	2026-01-30 06:29:15.998	\N	\N	\N
 cml0i63sr001npo0kpvbs4g7m	PRATYUSH	LENKA	7381033222	\N	BHUBANESWAR	XEV 9S	WARM	\N	cmk130qz40000l704z6fc2alp	\N	\N	2026-01-30 06:29:17.115	2026-01-30 06:29:17.115	\N	\N	\N
 cml0i65z3001rpo0kdf4f4rc4	DR	ALOK SAHOO	9438884160	\N	KHANDAGIRI	BE 6	WARM	\N	cmk130qz40000l704z6fc2alp	\N	\N	2026-01-30 06:29:19.936	2026-01-30 06:29:19.936	\N	\N	\N
@@ -1441,52 +1675,182 @@ cml0i7eur0043po0kg9b1g4n1	SRABAN	SUBHUDHI	9845730820	\N	NANDANKANANA ROAD	XEV 9S
 cml0i7gy20045po0k3x34lag4	Pradeep	Dash	8260142589	\N	TALCHER	XEV 9S	WARM	\N	cmk130qz40000l704z6fc2alp	\N	\N	2026-01-30 06:30:20.811	2026-01-30 06:30:20.811	\N	\N	\N
 cml0i7iol0047po0k1ue6j8wk	MD	AKBAR	7008828651	\N	PIPILI	XEV 9S	WARM	\N	cmk130qz40000l704z6fc2alp	\N	\N	2026-01-30 06:30:23.061	2026-01-30 06:30:23.061	\N	\N	\N
 cml0i7kqs0049po0kd2xdrg2r	Somanath	subudhi	9861940406	\N	CHILIKA	BE 6	WARM	\N	cmk130qz40000l704z6fc2alp	\N	\N	2026-01-30 06:30:25.733	2026-01-30 06:30:25.733	\N	\N	\N
-cml0i89nd004cpo0k79cmth82	John	Doe	7735322819	\N	New York	BE6	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-30 06:30:58.009	2026-01-30 06:30:58.009	\N	\N	\N
-cml0i8atm004epo0k8u5mocz0	Jane	Smith	9876543210	\N	Los Angeles	XEV 9E	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-30 06:30:59.531	2026-01-30 06:30:59.531	\N	\N	\N
-cml0i8bus004gpo0kxzjvugio	Robert	Johnson	5551234567	\N	Chicago	XEV 9S	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-30 06:31:00.868	2026-01-30 06:31:00.868	\N	\N	\N
-cml0i8d53004ipo0kbrte4di7	Mary	Williams	4449876543	\N	Houston	SCORPIO CLASSIC	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-30 06:31:02.535	2026-01-30 06:31:02.535	\N	\N	\N
-cml0i8dxp004kpo0kdowgx8ew	David	Brown	3335557777	\N	Phoenix	SCORPIO-N	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-30 06:31:03.565	2026-01-30 06:31:03.565	\N	\N	\N
-cml0i8et8004mpo0kqwmb0j3j	Sarah	Davis	2224446666	\N	Philadelphia	THAR 3 DOOR	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-30 06:31:04.7	2026-01-30 06:31:04.7	\N	\N	\N
-cml0i8frg004opo0k4bf0ia14	Michael	Wilson	1113335555	\N	San Antonio	THAR ROXX	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-30 06:31:05.932	2026-01-30 06:31:05.932	\N	\N	\N
-cml0i8gji004qpo0kw5fga1cu	Emily	Martinez	9998887777	\N	San Diego	XUV 3XO	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-30 06:31:06.943	2026-01-30 06:31:06.943	\N	\N	\N
-cml0i8hh9004spo0kx80w34jb	James	Anderson	8887776666	\N	Dallas	XUV 700	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-30 06:31:08.158	2026-01-30 06:31:08.158	\N	\N	\N
-cml0i8i95004upo0kzqargtk2	Lisa	Taylor	7776665555	\N	San Jose	BE6	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-30 06:31:09.162	2026-01-30 06:31:09.162	\N	\N	\N
-cml1259xa00009yz8dxnceeqf	John	Doe	7735322819	\N	New York	BE6	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-30 15:48:30.718	2026-01-30 15:48:30.718	\N	\N	\N
-cml125ip400029yz8ofmdh6cs	Jane	Smith	9876543210	\N	Los Angeles	XEV 9E	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-30 15:48:42.089	2026-01-30 15:48:42.089	\N	\N	\N
-cml125lj700049yz8e3fs2e81	Robert	Johnson	5551234567	\N	Chicago	XEV 9S	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-30 15:48:45.763	2026-01-30 15:48:45.763	\N	\N	\N
-cml125o9f00069yz8e0lryoae	Mary	Williams	4449876543	\N	Houston	SCORPIO CLASSIC	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-30 15:48:49.299	2026-01-30 15:48:49.299	\N	\N	\N
-cml125ql900089yz8w25qvrr9	David	Brown	3335557777	\N	Phoenix	SCORPIO-N	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-30 15:48:52.318	2026-01-30 15:48:52.318	\N	\N	\N
-cml125tct000a9yz8dx5tvqsd	Sarah	Davis	2224446666	\N	Philadelphia	THAR 3 DOOR	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-30 15:48:55.902	2026-01-30 15:48:55.902	\N	\N	\N
-cml125wlj000c9yz80pa9v19j	Michael	Wilson	1113335555	\N	San Antonio	THAR ROXX	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-30 15:49:00.103	2026-01-30 15:49:00.103	\N	\N	\N
-cml125zfs000e9yz8pt1atwmp	Emily	Martinez	9998887777	\N	San Diego	XUV 3XO	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-30 15:49:03.785	2026-01-30 15:49:03.785	\N	\N	\N
-cml1262ms000g9yz8n2mi8kcz	James	Anderson	8887776666	\N	Dallas	XUV 700	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-30 15:49:07.924	2026-01-30 15:49:07.924	\N	\N	\N
-cml1264w2000i9yz8xoucq4y2	Lisa	Taylor	7776665555	\N	San Jose	BE6	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-30 15:49:10.851	2026-01-30 15:49:10.851	\N	\N	\N
-cml12z56s00019yfu48zs956w	John	Doe	7735322819	\N	New York	BE6	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-30 16:11:44.26	2026-01-30 16:11:44.26	\N	\N	\N
-cml12z8jd00039yfuy2q1sftf	Jane	Smith	9876543210	\N	Los Angeles	XEV 9E	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-30 16:11:48.601	2026-01-30 16:11:48.601	\N	\N	\N
-cml12zawm00059yfuamk7w8rf	Robert	Johnson	5551234567	\N	Chicago	XEV 9S	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-30 16:11:51.671	2026-01-30 16:11:51.671	\N	\N	\N
-cml12zdfb00079yfu6k6gz56i	Mary	Williams	4449876543	\N	Houston	SCORPIO CLASSIC	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-30 16:11:54.935	2026-01-30 16:11:54.935	\N	\N	\N
-cml12zfer00099yfuqmfai09i	David	Brown	3335557777	\N	Phoenix	SCORPIO-N	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-30 16:11:57.508	2026-01-30 16:11:57.508	\N	\N	\N
-cml12zh87000b9yfu4nltjlza	Sarah	Davis	2224446666	\N	Philadelphia	THAR 3 DOOR	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-30 16:11:59.863	2026-01-30 16:11:59.863	\N	\N	\N
-cml12zj1n000d9yfugxd7602o	Michael	Wilson	1113335555	\N	San Antonio	THAR ROXX	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-30 16:12:02.219	2026-01-30 16:12:02.219	\N	\N	\N
-cml12zl3j000f9yfu3vuhs1yu	Emily	Martinez	9998887777	\N	San Diego	XUV 3XO	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-30 16:12:04.88	2026-01-30 16:12:04.88	\N	\N	\N
-cml12znpe000h9yfuccxgy92p	James	Anderson	8887776666	\N	Dallas	XUV 700	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-30 16:12:08.259	2026-01-30 16:12:08.259	\N	\N	\N
-cml12zpoi000j9yfu7j0oili9	Lisa	Taylor	7776665555	\N	San Jose	BE6	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-30 16:12:10.819	2026-01-30 16:12:10.819	\N	\N	\N
-cml134c2p000l9yfuj4zjh2kd	Anup	Pradhan	7735322819	anuppradhan929@gmail.com	\N	hello	cold	\N	cmivgorqg00009y5iyf5y9s5b	cmjbcndys0001jo04cc0sxh44	cmiztrwb10009jo04qj930dx5	2026-01-30 16:15:46.465	2026-01-30 16:15:46.465	cmj1ijq7d00019yn04s3gnxbh	\N	\N
-cml13ax0b00019yx6mrtp53eo	John	Doe	7735322819	\N	New York	BE6	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-30 16:20:53.531	2026-01-30 16:20:53.531	\N	BE6	Instagram
-cml13b1sn00039yx6uvaged7l	Jane	Smith	9876543210	\N	Los Angeles	XEV 9E	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-30 16:20:59.736	2026-01-30 16:20:59.736	\N	XEV 9E	Facebook
-cml13b5cp00059yx6qtsj97ul	Robert	Johnson	5551234567	\N	Chicago	XEV 9S	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-30 16:21:04.345	2026-01-30 16:21:04.345	\N	XEV 9S	Website
-cml13b90u00079yx6p5hemxj8	Mary	Williams	4449876543	\N	Houston	SCORPIO CLASSIC	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-30 16:21:09.102	2026-01-30 16:21:09.102	\N	SCORPIO CLASSIC	Ads
-cml13bc0n00099yx6tzlj6ojs	David	Brown	3335557777	\N	Phoenix	SCORPIO-N	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-30 16:21:12.984	2026-01-30 16:21:12.984	\N	SCORPIO-N	Social Media
-cml13bg8200009yihrj4kp9s0	John	Doe	7735322819	\N	New York	BE6	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-30 16:21:18.435	2026-01-30 16:21:18.435	\N	BE6	Instagram
-cml13bk9u00029yihbfulyi9c	Jane	Smith	9876543210	\N	Los Angeles	XEV 9E	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-30 16:21:23.682	2026-01-30 16:21:23.682	\N	XEV 9E	Facebook
-cml13bmi700049yihhoiokbjh	Robert	Johnson	5551234567	\N	Chicago	XEV 9S	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-30 16:21:26.575	2026-01-30 16:21:26.575	\N	XEV 9S	Website
-cml13bpzt00069yiherocz9h2	Mary	Williams	4449876543	\N	Houston	SCORPIO CLASSIC	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-30 16:21:31.098	2026-01-30 16:21:31.098	\N	SCORPIO CLASSIC	Ads
-cml13bsla00089yihxw2m92s4	David	Brown	3335557777	\N	Phoenix	SCORPIO-N	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-30 16:21:34.463	2026-01-30 16:21:34.463	\N	SCORPIO-N	Social Media
-cml13busy000a9yihpxabmi29	Sarah	Davis	2224446666	\N	Philadelphia	THAR 3 DOOR	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-30 16:21:37.33	2026-01-30 16:21:37.33	\N	THAR 3 DOOR	Customer Word-of-Mouth
-cml13bxi1000c9yihgyv6srhs	Michael	Wilson	1113335555	\N	San Antonio	THAR ROXX	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-30 16:21:40.825	2026-01-30 16:21:40.825	\N	THAR ROXX	Instagram
-cml13bzjp000e9yih69pu4350	Emily	Martinez	9998887777	\N	San Diego	XUV 3XO	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-30 16:21:43.477	2026-01-30 16:21:43.477	\N	XUV 3XO	Website
-cml13c24g000g9yih1kvhy06z	James	Anderson	8887776666	\N	Dallas	XUV 700	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-30 16:21:46.816	2026-01-30 16:21:46.816	\N	XUV 700	Ads
-cml13c55s000i9yihul09swni	Lisa	Taylor	7776665555	\N	San Jose	BE6	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-30 16:21:50.753	2026-01-30 16:21:50.753	\N	BE6	Facebook
+cml0i8gji004qpo0kw5fga1cu	Emily	Martinez	9998887777	\N	San Diego	XUV 3XO	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-30 06:31:06.943	2026-01-31 15:06:59.594	\N	\N	\N
+cml0i8hh9004spo0kx80w34jb	James	Anderson	8887776666	\N	Dallas	XUV 700	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-30 06:31:08.158	2026-01-31 15:06:59.594	\N	\N	\N
+cmkr2gb6z00019ydmwc0uv186	John	Doe	7735322819	\N	New York	BE6	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-23 15:59:23.82	2026-01-31 15:06:59.594	\N	\N	\N
+cmkr2gehd00039ydmsqwzpf2h	Jane	Smith	9876543210	\N	Los Angeles	XEV 9E	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-23 15:59:28.082	2026-01-31 15:06:59.594	\N	\N	\N
+cmkr2gg9j00059ydmse6rkarx	Robert	Johnson	5551234567	\N	Chicago	XEV 9S	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-23 15:59:30.391	2026-01-31 15:06:59.594	\N	\N	\N
+cmkr2gl8900079ydmnlwphe38	Mary	Williams	4449876543	\N	Houston	SCORPIO CLASSIC	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-23 15:59:36.826	2026-01-31 15:06:59.594	\N	\N	\N
+cmkr2gmq600099ydmbyulr5z3	David	Brown	3335557777	\N	Phoenix	SCORPIO-N	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-23 15:59:38.766	2026-01-31 15:06:59.594	\N	\N	\N
+cmkr2godp000b9ydmsae1ncx3	Sarah	Davis	2224446666	\N	Philadelphia	THAR 3 DOOR	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-23 15:59:40.909	2026-01-31 15:06:59.594	\N	\N	\N
+cmkr2gq7z000d9ydmz17f7wv1	Michael	Wilson	1113335555	\N	San Antonio	THAR ROXX	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-23 15:59:43.295	2026-01-31 15:06:59.594	\N	\N	\N
+cmkr2gs3e000f9ydmtkobxhlh	Emily	Martinez	9998887777	\N	San Diego	XUV 3XO	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-23 15:59:45.723	2026-01-31 15:06:59.594	\N	\N	\N
+cmkr2gtmt000h9ydmlc2ubwjh	James	Anderson	8887776666	\N	Dallas	XUV 700	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-23 15:59:47.718	2026-01-31 15:06:59.594	\N	\N	\N
+cmkr2gv85000j9ydm88xswjq5	Lisa	Taylor	7776665555	\N	San Jose	BE6	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-23 15:59:49.782	2026-01-31 15:06:59.594	\N	\N	\N
+cmkwqfj4o00019yarifxooso7	John	Doe	7735322819	\N	New York	BE6	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-27 15:09:29.113	2026-01-31 15:06:59.594	\N	\N	\N
+cmkwqfnes00039yarb6qd0tjt	Jane	Smith	9876543210	\N	Los Angeles	XEV 9E	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-27 15:09:34.66	2026-01-31 15:06:59.594	\N	\N	\N
+cmkwqfp5a00059yarpgmz4hk6	Robert	Johnson	5551234567	\N	Chicago	XEV 9S	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-27 15:09:36.911	2026-01-31 15:06:59.594	\N	\N	\N
+cmkwqfqq000079yarrrgvmiqr	Mary	Williams	4449876543	\N	Houston	SCORPIO CLASSIC	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-27 15:09:38.953	2026-01-31 15:06:59.594	\N	\N	\N
+cmkwqfs5b00099yary43h5wsa	David	Brown	3335557777	\N	Phoenix	SCORPIO-N	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-27 15:09:40.8	2026-01-31 15:06:59.594	\N	\N	\N
+cmkwqfur3000b9yaryifq63l6	Sarah	Davis	2224446666	\N	Philadelphia	THAR 3 DOOR	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-27 15:09:44.175	2026-01-31 15:06:59.594	\N	\N	\N
+cmkwqfwiy000d9yarpqxhd2v2	Michael	Wilson	1113335555	\N	San Antonio	THAR ROXX	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-27 15:09:46.474	2026-01-31 15:06:59.594	\N	\N	\N
+cmkwqfyv4000f9yaroig2vx16	Emily	Martinez	9998887777	\N	San Diego	XUV 3XO	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-27 15:09:49.505	2026-01-31 15:06:59.594	\N	\N	\N
+cmkwqg0kn000h9yarperyuvsp	James	Anderson	8887776666	\N	Dallas	XUV 700	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-27 15:09:51.72	2026-01-31 15:06:59.594	\N	\N	\N
+cmkwqg29a000j9yarfrze7d5c	Lisa	Taylor	7776665555	\N	San Jose	BE6	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-27 15:09:53.902	2026-01-31 15:06:59.594	\N	\N	\N
+cmkwvjfbn0001r10lwswhtxqc	John	Doe	7735322819	\N	New York	BE6	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-27 17:32:28.883	2026-01-31 15:06:59.594	\N	\N	\N
+cmkwvjgrw0003r10llglqz8d2	Jane	Smith	9876543210	\N	Los Angeles	XEV 9E	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-27 17:32:30.764	2026-01-31 15:06:59.594	\N	\N	\N
+cmkwvjhkn0005r10la703pws9	Robert	Johnson	5551234567	\N	Chicago	XEV 9S	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-27 17:32:31.799	2026-01-31 15:06:59.594	\N	\N	\N
+cmkwvjifk0007r10l2k8vd5d6	Mary	Williams	4449876543	\N	Houston	SCORPIO CLASSIC	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-27 17:32:32.912	2026-01-31 15:06:59.594	\N	\N	\N
+cmkwvjjbd0009r10leagotopq	David	Brown	3335557777	\N	Phoenix	SCORPIO-N	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-27 17:32:34.057	2026-01-31 15:06:59.594	\N	\N	\N
+cmkwvjk24000br10ljnr8uma7	Sarah	Davis	2224446666	\N	Philadelphia	THAR 3 DOOR	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-27 17:32:35.02	2026-01-31 15:06:59.594	\N	\N	\N
+cmkwvjky4000dr10lfe96a4vz	Michael	Wilson	1113335555	\N	San Antonio	THAR ROXX	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-27 17:32:36.172	2026-01-31 15:06:59.594	\N	\N	\N
+cmkwvjlrx000fr10l1ngkuxqs	Emily	Martinez	9998887777	\N	San Diego	XUV 3XO	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-27 17:32:37.245	2026-01-31 15:06:59.594	\N	\N	\N
+cmkwvjmj0000hr10lr2n2ztf7	James	Anderson	8887776666	\N	Dallas	XUV 700	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-27 17:32:38.22	2026-01-31 15:06:59.594	\N	\N	\N
+cmkwvjnio000jr10l8agkn2va	Lisa	Taylor	7776665555	\N	San Jose	BE6	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-27 17:32:39.505	2026-01-31 15:06:59.594	\N	\N	\N
+cmkwvqnr3000mr10lxskpowz4	John	Doe	7735322819	\N	New York	BE6	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-27 17:38:06.399	2026-01-31 15:06:59.594	\N	\N	\N
+cmkwvqora000or10lv3889imp	Jane	Smith	9876543210	\N	Los Angeles	XEV 9E	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-27 17:38:07.702	2026-01-31 15:06:59.594	\N	\N	\N
+cmkwvqphj000qr10l1tvdzrzt	Robert	Johnson	5551234567	\N	Chicago	XEV 9S	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-27 17:38:08.648	2026-01-31 15:06:59.594	\N	\N	\N
+cmkwvqqlz000sr10lncg8m6sg	Mary	Williams	4449876543	\N	Houston	SCORPIO CLASSIC	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-27 17:38:10.103	2026-01-31 15:06:59.594	\N	\N	\N
+cmkwvqrd0000ur10lachsv1m4	David	Brown	3335557777	\N	Phoenix	SCORPIO-N	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-27 17:38:11.077	2026-01-31 15:06:59.594	\N	\N	\N
+cmkwvqshk000wr10lpoqxl0g6	Sarah	Davis	2224446666	\N	Philadelphia	THAR 3 DOOR	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-27 17:38:12.537	2026-01-31 15:06:59.594	\N	\N	\N
+cmkwvqt8m000yr10l1tfqmsa3	Michael	Wilson	1113335555	\N	San Antonio	THAR ROXX	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-27 17:38:13.51	2026-01-31 15:06:59.594	\N	\N	\N
+cmkwvqtwa0010r10lc4ztcjlw	Emily	Martinez	9998887777	\N	San Diego	XUV 3XO	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-27 17:38:14.362	2026-01-31 15:06:59.594	\N	\N	\N
+cmkwvqul70012r10l4jb1ec8n	James	Anderson	8887776666	\N	Dallas	XUV 700	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-27 17:38:15.259	2026-01-31 15:06:59.594	\N	\N	\N
+cmkwvqvqr0014r10lm5ujsmvl	Lisa	Taylor	7776665555	\N	San Jose	BE6	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-27 17:38:16.756	2026-01-31 15:06:59.594	\N	\N	\N
+cmkwvr9yp0017r10lz26fcb38	John	Doe	7735322819	\N	New York	BE6	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-27 17:38:35.185	2026-01-31 15:06:59.594	\N	\N	\N
+cmkwvrb290019r10l4rfh2yn8	Jane	Smith	9876543210	\N	Los Angeles	XEV 9E	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-27 17:38:36.609	2026-01-31 15:06:59.594	\N	\N	\N
+cmkwvrbsl001br10ljk120xwp	Robert	Johnson	5551234567	\N	Chicago	XEV 9S	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-27 17:38:37.557	2026-01-31 15:06:59.594	\N	\N	\N
+cmkwvrcxc001dr10lwk05hqqg	Mary	Williams	4449876543	\N	Houston	SCORPIO CLASSIC	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-27 17:38:39.024	2026-01-31 15:06:59.594	\N	\N	\N
+cmkwvrdo6001fr10lw6h1q7qx	David	Brown	3335557777	\N	Phoenix	SCORPIO-N	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-27 17:38:39.99	2026-01-31 15:06:59.594	\N	\N	\N
+cmkwvrek6001hr10l0es1e9wn	Sarah	Davis	2224446666	\N	Philadelphia	THAR 3 DOOR	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-27 17:38:41.143	2026-01-31 15:06:59.594	\N	\N	\N
+cmkwvrfb4001jr10lt8p15a99	Michael	Wilson	1113335555	\N	San Antonio	THAR ROXX	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-27 17:38:42.112	2026-01-31 15:06:59.594	\N	\N	\N
+cmkwvrg4x001lr10lccp8aai3	Emily	Martinez	9998887777	\N	San Diego	XUV 3XO	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-27 17:38:43.185	2026-01-31 15:06:59.594	\N	\N	\N
+cmkwvrh2g001nr10lqp6wngdt	James	Anderson	8887776666	\N	Dallas	XUV 700	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-27 17:38:44.393	2026-01-31 15:06:59.594	\N	\N	\N
+cmkwvrhu6001pr10lghwx3att	Lisa	Taylor	7776665555	\N	San Jose	BE6	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-27 17:38:45.391	2026-01-31 15:06:59.594	\N	\N	\N
+cmkwvsbet001sr10li8uv49ao	John	Doe	7735322819	\N	New York	BE6	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-27 17:39:23.718	2026-01-31 15:06:59.594	\N	\N	\N
+cmkwvscmx001ur10lqaogb1ws	Jane	Smith	9876543210	\N	Los Angeles	XEV 9E	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-27 17:39:25.305	2026-01-31 15:06:59.594	\N	\N	\N
+cmkwvsdgr001wr10lrdun49rg	Robert	Johnson	5551234567	\N	Chicago	XEV 9S	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-27 17:39:26.38	2026-01-31 15:06:59.594	\N	\N	\N
+cmkwvse7d001yr10lwc8h5q5l	Mary	Williams	4449876543	\N	Houston	SCORPIO CLASSIC	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-27 17:39:27.337	2026-01-31 15:06:59.594	\N	\N	\N
+cmkwvsey90020r10lmjhu8t3t	David	Brown	3335557777	\N	Phoenix	SCORPIO-N	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-27 17:39:28.305	2026-01-31 15:06:59.594	\N	\N	\N
+cmkwvsfpn0022r10l8dd4fnh2	Sarah	Davis	2224446666	\N	Philadelphia	THAR 3 DOOR	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-27 17:39:29.292	2026-01-31 15:06:59.594	\N	\N	\N
+cmkwvsghk0024r10lf24ucu08	Michael	Wilson	1113335555	\N	San Antonio	THAR ROXX	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-27 17:39:30.296	2026-01-31 15:06:59.594	\N	\N	\N
+cmkwvsh8n0026r10l2yib2l23	Emily	Martinez	9998887777	\N	San Diego	XUV 3XO	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-27 17:39:31.271	2026-01-31 15:06:59.594	\N	\N	\N
+cmkwvsi3j0028r10ls82ezhis	James	Anderson	8887776666	\N	Dallas	XUV 700	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-27 17:39:32.383	2026-01-31 15:06:59.594	\N	\N	\N
+cmkwvsiws002ar10li80xngbj	Lisa	Taylor	7776665555	\N	San Jose	BE6	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-27 17:39:33.436	2026-01-31 15:06:59.594	\N	\N	\N
+cmky72k8b00019yqm2m7s972r	John	Doe	1234567890	\N	New York	BE6	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-28 15:43:03.66	2026-01-31 15:06:59.594	\N	\N	\N
+cmky72o1o00039yqmrh0w0p2n	Jane	Smith	9876543210	\N	Los Angeles	XEV 9E	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-28 15:43:08.604	2026-01-31 15:06:59.594	\N	\N	\N
+cmky72rxh00059yqmnayj75mw	Robert	Johnson	5551234567	\N	Chicago	XEV 9S	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-28 15:43:13.637	2026-01-31 15:06:59.594	\N	\N	\N
+cmky72ul500079yqmkzmev2bi	Mary	Williams	4449876543	\N	Houston	SCORPIO CLASSIC	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-28 15:43:17.081	2026-01-31 15:06:59.594	\N	\N	\N
+cmky72x4200099yqmk1ano45y	David	Brown	3335557777	\N	Phoenix	SCORPIO-N	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-28 15:43:20.355	2026-01-31 15:06:59.594	\N	\N	\N
+cmky72zm9000b9yqmvmx84s42	Sarah	Davis	2224446666	\N	Philadelphia	THAR 3 DOOR	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-28 15:43:23.601	2026-01-31 15:06:59.594	\N	\N	\N
+cmky731jf000d9yqm3kqid2ld	Michael	Wilson	1113335555	\N	San Antonio	THAR ROXX	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-28 15:43:26.092	2026-01-31 15:06:59.594	\N	\N	\N
+cmky733e8000f9yqm08u84b1r	Emily	Martinez	9998887777	\N	San Diego	XUV 3XO	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-28 15:43:28.497	2026-01-31 15:06:59.594	\N	\N	\N
+cmky7357r000h9yqmquy3lw2w	James	Anderson	8887776666	\N	Dallas	XUV 700	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-28 15:43:30.855	2026-01-31 15:06:59.594	\N	\N	\N
+cmky736vu000j9yqmy0q8rpn2	Lisa	Taylor	7776665555	\N	San Jose	BE6	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-28 15:43:33.018	2026-01-31 15:06:59.594	\N	\N	\N
+cmky7ahw400019yxo52s22wwl	John	Doe	1234567890	\N	New York	BE6	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-28 15:49:13.877	2026-01-31 15:06:59.594	\N	\N	\N
+cmky7am3800039yxofzb4vqdd	Jane	Smith	9876543210	\N	Los Angeles	XEV 9E	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-28 15:49:19.316	2026-01-31 15:06:59.594	\N	\N	\N
+cmky7aogo00059yxoh1h9hjgz	Robert	Johnson	5551234567	\N	Chicago	XEV 9S	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-28 15:49:22.392	2026-01-31 15:06:59.594	\N	\N	\N
+cmky7arpb00079yxoca12vz6n	Mary	Williams	4449876543	\N	Houston	SCORPIO CLASSIC	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-28 15:49:26.184	2026-01-31 15:06:59.594	\N	\N	\N
+cmky7aury00099yxob3aartug	David	Brown	3335557777	\N	Phoenix	SCORPIO-N	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-28 15:49:30.575	2026-01-31 15:06:59.594	\N	\N	\N
+cmky7axxi000b9yxohvb7cmwe	Sarah	Davis	2224446666	\N	Philadelphia	THAR 3 DOOR	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-28 15:49:34.662	2026-01-31 15:06:59.594	\N	\N	\N
+cmky7b0op000d9yxo5k96jdnl	Michael	Wilson	1113335555	\N	San Antonio	THAR ROXX	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-28 15:49:38.233	2026-01-31 15:06:59.594	\N	\N	\N
+cmky7b3om000f9yxoa9cvph2m	Emily	Martinez	9998887777	\N	San Diego	XUV 3XO	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-28 15:49:42.119	2026-01-31 15:06:59.594	\N	\N	\N
+cmky7b6g4000h9yxo1x9z4cmn	James	Anderson	8887776666	\N	Dallas	XUV 700	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-28 15:49:45.7	2026-01-31 15:06:59.594	\N	\N	\N
+cmky7b94m000j9yxooc4rt8ia	Lisa	Taylor	7776665555	\N	San Jose	BE6	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-28 15:49:49.174	2026-01-31 15:06:59.594	\N	\N	\N
+cmky7kx1g00019yzkztxer9q4	John	Doe	1234567890	\N	New York	BE6	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-28 15:57:20.069	2026-01-31 15:06:59.594	\N	\N	\N
+cmky7l0ti00039yzkrip4lt5s	Jane	Smith	9876543210	\N	Los Angeles	XEV 9E	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-28 15:57:24.966	2026-01-31 15:06:59.594	\N	\N	\N
+cmky7l52n00059yzk2flo1hj4	Robert	Johnson	5551234567	\N	Chicago	XEV 9S	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-28 15:57:30.479	2026-01-31 15:06:59.594	\N	\N	\N
+cmky7l7h200079yzk86vcl5if	Mary	Williams	4449876543	\N	Houston	SCORPIO CLASSIC	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-28 15:57:33.59	2026-01-31 15:06:59.594	\N	\N	\N
+cmky7lak600099yzktgqwomff	David	Brown	3335557777	\N	Phoenix	SCORPIO-N	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-28 15:57:37.59	2026-01-31 15:06:59.594	\N	\N	\N
+cmky7ldel000b9yzke5jd0qzt	Sarah	Davis	2224446666	\N	Philadelphia	THAR 3 DOOR	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-28 15:57:41.277	2026-01-31 15:06:59.594	\N	\N	\N
+cmky7lgen000d9yzk49rqywa7	Michael	Wilson	1113335555	\N	San Antonio	THAR ROXX	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-28 15:57:45.167	2026-01-31 15:06:59.594	\N	\N	\N
+cmky7ljhr000f9yzka67j15x3	Emily	Martinez	9998887777	\N	San Diego	XUV 3XO	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-28 15:57:49.167	2026-01-31 15:06:59.594	\N	\N	\N
+cmky7ln07000h9yzkals43m8c	James	Anderson	8887776666	\N	Dallas	XUV 700	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-28 15:57:53.719	2026-01-31 15:06:59.594	\N	\N	\N
+cmky7lqhy000j9yzkk76f4cl4	Lisa	Taylor	7776665555	\N	San Jose	BE6	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-28 15:57:58.247	2026-01-31 15:06:59.594	\N	\N	\N
+cmky7otmr00169yzktr2o8vzp	John	Doe	7735322819	\N	New York	BE6	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-28 16:00:22.177	2026-01-31 15:06:59.594	\N	\N	\N
+cmky7owt400189yzkwwabg28f	Jane	Smith	9876543210	\N	Los Angeles	XEV 9E	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-28 16:00:26.392	2026-01-31 15:06:59.594	\N	\N	\N
+cmky7oyae001a9yzk1rvnp4z8	Robert	Johnson	5551234567	\N	Chicago	XEV 9S	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-28 16:00:28.311	2026-01-31 15:06:59.594	\N	\N	\N
+cmky7ozph001c9yzk16ufslvv	Mary	Williams	4449876543	\N	Houston	SCORPIO CLASSIC	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-28 16:00:30.149	2026-01-31 15:06:59.594	\N	\N	\N
+cmky7p1j5001e9yzk43amppei	David	Brown	3335557777	\N	Phoenix	SCORPIO-N	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-28 16:00:32.514	2026-01-31 15:06:59.594	\N	\N	\N
+cmky7p3i9001g9yzk4lmnfggp	Sarah	Davis	2224446666	\N	Philadelphia	THAR 3 DOOR	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-28 16:00:35.073	2026-01-31 15:06:59.594	\N	\N	\N
+cmky7p569001i9yzkzc5c6afs	Michael	Wilson	1113335555	\N	San Antonio	THAR ROXX	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-28 16:00:37.233	2026-01-31 15:06:59.594	\N	\N	\N
+cmky7p6r0001k9yzk4dvvizgb	Emily	Martinez	9998887777	\N	San Diego	XUV 3XO	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-28 16:00:39.277	2026-01-31 15:06:59.594	\N	\N	\N
+cmky7p8er001m9yzkdaa39qd2	James	Anderson	8887776666	\N	Dallas	XUV 700	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-28 16:00:41.427	2026-01-31 15:06:59.594	\N	\N	\N
+cmky7p9zh001o9yzk2u23e7mk	Lisa	Taylor	7776665555	\N	San Jose	BE6	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-28 16:00:43.469	2026-01-31 15:06:59.594	\N	\N	\N
+cmky7x4a600019ynlzgkdxqvk	John	Doe	1234567890	\N	New York	BE6	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-28 16:06:49.327	2026-01-31 15:06:59.594	\N	\N	\N
+cmky7x7gw00039ynlp567kfow	Jane	Smith	9876543210	\N	Los Angeles	XEV 9E	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-28 16:06:53.456	2026-01-31 15:06:59.594	\N	\N	\N
+cmky7x9d400059ynlaqww5ugo	Robert	Johnson	5551234567	\N	Chicago	XEV 9S	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-28 16:06:55.912	2026-01-31 15:06:59.594	\N	\N	\N
+cmky7xav600079ynl2fr6mz39	Mary	Williams	4449876543	\N	Houston	SCORPIO CLASSIC	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-28 16:06:57.858	2026-01-31 15:06:59.594	\N	\N	\N
+cmky7xcoq00099ynlxezoe1wb	David	Brown	3335557777	\N	Phoenix	SCORPIO-N	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-28 16:07:00.219	2026-01-31 15:06:59.594	\N	\N	\N
+cmky7xei2000b9ynl0n3xmw53	Sarah	Davis	2224446666	\N	Philadelphia	THAR 3 DOOR	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-28 16:07:02.57	2026-01-31 15:06:59.594	\N	\N	\N
+cmky7xgk1000d9ynlzf14huiu	Michael	Wilson	1113335555	\N	San Antonio	THAR ROXX	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-28 16:07:05.233	2026-01-31 15:06:59.594	\N	\N	\N
+cmky7xj5f000f9ynlorhiq1fq	Emily	Martinez	9998887777	\N	San Diego	XUV 3XO	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-28 16:07:08.595	2026-01-31 15:06:59.594	\N	\N	\N
+cmky7xl51000h9ynlfgxpmzy9	James	Anderson	8887776666	\N	Dallas	XUV 700	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-28 16:07:11.174	2026-01-31 15:06:59.594	\N	\N	\N
+cmky7xmpl000j9ynlxgfwgp2k	Lisa	Taylor	7776665555	\N	San Jose	BE6	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-28 16:07:13.209	2026-01-31 15:06:59.594	\N	\N	\N
+cmky8ai9200019yn7gqhkap1n	John	Doe	1234567890	\N	New York	BE6	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-28 16:17:13.959	2026-01-31 15:06:59.594	\N	\N	\N
+cmky8anbs00039yn7ag1ubre3	Jane	Smith	9876543210	\N	Los Angeles	XEV 9E	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-28 16:17:20.537	2026-01-31 15:06:59.594	\N	\N	\N
+cmky8aq4q00059yn7j3ytcxtu	Robert	Johnson	5551234567	\N	Chicago	XEV 9S	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-28 16:17:24.17	2026-01-31 15:06:59.594	\N	\N	\N
+cmky8asu100079yn7vc7k3yoj	Mary	Williams	4449876543	\N	Houston	SCORPIO CLASSIC	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-28 16:17:27.674	2026-01-31 15:06:59.594	\N	\N	\N
+cmky8b0rd00099yn7endxwd7f	David	Brown	3335557777	\N	Phoenix	SCORPIO-N	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-28 16:17:37.945	2026-01-31 15:06:59.594	\N	\N	\N
+cmky8b45o000b9yn7z22nn3fk	Sarah	Davis	2224446666	\N	Philadelphia	THAR 3 DOOR	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-28 16:17:42.349	2026-01-31 15:06:59.594	\N	\N	\N
+cmky8b6ue000d9yn7580z8q7s	Michael	Wilson	1113335555	\N	San Antonio	THAR ROXX	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-28 16:17:45.83	2026-01-31 15:06:59.594	\N	\N	\N
+cmky8b8qj000f9yn7748afr4g	Emily	Martinez	9998887777	\N	San Diego	XUV 3XO	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-28 16:17:48.283	2026-01-31 15:06:59.594	\N	\N	\N
+cmky8bbi4000h9yn7ojku8azx	James	Anderson	8887776666	\N	Dallas	XUV 700	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-28 16:17:51.868	2026-01-31 15:06:59.594	\N	\N	\N
+cmky8bdze000j9yn73hk5oc3f	Lisa	Taylor	7776665555	\N	San Jose	BE6	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-28 16:17:55.083	2026-01-31 15:06:59.594	\N	\N	\N
+cmkzmxj1a00019y3py4q44u25	John	Doe	7735322819	\N	New York	BE6	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-29 15:54:48.862	2026-01-31 15:06:59.594	\N	\N	\N
+cmkzmxmdd00039y3p74izofoj	Jane	Smith	9876543210	\N	Los Angeles	XEV 9E	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-29 15:54:53.186	2026-01-31 15:06:59.594	\N	\N	\N
+cmkzmxol000059y3pmvgocqso	Robert	Johnson	5551234567	\N	Chicago	XEV 9S	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-29 15:54:56.053	2026-01-31 15:06:59.594	\N	\N	\N
+cmkzmxqzn00079y3p8mnrxsek	Mary	Williams	4449876543	\N	Houston	SCORPIO CLASSIC	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-29 15:54:59.172	2026-01-31 15:06:59.594	\N	\N	\N
+cmkzmxsxf00099y3pi1gr5vq5	David	Brown	3335557777	\N	Phoenix	SCORPIO-N	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-29 15:55:01.684	2026-01-31 15:06:59.594	\N	\N	\N
+cmkzmxuqu000b9y3ptzp1g6qb	Sarah	Davis	2224446666	\N	Philadelphia	THAR 3 DOOR	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-29 15:55:04.038	2026-01-31 15:06:59.594	\N	\N	\N
+cmkzmxwst000d9y3pva3qb0rz	Michael	Wilson	1113335555	\N	San Antonio	THAR ROXX	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-29 15:55:06.701	2026-01-31 15:06:59.594	\N	\N	\N
+cmkzmxyrv000f9y3pdyh25pxz	Emily	Martinez	9998887777	\N	San Diego	XUV 3XO	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-29 15:55:09.26	2026-01-31 15:06:59.594	\N	\N	\N
+cmkzmy0tu000h9y3pc1p6ik8i	James	Anderson	8887776666	\N	Dallas	XUV 700	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-29 15:55:11.923	2026-01-31 15:06:59.594	\N	\N	\N
+cmkzmy2nn000j9y3pn1melsfp	Lisa	Taylor	7776665555	\N	San Jose	BE6	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-29 15:55:14.292	2026-01-31 15:06:59.594	\N	\N	\N
+cml0i89nd004cpo0k79cmth82	John	Doe	7735322819	\N	New York	BE6	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-30 06:30:58.009	2026-01-31 15:06:59.594	\N	\N	\N
+cml0i8atm004epo0k8u5mocz0	Jane	Smith	9876543210	\N	Los Angeles	XEV 9E	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-30 06:30:59.531	2026-01-31 15:06:59.594	\N	\N	\N
+cml0i8bus004gpo0kxzjvugio	Robert	Johnson	5551234567	\N	Chicago	XEV 9S	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-30 06:31:00.868	2026-01-31 15:06:59.594	\N	\N	\N
+cml0i8d53004ipo0kbrte4di7	Mary	Williams	4449876543	\N	Houston	SCORPIO CLASSIC	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-30 06:31:02.535	2026-01-31 15:06:59.594	\N	\N	\N
+cml0i8dxp004kpo0kdowgx8ew	David	Brown	3335557777	\N	Phoenix	SCORPIO-N	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-30 06:31:03.565	2026-01-31 15:06:59.594	\N	\N	\N
+cml0i8et8004mpo0kqwmb0j3j	Sarah	Davis	2224446666	\N	Philadelphia	THAR 3 DOOR	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-30 06:31:04.7	2026-01-31 15:06:59.594	\N	\N	\N
+cml0i8frg004opo0k4bf0ia14	Michael	Wilson	1113335555	\N	San Antonio	THAR ROXX	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-30 06:31:05.932	2026-01-31 15:06:59.594	\N	\N	\N
+cml0i8i95004upo0kzqargtk2	Lisa	Taylor	7776665555	\N	San Jose	BE6	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-30 06:31:09.162	2026-01-31 15:06:59.594	\N	\N	\N
+cml1259xa00009yz8dxnceeqf	John	Doe	7735322819	\N	New York	BE6	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-30 15:48:30.718	2026-01-31 15:06:59.594	\N	\N	\N
+cml125ip400029yz8ofmdh6cs	Jane	Smith	9876543210	\N	Los Angeles	XEV 9E	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-30 15:48:42.089	2026-01-31 15:06:59.594	\N	\N	\N
+cml125lj700049yz8e3fs2e81	Robert	Johnson	5551234567	\N	Chicago	XEV 9S	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-30 15:48:45.763	2026-01-31 15:06:59.594	\N	\N	\N
+cml125o9f00069yz8e0lryoae	Mary	Williams	4449876543	\N	Houston	SCORPIO CLASSIC	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-30 15:48:49.299	2026-01-31 15:06:59.594	\N	\N	\N
+cml125ql900089yz8w25qvrr9	David	Brown	3335557777	\N	Phoenix	SCORPIO-N	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-30 15:48:52.318	2026-01-31 15:06:59.594	\N	\N	\N
+cml125tct000a9yz8dx5tvqsd	Sarah	Davis	2224446666	\N	Philadelphia	THAR 3 DOOR	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-30 15:48:55.902	2026-01-31 15:06:59.594	\N	\N	\N
+cml125wlj000c9yz80pa9v19j	Michael	Wilson	1113335555	\N	San Antonio	THAR ROXX	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-30 15:49:00.103	2026-01-31 15:06:59.594	\N	\N	\N
+cml125zfs000e9yz8pt1atwmp	Emily	Martinez	9998887777	\N	San Diego	XUV 3XO	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-30 15:49:03.785	2026-01-31 15:06:59.594	\N	\N	\N
+cml1262ms000g9yz8n2mi8kcz	James	Anderson	8887776666	\N	Dallas	XUV 700	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-30 15:49:07.924	2026-01-31 15:06:59.594	\N	\N	\N
+cml1264w2000i9yz8xoucq4y2	Lisa	Taylor	7776665555	\N	San Jose	BE6	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-30 15:49:10.851	2026-01-31 15:06:59.594	\N	\N	\N
+cml12z56s00019yfu48zs956w	John	Doe	7735322819	\N	New York	BE6	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-30 16:11:44.26	2026-01-31 15:06:59.594	\N	\N	\N
+cml12z8jd00039yfuy2q1sftf	Jane	Smith	9876543210	\N	Los Angeles	XEV 9E	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-30 16:11:48.601	2026-01-31 15:06:59.594	\N	\N	\N
+cml12zawm00059yfuamk7w8rf	Robert	Johnson	5551234567	\N	Chicago	XEV 9S	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-30 16:11:51.671	2026-01-31 15:06:59.594	\N	\N	\N
+cml12zdfb00079yfu6k6gz56i	Mary	Williams	4449876543	\N	Houston	SCORPIO CLASSIC	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-30 16:11:54.935	2026-01-31 15:06:59.594	\N	\N	\N
+cml12zfer00099yfuqmfai09i	David	Brown	3335557777	\N	Phoenix	SCORPIO-N	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-30 16:11:57.508	2026-01-31 15:06:59.594	\N	\N	\N
+cml12zh87000b9yfu4nltjlza	Sarah	Davis	2224446666	\N	Philadelphia	THAR 3 DOOR	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-30 16:11:59.863	2026-01-31 15:06:59.594	\N	\N	\N
+cml12zj1n000d9yfugxd7602o	Michael	Wilson	1113335555	\N	San Antonio	THAR ROXX	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-30 16:12:02.219	2026-01-31 15:06:59.594	\N	\N	\N
+cml12zl3j000f9yfu3vuhs1yu	Emily	Martinez	9998887777	\N	San Diego	XUV 3XO	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-30 16:12:04.88	2026-01-31 15:06:59.594	\N	\N	\N
+cml12znpe000h9yfuccxgy92p	James	Anderson	8887776666	\N	Dallas	XUV 700	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-30 16:12:08.259	2026-01-31 15:06:59.594	\N	\N	\N
+cml12zpoi000j9yfu7j0oili9	Lisa	Taylor	7776665555	\N	San Jose	BE6	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-30 16:12:10.819	2026-01-31 15:06:59.594	\N	\N	\N
+cml134c2p000l9yfuj4zjh2kd	Anup	Pradhan	7735322819	anuppradhan929@gmail.com	\N	hello	cold	\N	cmivgorqg00009y5iyf5y9s5b	cmjbcndys0001jo04cc0sxh44	cmiztrwb10009jo04qj930dx5	2026-01-30 16:15:46.465	2026-01-31 15:06:59.594	cmj1ijq7d00019yn04s3gnxbh	\N	\N
+cml13ax0b00019yx6mrtp53eo	John	Doe	7735322819	\N	New York	BE6	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-30 16:20:53.531	2026-01-31 15:06:59.594	\N	BE6	Instagram
+cml13b1sn00039yx6uvaged7l	Jane	Smith	9876543210	\N	Los Angeles	XEV 9E	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-30 16:20:59.736	2026-01-31 15:06:59.594	\N	XEV 9E	Facebook
+cml13b5cp00059yx6qtsj97ul	Robert	Johnson	5551234567	\N	Chicago	XEV 9S	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-30 16:21:04.345	2026-01-31 15:06:59.594	\N	XEV 9S	Website
+cml13b90u00079yx6p5hemxj8	Mary	Williams	4449876543	\N	Houston	SCORPIO CLASSIC	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-30 16:21:09.102	2026-01-31 15:06:59.594	\N	SCORPIO CLASSIC	Ads
+cml13bc0n00099yx6tzlj6ojs	David	Brown	3335557777	\N	Phoenix	SCORPIO-N	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-30 16:21:12.984	2026-01-31 15:06:59.594	\N	SCORPIO-N	Social Media
+cml13bg8200009yihrj4kp9s0	John	Doe	7735322819	\N	New York	BE6	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-30 16:21:18.435	2026-01-31 15:06:59.594	\N	BE6	Instagram
+cml13bk9u00029yihbfulyi9c	Jane	Smith	9876543210	\N	Los Angeles	XEV 9E	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-30 16:21:23.682	2026-01-31 15:06:59.594	\N	XEV 9E	Facebook
+cml13bmi700049yihhoiokbjh	Robert	Johnson	5551234567	\N	Chicago	XEV 9S	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-30 16:21:26.575	2026-01-31 15:06:59.594	\N	XEV 9S	Website
+cml13bpzt00069yiherocz9h2	Mary	Williams	4449876543	\N	Houston	SCORPIO CLASSIC	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-30 16:21:31.098	2026-01-31 15:06:59.594	\N	SCORPIO CLASSIC	Ads
+cml13bsla00089yihxw2m92s4	David	Brown	3335557777	\N	Phoenix	SCORPIO-N	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-30 16:21:34.463	2026-01-31 15:06:59.594	\N	SCORPIO-N	Social Media
+cml13busy000a9yihpxabmi29	Sarah	Davis	2224446666	\N	Philadelphia	THAR 3 DOOR	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-30 16:21:37.33	2026-01-31 15:06:59.594	\N	THAR 3 DOOR	Customer Word-of-Mouth
+cml13bxi1000c9yihgyv6srhs	Michael	Wilson	1113335555	\N	San Antonio	THAR ROXX	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-30 16:21:40.825	2026-01-31 15:06:59.594	\N	THAR ROXX	Instagram
+cml13bzjp000e9yih69pu4350	Emily	Martinez	9998887777	\N	San Diego	XUV 3XO	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-30 16:21:43.477	2026-01-31 15:06:59.594	\N	XUV 3XO	Website
+cml13c24g000g9yih1kvhy06z	James	Anderson	8887776666	\N	Dallas	XUV 700	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-30 16:21:46.816	2026-01-31 15:06:59.594	\N	XUV 700	Ads
+cml13c55s000i9yihul09swni	Lisa	Taylor	7776665555	\N	San Jose	BE6	WARM	\N	cmivgorqg00009y5iyf5y9s5b	\N	\N	2026-01-30 16:21:50.753	2026-01-31 15:06:59.594	\N	BE6	Facebook
 \.
 
 
@@ -1503,16 +1867,16 @@ COPY public."DigitalEnquirySession" (id, notes, status, "digitalEnquiryId", "cre
 --
 
 COPY public."FieldInquiry" (id, "firstName", "lastName", "whatsappNumber", email, address, reason, "leadScope", "whatsappContactId", "dealershipId", "leadSourceId", "interestedModelId", "interestedVariantId", "createdAt", "updatedAt") FROM stdin;
-cmkwqhpqs000l9yarqwfalcm6	John	Doe	7735322819	\N	New York	Inquiry from 1/15/2025	cold	\N	cmivgorqg00009y5iyf5y9s5b	cmj331qe500069ycfq0sg490q	cmiztrwb10009jo04qj930dx5	\N	2026-01-27 15:11:10.996	2026-01-27 15:11:10.996
-cmkwqhtpo000m9yardeee1gr2	Jane	Smith	9876543210	\N	Los Angeles	Inquiry from 1/16/2025	cold	\N	cmivgorqg00009y5iyf5y9s5b	cmj331qe500069ycfq0sg490q	cmiztrp3m0007jo04qq6wkfgl	\N	2026-01-27 15:11:16.14	2026-01-27 15:11:16.14
-cmkwqhvdg000n9yar7z9bwr0b	Robert	Johnson	5551234567	\N	Chicago	Inquiry from 1/17/2025	cold	\N	cmivgorqg00009y5iyf5y9s5b	cmj331qe500069ycfq0sg490q	cmiztscns000fl704c6yki0ju	\N	2026-01-27 15:11:18.292	2026-01-27 15:11:18.292
-cmkwqhwtz000o9yarc9v21afv	Mary	Williams	4449876543	\N	Houston	Inquiry from 1/18/2025	cold	\N	cmivgorqg00009y5iyf5y9s5b	cmj331qe500069ycfq0sg490q	cmiztq99k0003jo0426lvvjyd	\N	2026-01-27 15:11:20.183	2026-01-27 15:11:20.183
-cmkwqhyp1000p9yarfxed012i	David	Brown	3335557777	\N	Phoenix	Inquiry from 1/19/2025	cold	\N	cmivgorqg00009y5iyf5y9s5b	cmj331qe500069ycfq0sg490q	cmiztpjr70001jo044eu3c9m7	\N	2026-01-27 15:11:22.598	2026-01-27 15:11:22.598
-cmkwqi0dk000q9yarvi7jykwn	Sarah	Davis	2224446666	\N	Philadelphia	Inquiry from 1/20/2025	cold	\N	cmivgorqg00009y5iyf5y9s5b	cmj331qe500069ycfq0sg490q	cmiztquhb000bl7043xrbotf9	\N	2026-01-27 15:11:24.776	2026-01-27 15:11:24.776
-cmkwqi236000r9yarke1w8pp2	Michael	Wilson	1113335555	\N	San Antonio	Inquiry from 1/21/2025	cold	\N	cmivgorqg00009y5iyf5y9s5b	cmj331qe500069ycfq0sg490q	cmiztr3tx0005jo0448ptxxf2	\N	2026-01-27 15:11:26.994	2026-01-27 15:11:26.994
-cmkwqi3o9000s9yarho3i5jkz	Emily	Martinez	9998887777	\N	San Diego	Inquiry from 1/22/2025	cold	\N	cmivgorqg00009y5iyf5y9s5b	cmj331qe500069ycfq0sg490q	cmiztp1ll0009l704zwumbdwc	\N	2026-01-27 15:11:29.05	2026-01-27 15:11:29.05
-cmkwqi64e000t9yarn508urc4	James	Anderson	8887776666	\N	Dallas	Inquiry from 1/23/2025	cold	\N	cmivgorqg00009y5iyf5y9s5b	cmj331qe500069ycfq0sg490q	cmiztoo5h0007l704gbh0c0zn	\N	2026-01-27 15:11:32.223	2026-01-27 15:11:32.223
-cmkwqi86c000u9yar4qtxburn	Lisa	Taylor	7776665555	\N	San Jose	Inquiry from 1/24/2025	cold	\N	cmivgorqg00009y5iyf5y9s5b	cmj331qe500069ycfq0sg490q	cmiztrwb10009jo04qj930dx5	\N	2026-01-27 15:11:34.885	2026-01-27 15:11:34.885
+cmkwqhpqs000l9yarqwfalcm6	John	Doe	7735322819	\N	New York	Inquiry from 1/15/2025	cold	\N	cmivgorqg00009y5iyf5y9s5b	cmj331qe500069ycfq0sg490q	cmiztrwb10009jo04qj930dx5	\N	2026-01-27 15:11:10.996	2026-01-31 15:06:59.992
+cmkwqhtpo000m9yardeee1gr2	Jane	Smith	9876543210	\N	Los Angeles	Inquiry from 1/16/2025	cold	\N	cmivgorqg00009y5iyf5y9s5b	cmj331qe500069ycfq0sg490q	cmiztrp3m0007jo04qq6wkfgl	\N	2026-01-27 15:11:16.14	2026-01-31 15:06:59.992
+cmkwqhvdg000n9yar7z9bwr0b	Robert	Johnson	5551234567	\N	Chicago	Inquiry from 1/17/2025	cold	\N	cmivgorqg00009y5iyf5y9s5b	cmj331qe500069ycfq0sg490q	cmiztscns000fl704c6yki0ju	\N	2026-01-27 15:11:18.292	2026-01-31 15:06:59.992
+cmkwqhwtz000o9yarc9v21afv	Mary	Williams	4449876543	\N	Houston	Inquiry from 1/18/2025	cold	\N	cmivgorqg00009y5iyf5y9s5b	cmj331qe500069ycfq0sg490q	cmiztq99k0003jo0426lvvjyd	\N	2026-01-27 15:11:20.183	2026-01-31 15:06:59.992
+cmkwqhyp1000p9yarfxed012i	David	Brown	3335557777	\N	Phoenix	Inquiry from 1/19/2025	cold	\N	cmivgorqg00009y5iyf5y9s5b	cmj331qe500069ycfq0sg490q	cmiztpjr70001jo044eu3c9m7	\N	2026-01-27 15:11:22.598	2026-01-31 15:06:59.992
+cmkwqi0dk000q9yarvi7jykwn	Sarah	Davis	2224446666	\N	Philadelphia	Inquiry from 1/20/2025	cold	\N	cmivgorqg00009y5iyf5y9s5b	cmj331qe500069ycfq0sg490q	cmiztquhb000bl7043xrbotf9	\N	2026-01-27 15:11:24.776	2026-01-31 15:06:59.992
+cmkwqi236000r9yarke1w8pp2	Michael	Wilson	1113335555	\N	San Antonio	Inquiry from 1/21/2025	cold	\N	cmivgorqg00009y5iyf5y9s5b	cmj331qe500069ycfq0sg490q	cmiztr3tx0005jo0448ptxxf2	\N	2026-01-27 15:11:26.994	2026-01-31 15:06:59.992
+cmkwqi3o9000s9yarho3i5jkz	Emily	Martinez	9998887777	\N	San Diego	Inquiry from 1/22/2025	cold	\N	cmivgorqg00009y5iyf5y9s5b	cmj331qe500069ycfq0sg490q	cmiztp1ll0009l704zwumbdwc	\N	2026-01-27 15:11:29.05	2026-01-31 15:06:59.992
+cmkwqi64e000t9yarn508urc4	James	Anderson	8887776666	\N	Dallas	Inquiry from 1/23/2025	cold	\N	cmivgorqg00009y5iyf5y9s5b	cmj331qe500069ycfq0sg490q	cmiztoo5h0007l704gbh0c0zn	\N	2026-01-27 15:11:32.223	2026-01-31 15:06:59.992
+cmkwqi86c000u9yar4qtxburn	Lisa	Taylor	7776665555	\N	San Jose	Inquiry from 1/24/2025	cold	\N	cmivgorqg00009y5iyf5y9s5b	cmj331qe500069ycfq0sg490q	cmiztrwb10009jo04qj930dx5	\N	2026-01-27 15:11:34.885	2026-01-31 15:06:59.992
 \.
 
 
@@ -1529,10 +1893,6 @@ COPY public."FieldInquirySession" (id, notes, status, "fieldInquiryId", "created
 --
 
 COPY public."LeadSource" (id, name, "order", "isDefault", "dealershipId", "createdAt", "updatedAt") FROM stdin;
-cmj331qe500069ycfq0sg490q	Websites	3	t	cmivgorqg00009y5iyf5y9s5b	2025-12-12 16:29:50.081	2025-12-12 16:29:50.081
-cmjbcn50y0001l504f96hangz	Hyperlocal	6	f	cmivgorqg00009y5iyf5y9s5b	2025-12-18 11:20:37.426	2025-12-18 11:20:37.426
-cmjbcndys0001jo04cc0sxh44	MRC	7	f	cmivgorqg00009y5iyf5y9s5b	2025-12-18 11:20:49.012	2025-12-18 11:20:49.012
-cmjbcnvub0001l80486ufdvxg	Other Digital	8	f	cmivgorqg00009y5iyf5y9s5b	2025-12-18 11:21:12.18	2025-12-18 11:21:12.18
 cmk13jon50003js04007b2fcy	Ads	0	t	cmk130qz40000l704z6fc2alp	2026-01-05 11:48:00.258	2026-01-05 11:48:00.258
 cmk13jonn0005js04zrlxzgso	Websites	3	t	cmk130qz40000l704z6fc2alp	2026-01-05 11:48:00.259	2026-01-05 11:48:00.259
 cmk13joo00007js04cxk0xw1o	Instagram	1	t	cmk130qz40000l704z6fc2alp	2026-01-05 11:48:00.258	2026-01-05 11:48:00.258
@@ -1541,6 +1901,30 @@ cmk13joo7000bjs04nafhv6uq	Other	5	t	cmk130qz40000l704z6fc2alp	2026-01-05 11:48:0
 cmk13joo9000djs04ok9rhhn3	Social Media	2	t	cmk130qz40000l704z6fc2alp	2026-01-05 11:48:00.258	2026-01-05 11:48:00.258
 cmk14mkfi0001jr04geb9t804	FIELD	6	f	cmk130qz40000l704z6fc2alp	2026-01-05 12:18:14.382	2026-01-05 12:18:14.382
 cmk14njxu0001jv04dpvacj8o	TELEPHONE	7	f	cmk130qz40000l704z6fc2alp	2026-01-05 12:19:00.402	2026-01-05 12:19:00.402
+cmj331qe500069ycfq0sg490q	Websites	3	t	cmivgorqg00009y5iyf5y9s5b	2025-12-12 16:29:50.081	2026-01-31 15:07:01.339
+cmjbcn50y0001l504f96hangz	Hyperlocal	6	f	cmivgorqg00009y5iyf5y9s5b	2025-12-18 11:20:37.426	2026-01-31 15:07:01.339
+cmjbcndys0001jo04cc0sxh44	MRC	7	f	cmivgorqg00009y5iyf5y9s5b	2025-12-18 11:20:49.012	2026-01-31 15:07:01.339
+cmjbcnvub0001l80486ufdvxg	Other Digital	8	f	cmivgorqg00009y5iyf5y9s5b	2025-12-18 11:21:12.18	2026-01-31 15:07:01.339
+\.
+
+
+--
+-- Data for Name: OrgFeatureToggle; Type: TABLE DATA; Schema: public; Owner: utkalUser
+--
+
+COPY public."OrgFeatureToggle" (id, "organizationId", dashboard, "dailyWalkinsVisitors", "dailyWalkinsSessions", "digitalEnquiry", "fieldInquiry", "deliveryUpdate", "exportExcel", "settingsProfile", "settingsVehicleModels", "settingsLeadSources", "settingsWhatsApp", "createdAt", "updatedAt") FROM stdin;
+cml2g3p5l00029ymt61usdz20	cml2g3oru00009ymtudcd8add	t	t	t	t	t	t	t	t	t	t	t	2026-01-31 15:06:57.945	2026-01-31 15:06:57.945
+cml2h21vs00029y0tfnepe8ns	cml2h21jm00009y0tnq43jzk7	t	t	t	t	t	t	t	t	t	t	t	2026-01-31 15:33:40.744	2026-01-31 15:33:40.744
+\.
+
+
+--
+-- Data for Name: Organization; Type: TABLE DATA; Schema: public; Owner: utkalUser
+--
+
+COPY public."Organization" (id, name, slug, "isActive", "createdAt", "updatedAt") FROM stdin;
+cml2g3oru00009ymtudcd8add	Utkal Automobiles Pvt Ltd	utkal-automobiles	t	2026-01-31 15:06:57.451	2026-01-31 15:06:57.451
+cml2h21jm00009y0tnq43jzk7	Test Organization	test-organization	t	2026-01-31 15:33:40.307	2026-01-31 15:33:40.307
 \.
 
 
@@ -1563,6 +1947,15 @@ cml0if772004xpo0k2ds52pfk	cml0hvtk20008po0kbe4vwqmy	cmk13ovnl000djs047uy6wdf0	20
 cml0prsh1005ipo0kbwc6kiaq	cml0prkty005fpo0kdkiqmyf4	cmk13ovnl000djs047uy6wdf0	2026-01-30 10:02:06.181	2026-01-30 10:02:06.181	\N
 cml0rfkm10064po0kuvw0eysr	cml0rfe4m0061po0krmqloy66	cmk13o7wv000bjs04kr6sz4b0	2026-01-30 10:48:35.354	2026-01-30 10:48:35.354	\N
 cml1vmjlh0008qi0k3c6x0hup	cml1vlqmn0005qi0ktu5qa4oc	cmk13mis60007js04xgg2p6bl	2026-01-31 05:33:45.269	2026-01-31 05:33:45.269	\N
+cml53rzsd0011qn0k4gi7kv65	cml50up3u000qqn0ka73572e5	cmk5701ld0001l804ns4u58mz	2026-02-02 11:45:14.99	2026-02-02 11:45:14.99	\N
+cml68tvk4009eqn0kvxmcf9xh	cml68tis8009bqn0kebkmz876	cmk13mis60007js04xgg2p6bl	2026-02-03 06:54:27.076	2026-02-03 06:54:27.076	\N
+cml68ub6w009gqn0kfrhlz6sl	cml65cjvq0096qn0kpvar3723	cmk13o7wv000bjs04kr6sz4b0	2026-02-03 06:54:47.337	2026-02-03 06:54:47.337	\N
+cml697ijj009mqn0k8ygzg9i7	cml696hml009jqn0ka1h1wp1m	cmk13o7wv000bjs04kr6sz4b0	2026-02-03 07:05:03.391	2026-02-03 07:05:03.391	\N
+cml69e94u009vqn0kp2prxnou	cml69bcri009sqn0kzypmbzde	cmiztquhb000bl7043xrbotf9	2026-02-03 07:10:17.791	2026-02-03 07:10:17.791	\N
+cml6jbxgo00auqn0ktare1gta	cml6i9q2n00anqn0kw2gqrw0k	cmk13o7wv000bjs04kr6sz4b0	2026-02-03 11:48:25.513	2026-02-03 11:48:25.513	\N
+cml6qbhar00049ydp0mnk1fgv	cml6qakdz00019ydpjb63aeez	cmiztpjr70001jo044eu3c9m7	2026-02-03 15:04:01.876	2026-02-03 15:04:01.876	\N
+cml6qlf5d00099ydpnwcyhtw5	cml6qcaj200069ydp3yvgc8ch	cmiztpjr70001jo044eu3c9m7	2026-02-03 15:11:45.65	2026-02-03 15:11:45.65	\N
+cml6qm09l000b9ydpxhsh3bsu	cml6qcaj200069ydp3yvgc8ch	cmiztquhb000bl7043xrbotf9	2026-02-03 15:12:13.017	2026-02-03 15:12:13.017	\N
 \.
 
 
@@ -1570,9 +1963,11 @@ cml1vmjlh0008qi0k3c6x0hup	cml1vlqmn0005qi0ktu5qa4oc	cmk13mis60007js04xgg2p6bl	20
 -- Data for Name: User; Type: TABLE DATA; Schema: public; Owner: utkalUser
 --
 
-COPY public."User" (id, email, password, "createdAt", "updatedAt", "dealershipId", theme, "profilePicture", "isActive", role) FROM stdin;
-cmivgos9200029y5ih8trr8ri	test@google.com	$2b$10$J2srSW.o9DPQs1V8h8XYCeSIBNa1xO5rooX4qZQlEmKkFEHcQ89da	2025-12-07 08:29:33.83	2026-01-05 11:04:54.059	cmivgorqg00009y5iyf5y9s5b	custom	https://6bq7rhjji2yjom4g.public.blob.vercel-storage.com/profile-pictures/cmivgos9200029y5ih8trr8ri-1767611092722-kIQc1kwe6CExCSTCRjldrc5oWb092a.jpg	t	admin
-cmk130rve0002l704u1xindzz	cxhead@utkalautomobiles.com	$2b$10$HUs.0usDCUpH7f.fy3M/BOB3Tc.XptbH5N.SoKNjRJc2lioko7iG6	2026-01-05 11:33:17.978	2026-01-07 18:02:49.321	cmk130qz40000l704z6fc2alp	light	https://6bq7rhjji2yjom4g.public.blob.vercel-storage.com/profile-pictures/cmk130rve0002l704u1xindzz-1767612798008-pVUWOiwH7IndaAnsftXWaKwGRS1Ya1.jpg	t	admin
+COPY public."User" (id, email, password, "createdAt", "updatedAt", "dealershipId", theme, "profilePicture", "isActive", role, "organizationId") FROM stdin;
+cmk130rve0002l704u1xindzz	cxhead@utkalautomobiles.com	$2b$10$HUs.0usDCUpH7f.fy3M/BOB3Tc.XptbH5N.SoKNjRJc2lioko7iG6	2026-01-05 11:33:17.978	2026-01-31 15:33:39.808	cmk130qz40000l704z6fc2alp	light	https://6bq7rhjji2yjom4g.public.blob.vercel-storage.com/profile-pictures/cmk130rve0002l704u1xindzz-1767612798008-pVUWOiwH7IndaAnsftXWaKwGRS1Ya1.jpg	t	super_admin	cml2g3oru00009ymtudcd8add
+cmivgos9200029y5ih8trr8ri	test@google.com	$2b$10$J2srSW.o9DPQs1V8h8XYCeSIBNa1xO5rooX4qZQlEmKkFEHcQ89da	2025-12-07 08:29:33.83	2026-01-31 15:33:41.775	cmivgorqg00009y5iyf5y9s5b	custom	https://6bq7rhjji2yjom4g.public.blob.vercel-storage.com/profile-pictures/cmivgos9200029y5ih8trr8ri-1767611092722-kIQc1kwe6CExCSTCRjldrc5oWb092a.jpg	t	super_admin	cml2h21jm00009y0tnq43jzk7
+cml6abef600a4qn0kaaxb9ey9	dem@utkalautomobiles.com	$2b$10$H7szZxgDWGrRDbdpE.nq/uM.Uy76WXQe7BOdpsTtoaiBi9q0jdgCu	2026-02-03 07:36:04.29	2026-02-03 07:36:04.29	cmk130qz40000l704z6fc2alp	light	\N	t	admin	\N
+cml6bov3q00a8qn0kjonsnax5	monalisapradhan7439@gmail.com	$2b$10$qzvVw6.15PElW87Hhiy9PeMALcTB4MssMduGBnELwaaVRw4f48RZK	2026-02-03 08:14:32.054	2026-02-03 08:14:32.054	cmk130qz40000l704z6fc2alp	light	\N	t	user	\N
 \.
 
 
@@ -1583,6 +1978,8 @@ cmk130rve0002l704u1xindzz	cxhead@utkalautomobiles.com	$2b$10$HUs.0usDCUpH7f.fy3M
 COPY public."UserPermission" (id, "userId", dashboard, "dailyWalkinsVisitors", "dailyWalkinsSessions", "digitalEnquiry", "fieldInquiry", "deliveryUpdate", "settingsProfile", "settingsVehicleModels", "settingsLeadSources", "settingsWhatsApp", "createdAt", "updatedAt", "exportExcel") FROM stdin;
 cmkr0y77000019ymthhqb3ctz	cmivgos9200029y5ih8trr8ri	f	f	f	f	f	f	f	f	f	f	2026-01-23 15:17:19.212	2026-01-23 15:17:19.212	f
 cmkr1bkwh0025ns0klx1ucdoz	cmk130rve0002l704u1xindzz	t	t	t	t	t	t	t	t	t	t	2026-01-23 15:27:43.504	2026-01-23 15:27:43.504	f
+cml6abefb00a6qn0kogp5me29	cml6abef600a4qn0kaaxb9ey9	t	t	t	t	t	t	t	t	t	f	2026-02-03 07:36:04.295	2026-02-03 07:36:04.295	t
+cml6bov4500aaqn0k7oekd33j	cml6bov3q00a8qn0kjonsnax5	t	t	t	f	f	t	f	f	f	f	2026-02-03 08:14:32.058	2026-02-03 08:14:32.058	f
 \.
 
 
@@ -1591,10 +1988,10 @@ cmkr1bkwh0025ns0klx1ucdoz	cmk130rve0002l704u1xindzz	t	t	t	t	t	t	t	t	t	t	2026-01-
 --
 
 COPY public."VehicleCategory" (id, name, "dealershipId", "createdAt", "updatedAt") FROM stdin;
-cmivgs0z600079y5i3c2b21ci	SUV	cmivgorqg00009y5iyf5y9s5b	2025-12-07 08:32:04.739	2025-12-07 08:32:04.739
-cmiztrdig000dl704zboi5qen	BEV	cmivgorqg00009y5iyf5y9s5b	2025-12-10 09:46:34.408	2025-12-10 09:46:34.408
 cmk13jvej0001js042x7jmw4l	SUV	cmk130qz40000l704z6fc2alp	2026-01-05 11:48:09.02	2026-01-05 11:48:09.02
 cmk13jzei0001jr04tanpwnsz	EV	cmk130qz40000l704z6fc2alp	2026-01-05 11:48:14.202	2026-01-05 11:48:14.202
+cmivgs0z600079y5i3c2b21ci	SUV	cmivgorqg00009y5iyf5y9s5b	2025-12-07 08:32:04.739	2026-01-31 15:07:00.938
+cmiztrdig000dl704zboi5qen	BEV	cmivgorqg00009y5iyf5y9s5b	2025-12-10 09:46:34.408	2026-01-31 15:07:00.938
 \.
 
 
@@ -1623,6 +2020,7 @@ cmk13ovnl000djs047uy6wdf0	THAR ROXX	\N	cmk13jvej0001js042x7jmw4l	2026-01-05 11:5
 cmk56v3sb0001jp04h73ijrbf	BE 6	\N	cmk13jzei0001jr04tanpwnsz	2026-01-08 08:31:56.651	2026-01-08 08:31:56.651
 cmk56zmu30001jy04rtisk47w	XEV 9E	\N	cmk13jzei0001jr04tanpwnsz	2026-01-08 08:35:27.963	2026-01-08 08:35:27.963
 cmk5701ld0001l804ns4u58mz	XEV 9S	\N	cmk13jzei0001jr04tanpwnsz	2026-01-08 08:35:47.089	2026-01-08 08:35:47.089
+cml6bw1k000agqn0kjkvc2314	XUV 7OO	\N	cmk13jvej0001js042x7jmw4l	2026-02-03 08:20:07.008	2026-02-03 08:20:07.008
 \.
 
 
@@ -1646,7 +2044,6 @@ cmk5f63mk0001ib0474a9l034	HARIHAR	MAHAPATRA	9337521170	harihar@gmail.com	PURI 	6
 cmk5fjllt0001kw04iape5ier	AKASH KUMAR 	MALLICK 	8917375417	akashkumar@gmail.com	KHORDHA 	695fa47094dcfd88151f3147	cmk130qz40000l704z6fc2alp	2026-01-08 12:34:56.418	2026-01-08 12:34:56.418
 cmk5fxnvy0006l204w9hnce48	VINEET	KUTHAL	9437002011	vineetkuthal@gmail.com	BOMIKHAL 	695fa70094dcfd88151f50e4	cmk130qz40000l704z6fc2alp	2026-01-08 12:45:52.558	2026-01-08 12:45:52.558
 cmk5fzg84000bl204zz9zjh2g	SK	MOHANTY 	7978309195	skmohanty@gmail.com	POKHARIPUT 	695fa75394dcfd88151f55a4	cmk130qz40000l704z6fc2alp	2026-01-08 12:47:15.94	2026-01-08 12:47:15.94
-cmk5qz9so0001jo045y949ym8	Avtar	Panda	966870761	abhilash.panda8654@gmail.com	bhubaneswae		cmivgorqg00009y5iyf5y9s5b	2026-01-08 17:55:03.384	2026-01-08 17:55:03.384
 cmk6ft8ls0001l40499qxxrio	ASHUTOSH 	PRADHAN 	8328869198	ashutosh@gmail.com	PAREDEEP	696092646291ef8bcee57fb4	cmk130qz40000l704z6fc2alp	2026-01-09 05:30:12.304	2026-01-09 05:30:12.304
 cmk6ibvd30001l4041wcedeh0	SANJIB	MOHANTY 	8895180338	sanjib@gmail.com	POKHARIPUT	6960a2e8489bd08ae6299014	cmk130qz40000l704z6fc2alp	2026-01-09 06:40:40.839	2026-01-09 06:40:40.839
 cmk7tyv3r0001l204367gk6sm	Biswa	Test	8658094734	biswatest@gmail.com	Bbsr	6961db77f5d2f8f3c8687e88	cmk130qz40000l704z6fc2alp	2026-01-10 04:54:15.543	2026-01-10 04:54:15.543
@@ -1656,8 +2053,6 @@ cmk7yziaf0001jp04f4dxm976	MR	BHASKAR	7894454048	bhaskar@gmail.com	KALINGA VIHAR	
 cmk5eenwc0001jy04trhfxtdc	DEBASISH 	MISHRA	7008296300	debasiss@gmail.com	RASULGARH	695f9cfa8ba75797369a3014	cmk130qz40000l704z6fc2alp	2026-01-08 12:03:06.492	2026-01-08 12:03:06.492
 cmk805unr0001ju04rqctzb1r	ARDHENDU SEKHAR	MANSINGH	7855817098	ardhendu@gmail.com	SUBHAGYANAGAR 	6962041bf5d2f8f3c8698f84	cmk130qz40000l704z6fc2alp	2026-01-10 07:47:39.256	2026-01-10 07:47:39.256
 cmk868dju0001lb04l81mgxe5	S	RAYSINGH	9776777984	sransingh@gmail.com	KHORDHA 	69622beef5d2f8f3c86a88e8	cmk130qz40000l704z6fc2alp	2026-01-10 10:37:34.746	2026-01-10 10:37:34.746
-cmk869o2r0001ld04qfh0bzww	Ajit	Bhai	8981446268	abhilash.panda8654@gmail.com	bhubaneswar	69622c2af5d2f8f3c86a8b21	cmivgorqg00009y5iyf5y9s5b	2026-01-10 10:38:35.043	2026-01-10 10:38:35.043
-cmk86kfjn000ald04u0s9budk	Madhusmita	Parida	9337938937	abhilash.panda8654@gmail.com	Bomikhal	69622e21f5d2f8f3c86a93d0	cmivgorqg00009y5iyf5y9s5b	2026-01-10 10:46:57.204	2026-01-10 10:46:57.204
 cmk87y2fx0006jx04gf41lhit	SEEMA	KUMARI	9599228681	seemakumari@gmail.com	RAGHUNATHPUR	6962372cf5d2f8f3c86abb17	cmk130qz40000l704z6fc2alp	2026-01-10 11:25:33.021	2026-01-10 11:25:33.021
 cmk88272o000bjx04t671mh6s	SMRUTI RANJAN 	SAHOO	9861960070	smrutiranjan@gmail.com	BALIANTA	696237edf5d2f8f3c86abd58	cmk130qz40000l704z6fc2alp	2026-01-10 11:28:45.648	2026-01-10 11:28:45.648
 cmk88dmkl0001ky04npquuo37	Sthita pragnya	Tripathy 	9337532053	sthita9090@gmail.com	Patia 	69623a02f5d2f8f3c86acf82	cmk130qz40000l704z6fc2alp	2026-01-10 11:37:38.95	2026-01-10 11:37:38.95
@@ -1684,6 +2079,7 @@ cmkcbw7p20001l6049d774t20	RAJENDRA 	NAYAK 	7008270108	Rajendra@gmail.com	NAYAPAL
 cmkcfe9wn0001js04aqu5cczt	BIKASH CHANDRA 	BHOLA	7008844062	bikashchandra@gmail.com	KHORDHA 	696618d7759d487731e6f23e	cmk130qz40000l704z6fc2alp	2026-01-13 10:05:11.207	2026-01-13 10:05:11.207
 cmkch1ekz0001l204j3qxsa48	GIRIJA	BISWAL	9132281852	girija@gmail.com	JAJPUR	6966239d759d487731e73cc5	cmk130qz40000l704z6fc2alp	2026-01-13 10:51:09.971	2026-01-13 10:51:09.971
 cmkcj69y00001k304bx4b16lq	Sujit	Nayak 	7008484710	sujit@gmail.com	Patia	696631a00700740b6823bfab	cmk130qz40000l704z6fc2alp	2026-01-13 11:50:56.472	2026-01-13 11:50:56.472
+cmk5qz9so0001jo045y949ym8	Avtar	Panda	966870761	abhilash.panda8654@gmail.com	bhubaneswae		cmivgorqg00009y5iyf5y9s5b	2026-01-08 17:55:03.384	2026-01-31 15:06:59.121
 cmkck3yf70001jr04g2hfhlyy	BARAH	SAMAL	8249878287	barahsamal@gmail.com	KENDRAPARA 	696637c34920b28544b383b0	cmk130qz40000l704z6fc2alp	2026-01-13 12:17:07.844	2026-01-13 12:17:07.844
 cmkcmeg8s0001l5042f9mhyb4	YASOBANTA	OJHA TESTING	9437600067	YNN@gmail.com	bhubaneswar	696646cc4920b28544b3eea6	cmk130qz40000l704z6fc2alp	2026-01-13 13:21:16.732	2026-01-13 13:21:16.732
 cmkcml18h0003jl04r9qrr8c5	yaso	ojha testing	8260846006	ojha@gmail.com	BBSR	696647ff4920b28544b3fe63	cmk130qz40000l704z6fc2alp	2026-01-13 13:26:23.874	2026-01-13 13:26:23.874
@@ -1702,7 +2098,6 @@ cmkdvxwpg0001kz04dmkkuvm2	GHANASHYAM	SAHOO 	8328950005	ghanashyam@gmail.com	BALA
 cmkdy11km0001l204nvev1st9	DIBYA RANJAN 	MOHANTY 	7749860230	dibyaranjan@gmail.com	RAGHUNATHPUR 	69677f486cbf493b984233e1	cmk130qz40000l704z6fc2alp	2026-01-14 11:34:32.758	2026-01-14 11:34:32.758
 cmkdye1o70001kv04lvrx5wtl	RK	DAS	8280672308	rkdas@gmail.com	RASULGARH 	696781a76cbf493b98424a78	cmk130qz40000l704z6fc2alp	2026-01-14 11:44:39.415	2026-01-14 11:44:39.415
 cmkdyv9110001l104wx4x859g	KIRTI 	KUMAR 	7004192891	kritikumar@gmail.com	SAILASHREE BIHAR 	696784ca6cbf493b98426805	cmk130qz40000l704z6fc2alp	2026-01-14 11:58:02.101	2026-01-14 11:58:02.101
-cmk5r33be0001kz04kc6yhdt8	Avtar	Panda	9668750761	xyz@utkalauto.com	Bhubaneswar		cmivgorqg00009y5iyf5y9s5b	2026-01-08 17:58:01.611	2026-01-14 12:58:28.067
 cmke11zii0001l704xebaz5rs	Prasant	Sahu	9776348096	prasantsahu20@gmail.com	CDA Sec 9	696793236cbf493b9842dd6b	cmk130qz40000l704z6fc2alp	2026-01-14 12:59:15.594	2026-01-14 12:59:15.594
 cmkf33s190001jm04fzfoxjty	AMARJEET 	NAYAK	7504571031	amarjeet@gmail.com	BARMUNDA	69688cc8a0872a13faaaef7d	cmk130qz40000l704z6fc2alp	2026-01-15 06:44:24.621	2026-01-15 06:44:24.621
 cmkf5hxl80001lb04zfw7iamj	SOUMYARANJAN 	GURU	9658711248	soumyaranjan@gmail.com	RAHAMA	69689c7c6cf7329488f4d3ac	cmk130qz40000l704z6fc2alp	2026-01-15 07:51:24.236	2026-01-15 07:51:24.236
@@ -1729,6 +2124,7 @@ cmkgs1bzx0001ju047nddfdrx	Gurdit	Dang	9437489710	\N	\N	696a1c8f3788bb33d29162ba	
 cmkgs32x00001lb04ndsm1x8f	Sk	Tripathy	8249155481	\N	\N	696a1ce03788bb33d29165d3	cmk130qz40000l704z6fc2alp	2026-01-16 11:11:28.644	2026-01-16 11:11:28.644
 cmkgs6fpd0001jx04mcczg8v6	Trilochan 	Dash	9438108777	\N	\N	696a1d7d3788bb33d2916789	cmk130qz40000l704z6fc2alp	2026-01-16 11:14:05.186	2026-01-16 11:14:05.186
 cmkgshpki0006jx04cln9t9if	Deepak 	Dash	977760601	deepak@gmail.com	Kalarahanga		cmk130qz40000l704z6fc2alp	2026-01-16 11:22:51.187	2026-01-16 11:22:51.187
+cmk5r33be0001kz04kc6yhdt8	Avtar	Panda	9668750761	xyz@utkalauto.com	Bhubaneswar		cmivgorqg00009y5iyf5y9s5b	2026-01-08 17:58:01.611	2026-01-31 15:06:59.121
 cmkgst0qw0001ju04ljlver0q	Litu	Tudu	7077412342	\N	\N	696a219a3788bb33d291a212	cmk130qz40000l704z6fc2alp	2026-01-16 11:31:38.888	2026-01-16 11:31:38.888
 cmkgsu8wx000bjx04uelm9nmk	SR	Jena	9438682403	\N	\N	696a21d43788bb33d291a391	cmk130qz40000l704z6fc2alp	2026-01-16 11:32:36.13	2026-01-16 11:32:36.13
 cmkgsvmk60006ju04f93znxkb	Ramakanta	Sethi	9937327704	\N	\N	696a22143788bb33d291a463	cmk130qz40000l704z6fc2alp	2026-01-16 11:33:40.47	2026-01-16 11:33:40.47
@@ -1822,7 +2218,6 @@ cmkzc02lg000kme0kmu0tnkmj	SOUMYARANJAN 	MAHAPATRA 	7978811386	soumyaranjan@gmail
 cmkzc1808000ome0k4etvn3c2	AMIT KUMAR 	BEHERA 	8018915060	amitkumar@gmail.com	BALIANTA	\N	cmk130qz40000l704z6fc2alp	2026-01-29 10:49:45.416	2026-01-29 10:49:45.416
 cmkzd99pq000sme0ksiymgd4p	SHIVAM	JAISWAL 	7205371758	shivam@gmail.com	BHUBANESWAR 	\N	cmk130qz40000l704z6fc2alp	2026-01-29 11:24:00.494	2026-01-29 11:24:00.494
 cmkze9mtc000wme0ki4xbnz1q	SWAYAM	SAHOO	9078187393	swayam@gmail.com	RASULGARH 	\N	cmk130qz40000l704z6fc2alp	2026-01-29 11:52:17.088	2026-01-29 11:52:17.088
-cmkzge5qv0010me0ku74ykiz3	Abhilash	Panda	9090090150	abhilash.panda8383@gmail.com	Bhubaneswar	\N	cmivgorqg00009y5iyf5y9s5b	2026-01-29 12:51:47.48	2026-01-29 12:51:47.48
 cml0fm1ft0000po0kyzvwnqp4	SUBASH CHANDRA 	MISHRA 	9439140270	subashchandra@gmail.com	JAJPUR 	\N	cmk130qz40000l704z6fc2alp	2026-01-30 05:17:41.705	2026-01-30 05:17:41.705
 cml0hvtjz0006po0kdn64gdax	SUBHAM	KUNDU	7978523283	subham@gmail.com	NUAPATNA	\N	cmk130qz40000l704z6fc2alp	2026-01-30 06:21:17.279	2026-01-30 06:21:17.279
 cml0kdmv5004ypo0k6lpsjfce	R	MAHAPATRA 	9437371077	rmahapatra@gmail.com	BOMIKHAL 	\N	cmk130qz40000l704z6fc2alp	2026-01-30 07:31:07.649	2026-01-30 07:31:07.649
@@ -1833,7 +2228,7 @@ cml0prktt005dpo0kvuge4xoc	LOKANATH	SAHOO	8763935805	lokanath@gmail.com	BHUBANESW
 cml0q4otg005rpo0kirt6xc6x	MANOJ	PRADHAN	7978446618	manojpradhan9994@gmail.com	JAYDEVBIHAR	\N	cmk130qz40000l704z6fc2alp	2026-01-30 10:12:07.973	2026-01-30 10:12:07.973
 cml0q9e7i005vpo0kbzrr7got	PRABOD 	MOHANTY 	9348526528	prabod@gmail.com	BBSR	\N	cmk130qz40000l704z6fc2alp	2026-01-30 10:15:47.502	2026-01-30 10:15:47.502
 cml0rfe4g005zpo0k98ndy959	SATYA	BRATA	7751982493	satyabrata@gmail.com	BHUBANESWAR 	\N	cmk130qz40000l704z6fc2alp	2026-01-30 10:48:26.944	2026-01-30 10:48:26.944
-cmkzjt7nf00009y6syqpe044a	Anup	Pradhan	7735322819	anuppradhan929@gmail.com	bbsr	\N	cmivgorqg00009y5iyf5y9s5b	2026-01-29 14:27:28.635	2026-01-30 17:16:53.948
+cmkzge5qv0010me0ku74ykiz3	Abhilash	Panda	9090090150	abhilash.panda8383@gmail.com	Bhubaneswar	\N	cmivgorqg00009y5iyf5y9s5b	2026-01-29 12:51:47.48	2026-01-31 15:06:59.121
 cml1vlqmb0003qi0kef5m6see	SR	BISWAL	9776361774	srbiswal@gmail.com	CUTTACK 	\N	cmk130qz40000l704z6fc2alp	2026-01-31 05:33:07.714	2026-01-31 05:33:07.714
 cml1wuvqj0009qi0k4l8w75cd	ANIL KUMAR 	SAHOO 	7064080455	anilkumar@gmail.com	PATIA	\N	cmk130qz40000l704z6fc2alp	2026-01-31 06:08:13.867	2026-01-31 06:08:13.867
 cml1zwzu4000hqi0kyztfk397	KISHORE GOPAL	PRUSTY 	8249781106	Kishore@gmail.com	PURI	\N	cmk130qz40000l704z6fc2alp	2026-01-31 07:33:51.34	2026-01-31 07:33:51.34
@@ -1844,6 +2239,28 @@ cml26ix2l000xqi0k7lgnbl9j	ASWINI KUMAR 	BEHERA 	9916487352	aswini@gmail.com	NAYA
 cml26k7dn0011qi0kpa8x89tj	RK	PATTANAIK 	9437352693	rkpattnaik@gmail.com	BHANJANAGAR	\N	cmk130qz40000l704z6fc2alp	2026-01-31 10:39:51.899	2026-01-31 10:39:51.899
 cmks40pi3002ins0klghr7e6i	BIJAY	KUMAR	7572041364	bijaykumar@gmail.com	CHANDRASEKHARPUR 	\N	cmk130qz40000l704z6fc2alp	2026-01-24 09:31:01.275	2026-01-31 10:44:37.325
 cml28kbyj0018qi0k5vt1l1hr	DURGA PRASAD 	MAHAPATRA	9840295664	durgaprasad@gmail.com	KALINGA VIHAR 	\N	cmk130qz40000l704z6fc2alp	2026-01-31 11:35:57.067	2026-01-31 11:35:57.067
+cmk869o2r0001ld04qfh0bzww	Ajit	Bhai	8981446268	abhilash.panda8654@gmail.com	bhubaneswar	69622c2af5d2f8f3c86a8b21	cmivgorqg00009y5iyf5y9s5b	2026-01-10 10:38:35.043	2026-01-31 15:06:59.121
+cmk86kfjn000ald04u0s9budk	Madhusmita	Parida	9337938937	abhilash.panda8654@gmail.com	Bomikhal	69622e21f5d2f8f3c86a93d0	cmivgorqg00009y5iyf5y9s5b	2026-01-10 10:46:57.204	2026-01-31 15:06:59.121
+cml4sfou60000qn0ket396i0e	SANDEEP KUMAR 	JENA	7978412955	sandeep@gmail.com	JAJPUR 	\N	cmk130qz40000l704z6fc2alp	2026-02-02 06:27:45.15	2026-02-02 06:27:45.15
+cml4sqe4k0004qn0kzolrnzai	RASHMIRANJAN 	MAHAPATRA	9937755166	rashmiranjan@gmail.com	HANSPAL 	\N	cmk130qz40000l704z6fc2alp	2026-02-02 06:36:04.484	2026-02-02 06:36:04.484
+cml4vlm4i0008qn0kuejqwxfo	SATISH	TRIPATHY 	8984445045	satish@gmail.com	DHAULI	\N	cmk130qz40000l704z6fc2alp	2026-02-02 07:56:20.418	2026-02-02 07:56:20.418
+cml4xhbaj000cqn0kl4vn2f1g	Asit	PATTANAIK	7873166517	asit317@gmail.com	Athagarh 	\N	cmk130qz40000l704z6fc2alp	2026-02-02 08:48:58.987	2026-02-02 08:48:58.987
+cml4y7jyc000gqn0kw72wps5t	G	SAHOO 	9937079880	gsahoo@gmail.com	BHUBANESWAR 	\N	cmk130qz40000l704z6fc2alp	2026-02-02 09:09:23.268	2026-02-02 09:09:23.268
+cml50dw96000kqn0kebkgrfev	BEHERA 	TRAVELS	8249415101	beheratravels@gmail.com	ANUGUL 	\N	cmk130qz40000l704z6fc2alp	2026-02-02 10:10:18.377	2026-02-02 10:10:18.377
+cml50up3p000oqn0kf6h9n08m	SISIRA	PANDA 	9903974747	sisira@gmail.com	Luis Road	\N	cmk130qz40000l704z6fc2alp	2026-02-02 10:23:22.262	2026-02-02 10:23:22.262
+cml51im0b000sqn0kz9v38jlw	HITESH KUMAR	ONDHIA	9937025851	hiteshkumar@gmail.com	PATIA	\N	cmk130qz40000l704z6fc2alp	2026-02-02 10:41:57.996	2026-02-02 10:41:57.996
+cml51k3mp000wqn0kehga9zfw	N C	BEHERA	8456827889	ncbehera@gmail.com	PATIA	\N	cmk130qz40000l704z6fc2alp	2026-02-02 10:43:07.489	2026-02-02 10:43:07.489
+cml53ua5f0012qn0kp0zka8wj	DEBASMITA 	SAHOO	9668847013	debasmita@gmail.com	GHATIKIA	\N	cmk130qz40000l704z6fc2alp	2026-02-02 11:47:01.731	2026-02-02 11:47:01.731
+cml65cjvc0094qn0kysfcjc54	SUJIT	PARIJA	7008000034	sujit@gmail.com	PURI 	\N	cmk130qz40000l704z6fc2alp	2026-02-03 05:16:59.928	2026-02-03 05:16:59.928
+cml68tirs0099qn0kodlss6bo	RK	MISHRA 	9449022720	rkmishra@gmail.com	BHUBANESWAR 	\N	cmk130qz40000l704z6fc2alp	2026-02-03 06:54:10.503	2026-02-03 06:54:10.503
+cml696hmg009hqn0kc361cyyh	jyotiprakash	swain	9040099131	ijpswain@gmail.com	BBSR	\N	cmk130qz40000l704z6fc2alp	2026-02-03 07:04:15.545	2026-02-03 07:04:15.545
+cml69bcrg009qqn0kqckbqed7	ss	jj	8327793515	\N	\N	\N	cmivgorqg00009y5iyf5y9s5b	2026-02-03 07:08:02.525	2026-02-03 07:08:02.525
+cml6i9q2g00alqn0k26sqgcxn	RAHUL 	AGARWAL 	9778924765	\N	\N	\N	cmk130qz40000l704z6fc2alp	2026-02-03 11:18:43	2026-02-03 11:18:43
+cml6il2l800apqn0kdgwqmb8w	PRAKASH RANJAN 	ACHARYA 	8917371255	\N	BHARATPUR 	\N	cmk130qz40000l704z6fc2alp	2026-02-03 11:27:32.444	2026-02-03 11:27:32.444
+cml6l07yi00avqn0khbas2mlp	DR SUNIL 	MAHAPATRA	9437460806	\N	BARMUNDA	\N	cmk130qz40000l704z6fc2alp	2026-02-03 12:35:18.474	2026-02-03 12:35:18.474
+cml6l9q5i00azqn0k3fsh2139	AYUSHMAN 	SAHOO	6370787400	\N	HANSPAL 	\N	cmk130qz40000l704z6fc2alp	2026-02-03 12:42:41.958	2026-02-03 12:42:41.958
+cml6lc9hf00b3qn0k58xsu1yz	LALIT MOHAN 	PRADHAN 	8249616433	\N	BHUBANESWAR 	\N	cmk130qz40000l704z6fc2alp	2026-02-03 12:44:40.323	2026-02-03 12:44:40.323
+cmkzjt7nf00009y6syqpe044a	Anup	Pradhan	7735322819	anuppradhan929@gmail.com	bbsr	\N	cmivgorqg00009y5iyf5y9s5b	2026-01-29 14:27:28.635	2026-02-03 15:04:38.656
 \.
 
 
@@ -1944,6 +2361,30 @@ cml26ix2u0010qi0kr9jd65as	cml26ix2l000xqi0k7lgnbl9j	cmk13o7wv000bjs04kr6sz4b0	20
 cml26k7dr0014qi0kdixl2iwr	cml26k7dn0011qi0kpa8x89tj	cmk13o7wv000bjs04kr6sz4b0	2026-01-31 10:39:51.904	cml26k7dq0013qi0k6wa8rhey	\N
 cml26qbmc0017qi0k3rlz13wy	cmks40pi3002ins0klghr7e6i	cmk13o7wv000bjs04kr6sz4b0	2026-01-31 10:44:37.332	cml26qbma0016qi0knvmnf4je	\N
 cml28kbyp001bqi0kvwheq2ka	cml28kbyj0018qi0k5vt1l1hr	cmk13nkwk0001js04czooodij	2026-01-31 11:35:57.073	cml28kbyn001aqi0ki03i44m7	\N
+cml4sfouk0003qn0k9piqgv8l	cml4sfou60000qn0ket396i0e	cmk13o7wv000bjs04kr6sz4b0	2026-02-02 06:27:45.165	cml4sfouh0002qn0k3286ju1x	\N
+cml4sqe4q0007qn0k5jrr6avj	cml4sqe4k0004qn0kzolrnzai	cmk13nkwk0001js04czooodij	2026-02-02 06:36:04.491	cml4sqe4o0006qn0kwyjpxhsc	\N
+cml4vlm4s000bqn0kpxpvuwkm	cml4vlm4i0008qn0kuejqwxfo	cmk13ovnl000djs047uy6wdf0	2026-02-02 07:56:20.428	cml4vlm4p000aqn0ke687l4p7	\N
+cml4xhbb9000fqn0k695u6e58	cml4xhbaj000cqn0kl4vn2f1g	cmk13mis60007js04xgg2p6bl	2026-02-02 08:48:59.013	cml4xhbb4000eqn0kerftdrim	\N
+cml4y7jyp000jqn0ks376rsmx	cml4y7jyc000gqn0kw72wps5t	cmk5701ld0001l804ns4u58mz	2026-02-02 09:09:23.281	cml4y7jyj000iqn0kh0q2u2n2	\N
+cml50dw9l000nqn0kefgl2sbb	cml50dw96000kqn0kebkgrfev	cmk13nsjz0009js04ckim7hte	2026-02-02 10:10:18.393	cml50dw9i000mqn0kyl29noa2	\N
+cml50up3w000rqn0kohwnhnod	cml50up3p000oqn0kf6h9n08m	cmk5701ld0001l804ns4u58mz	2026-02-02 10:23:22.268	cml50up3u000qqn0ka73572e5	\N
+cml51im0i000vqn0k5ttkqh4g	cml51im0b000sqn0kz9v38jlw	cmk13o7wv000bjs04kr6sz4b0	2026-02-02 10:41:58.002	cml51im0f000uqn0koeviy5d3	\N
+cml51k3mt000zqn0k1fz81iph	cml51k3mp000wqn0kehga9zfw	cmk13o7wv000bjs04kr6sz4b0	2026-02-02 10:43:07.493	cml51k3ms000yqn0kqj8oklij	\N
+cml53ua5k0015qn0ko26qoq8j	cml53ua5f0012qn0kp0zka8wj	cmk13ovnl000djs047uy6wdf0	2026-02-02 11:47:01.736	cml53ua5i0014qn0kl4vevi2x	\N
+cml53ua5k0016qn0kmmmjvkts	cml53ua5f0012qn0kp0zka8wj	cmk13ondj000hjs04uli7wp7a	2026-02-02 11:47:01.736	cml53ua5i0014qn0kl4vevi2x	\N
+cml65cjvv0097qn0kreaznmd0	cml65cjvc0094qn0kysfcjc54	cmk13nkwk0001js04czooodij	2026-02-03 05:16:59.948	cml65cjvq0096qn0kpvar3723	\N
+cml65cjvv0098qn0kadj77nmh	cml65cjvc0094qn0kysfcjc54	cmk13o7wv000bjs04kr6sz4b0	2026-02-03 05:16:59.948	cml65cjvq0096qn0kpvar3723	\N
+cml68tisc009cqn0kn3p40e6r	cml68tirs0099qn0kodlss6bo	cmk13mis60007js04xgg2p6bl	2026-02-03 06:54:10.525	cml68tis8009bqn0kebkmz876	\N
+cml696hmz009kqn0ko9mjohbe	cml696hmg009hqn0kc361cyyh	cmk13o7wv000bjs04kr6sz4b0	2026-02-03 07:04:15.551	cml696hml009jqn0ka1h1wp1m	\N
+cml69a6nf009pqn0kgxer2wm5	cmkzjt7nf00009y6syqpe044a	cmiztrp3m0007jo04qq6wkfgl	2026-02-03 07:07:07.947	cml69a6ne009oqn0kls7lzwap	\N
+cml69bcrj009tqn0kloed6j12	cml69bcrg009qqn0kqckbqed7	cmiztrp3m0007jo04qq6wkfgl	2026-02-03 07:08:02.528	cml69bcri009sqn0kzypmbzde	\N
+cml6i9q2r00aoqn0kiezagudp	cml6i9q2g00alqn0k26sqgcxn	cmk13o7wv000bjs04kr6sz4b0	2026-02-03 11:18:43.012	cml6i9q2n00anqn0kw2gqrw0k	\N
+cml6il2ld00asqn0kqam6n3j4	cml6il2l800apqn0kdgwqmb8w	cmk13n14k000fjs04n7s2wdb7	2026-02-03 11:27:32.45	cml6il2lb00arqn0kwjnk45mn	\N
+cml6l07yo00ayqn0kjg2pso5i	cml6l07yi00avqn0khbas2mlp	cmk13o7wv000bjs04kr6sz4b0	2026-02-03 12:35:18.48	cml6l07ym00axqn0kr73ksn70	\N
+cml6l9q5y00b2qn0kc2fvin3r	cml6l9q5i00azqn0k3fsh2139	cmk13mis60007js04xgg2p6bl	2026-02-03 12:42:41.964	cml6l9q5l00b1qn0k6j87pagx	\N
+cml6lc9hr00b6qn0kx1au7j8c	cml6lc9hf00b3qn0k58xsu1yz	cmk5701ld0001l804ns4u58mz	2026-02-03 12:44:40.335	cml6lc9hn00b5qn0kt0p87y2w	\N
+cml6qakjh00029ydpmv6nkjv8	cmkzjt7nf00009y6syqpe044a	cmiztquhb000bl7043xrbotf9	2026-02-03 15:03:19.421	cml6qakdz00019ydpjb63aeez	\N
+cml6qcao300079ydpjxtohabl	cmkzjt7nf00009y6syqpe044a	cmiztpjr70001jo044eu3c9m7	2026-02-03 15:04:39.94	cml6qcaj200069ydp3yvgc8ch	\N
 \.
 
 
@@ -2155,10 +2596,8 @@ cml0prkty005fpo0kdkiqmyf4	THAR ROXX 	exited	cml0prktt005dpo0kvuge4xoc	2026-01-30
 cml0q4otj005tpo0kfrbrmi3v	XUV 3XO 	exited	cml0q4otg005rpo0kirt6xc6x	2026-01-30 10:12:07.976	2026-01-30 10:49:03.433	happy
 cml0q9e7n005xpo0k9hb9osmk	BOLERO NEO 	exited	cml0q9e7i005vpo0kbzrr7got	2026-01-30 10:15:47.507	2026-01-30 10:49:17.528	happy
 cml0z4yxx00019yzgl1g72qnp	sd	intake	cmkzjt7nf00009y6syqpe044a	2026-01-30 14:24:17.638	2026-01-30 14:24:17.638	\N
-cml15axxj0001qi0koivj8971	fdsf	intake	cmkzjt7nf00009y6syqpe044a	2026-01-30 17:16:53.958	2026-01-30 17:16:53.958	\N
 cml1vlqmn0005qi0ktu5qa4oc	XUV 3XO 	test_drive	cml1vlqmb0003qi0kef5m6see	2026-01-31 05:33:07.727	2026-01-31 05:33:45.273	\N
 cml26qbma0016qi0knvmnf4je	XUV 7XO 	intake	cmks40pi3002ins0klghr7e6i	2026-01-31 10:44:37.33	2026-01-31 10:44:37.33	\N
-cml28kbyn001aqi0ki03i44m7	SCORPION 	intake	cml28kbyj0018qi0k5vt1l1hr	2026-01-31 11:35:57.071	2026-01-31 11:35:57.071	\N
 cml1wuvqq000bqi0kj68vxtnt	XUV 3XO 	exited	cml1wuvqj0009qi0k4l8w75cd	2026-01-31 06:08:13.874	2026-01-31 11:55:56.77	happy
 cml1zwzuk000jqi0kier3789y	XUV 3XO/ XUV 7XO 	exited	cml1zwzu4000hqi0kyztfk397	2026-01-31 07:33:51.344	2026-01-31 11:56:16.251	happy
 cml1zxyjv000nqi0kd816xgvf	BOLERO 	exited	cml1zxyjs000lqi0kcwshkhjd	2026-01-31 07:34:36.331	2026-01-31 11:56:28.361	happy
@@ -2166,6 +2605,30 @@ cml205wm8000rqi0kpe1m96da	XUV 7XO 	exited	cml205wm4000pqi0khp2vvnbs	2026-01-31 0
 cml20g1sp000vqi0ktd0mbqpu	THAR 	exited	cml20g1sm000tqi0kvysg548l	2026-01-31 07:48:40.346	2026-01-31 11:57:17.75	happy
 cml26ix2r000zqi0ksl8q7my8	XUV 7XO 	exited	cml26ix2l000xqi0k7lgnbl9j	2026-01-31 10:38:51.891	2026-01-31 11:57:28.725	happy
 cml26k7dq0013qi0k6wa8rhey	XUV 7XO 	exited	cml26k7dn0011qi0kpa8x89tj	2026-01-31 10:39:51.902	2026-01-31 11:57:41.755	happy
+cml28kbyn001aqi0ki03i44m7	SCORPION 	exited	cml28kbyj0018qi0k5vt1l1hr	2026-01-31 11:35:57.071	2026-02-02 06:27:56.013	happy
+cml4sqe4o0006qn0kwyjpxhsc	SCORPIO-N 	exited	cml4sqe4k0004qn0kzolrnzai	2026-02-02 06:36:04.489	2026-02-02 07:55:22.566	happy
+cml4sfouh0002qn0k3286ju1x	XUV 3XO 	exited	cml4sfou60000qn0ket396i0e	2026-02-02 06:27:45.161	2026-02-02 07:55:31.693	happy
+cml4vlm4p000aqn0ke687l4p7	THAR ROXX, SCORPIO-N 	exited	cml4vlm4i0008qn0kuejqwxfo	2026-02-02 07:56:20.426	2026-02-02 09:10:02.53	happy
+cml4xhbb4000eqn0kerftdrim	To enquire about 3xo	exited	cml4xhbaj000cqn0kl4vn2f1g	2026-02-02 08:48:59.009	2026-02-02 09:10:32.741	happy
+cml4y7jyj000iqn0kh0q2u2n2	XEV9S 	exited	cml4y7jyc000gqn0kw72wps5t	2026-02-02 09:09:23.276	2026-02-02 10:12:59.022	happy
+cml50up3u000qqn0ka73572e5	XEV9S 	test_drive	cml50up3p000oqn0kf6h9n08m	2026-02-02 10:23:22.267	2026-02-02 11:45:14.993	\N
+cml50dw9i000mqn0kyl29noa2	SCORPIO CLASSIC 	exited	cml50dw96000kqn0kebkgrfev	2026-02-02 10:10:18.39	2026-02-02 11:45:29.8	happy
+cml51im0f000uqn0koeviy5d3	XUV 7XO 	exited	cml51im0b000sqn0kz9v38jlw	2026-02-02 10:41:58	2026-02-02 11:45:44.365	happy
+cml51k3ms000yqn0kqj8oklij	XUV 7XO 	exited	cml51k3mp000wqn0kehga9zfw	2026-02-02 10:43:07.492	2026-02-02 11:45:53.116	happy
+cml53ua5i0014qn0kl4vevi2x	THAR/THAR ROXX 	exited	cml53ua5f0012qn0kp0zka8wj	2026-02-02 11:47:01.735	2026-02-02 12:17:08	happy
+cml68tis8009bqn0kebkmz876	XUV 3XO 	test_drive	cml68tirs0099qn0kodlss6bo	2026-02-03 06:54:10.521	2026-02-03 06:54:27.079	\N
+cml65cjvq0096qn0kpvar3723	XUV 7XO/SCORPIO-N 	test_drive	cml65cjvc0094qn0kysfcjc54	2026-02-03 05:16:59.942	2026-02-03 06:54:47.339	\N
+cml696hml009jqn0ka1h1wp1m	7XO ENQUIRY	test_drive	cml696hmg009hqn0kc361cyyh	2026-02-03 07:04:15.549	2026-02-03 07:05:03.397	\N
+cml69bcri009sqn0kzypmbzde	.	test_drive	cml69bcrg009qqn0kqckbqed7	2026-02-03 07:08:02.527	2026-02-03 07:10:17.794	\N
+cml69a6ne009oqn0kls7lzwap	m	exited	cmkzjt7nf00009y6syqpe044a	2026-02-03 07:07:07.946	2026-02-03 07:10:32.081	okay
+cml6i9q2n00anqn0kw2gqrw0k	XUV 7XO 	test_drive	cml6i9q2g00alqn0k26sqgcxn	2026-02-03 11:18:43.007	2026-02-03 11:48:25.516	\N
+cml6l07ym00axqn0kr73ksn70	XUV 7XO 	intake	cml6l07yi00avqn0khbas2mlp	2026-02-03 12:35:18.478	2026-02-03 12:35:18.478	\N
+cml6l9q5l00b1qn0k6j87pagx	XUV 3XO 	intake	cml6l9q5i00azqn0k3fsh2139	2026-02-03 12:42:41.961	2026-02-03 12:42:41.961	\N
+cml6lc9hn00b5qn0kt0p87y2w	XEV9S 	intake	cml6lc9hf00b3qn0k58xsu1yz	2026-02-03 12:44:40.331	2026-02-03 12:44:40.331	\N
+cml6il2lb00arqn0kwjnk45mn	BOLERO NEO 	exited	cml6il2l800apqn0kdgwqmb8w	2026-02-03 11:27:32.448	2026-02-03 12:44:53.054	happy
+cml6qakdz00019ydpjb63aeez	fds	test_drive	cmkzjt7nf00009y6syqpe044a	2026-02-03 15:03:19.223	2026-02-03 15:04:02.469	\N
+cml6qcaj200069ydp3yvgc8ch	fsdfas	exited	cmkzjt7nf00009y6syqpe044a	2026-02-03 15:04:39.758	2026-02-03 15:12:27.103	okay
+cml15axxj0001qi0koivj8971	fdsf	exited	cmkzjt7nf00009y6syqpe044a	2026-01-30 17:16:53.958	2026-02-03 15:29:25.548	\N
 \.
 
 
@@ -2174,12 +2637,6 @@ cml26k7dq0013qi0k6wa8rhey	XUV 7XO 	exited	cml26k7dn0011qi0kpa8x89tj	2026-01-31 1
 --
 
 COPY public."WhatsAppTemplate" (id, name, "templateId", "templateName", language, type, "dealershipId", "createdAt", "updatedAt", section) FROM stdin;
-cmivgoujk00039y5i4ja8lso7	Welcome Message	25870530502583482	welcome_msg_temp_updated	en_US	welcome	cmivgorqg00009y5iyf5y9s5b	2025-12-07 08:29:36.8	2026-01-08 17:53:18.467	default
-cmivgoujk00059y5ijob55cly	Exit Thank You	1614441933012020	welcome_visit_feedback	en_US	exit	cmivgorqg00009y5iyf5y9s5b	2025-12-07 08:29:36.8	2026-01-08 17:53:46.896	default
-cmj7foz0100019ys0jx2zd05y	Digital Enquiry	906197139247940	digital_enquiry_reply_temp_updated1	en_US	digital_enquiry	cmivgorqg00009y5iyf5y9s5b	2025-12-15 17:34:57.073	2026-01-08 17:54:16.99	digital_enquiry
-cmivgoujk00049y5i8i0amwz3	Test Drive Follow-up	1426745462783971	test_drive_feedback_temp	en_US	test_drive	cmivgorqg00009y5iyf5y9s5b	2025-12-07 08:29:36.8	2025-12-15 17:09:12.513	default
-cmjb4r6lo00059y55kbpw1ozn	Delivery Completion	1386651019021695	delivery_notify_2_updated	en_US	delivery_completion	cmivgorqg00009y5iyf5y9s5b	2025-12-18 07:39:49.164	2025-12-23 18:04:01.43	delivery_update
-cmj39r9wl00019yzy4il1210w	Delivery Reminder	854907410836364	delivery_notify_1_updated	en_US	delivery_reminder	cmivgorqg00009y5iyf5y9s5b	2025-12-12 19:37:42.116	2025-12-30 16:42:36.039	delivery_update
 cmk13jolu0001js04e9dmeen5	Field Inquiry			en_US	field_inquiry	cmk130qz40000l704z6fc2alp	2026-01-05 11:48:00.21	2026-01-05 11:48:00.21	field_inquiry
 cmk130t1a0004l7047cbfjf3z	Test Drive Follow-up	1426745462783971	test_drive_feedback_temp	en_US	test_drive	cmk130qz40000l704z6fc2alp	2026-01-05 11:33:19.486	2026-01-05 12:05:21.779	global
 cmk130t1a0005l704gpcvzuo1	Exit Thank You	1614441933012020	welcome_visit_feedback	en_US	exit	cmk130qz40000l704z6fc2alp	2026-01-05 11:33:19.486	2026-01-05 12:06:32.502	global
@@ -2187,7 +2644,13 @@ cmk130t1a0006l704puhu037g	Delivery Reminder	854907410836364	delivery_notify_1_up
 cmk130t1a0008l704clon3csp	Delivery Completion	1386651019021695	delivery_notify_2_updated	en_US	delivery_completion	cmk130qz40000l704z6fc2alp	2026-01-05 11:33:19.486	2026-01-05 12:08:17.774	delivery_update
 cmk130t1a0003l704jxxl9792	Welcome Message	25870530502583482	welcome_msg_temp_updated	en_US	welcome	cmk130qz40000l704z6fc2alp	2026-01-05 11:33:19.486	2026-01-07 04:13:52.311	global
 cmk130t1a0007l7045upah28m	Digital Enquiry Notification	906197139247940	digital_enquiry_reply_temp_updated1	en_US	digital_enquiry	cmk130qz40000l704z6fc2alp	2026-01-05 11:33:19.486	2026-01-07 04:40:55.932	digital_enquiry
-cmjvhls4t00019y9iqve59x6x	Field Inquiry	906197139247940	digital_enquiry_reply_temp_updated1	en_US	field_inquiry	cmivgorqg00009y5iyf5y9s5b	2026-01-01 13:34:55.661	2026-01-27 15:11:02.171	field_inquiry
+cmivgoujk00039y5i4ja8lso7	Welcome Message	25870530502583482	welcome_msg_temp_updated	en_US	welcome	cmivgorqg00009y5iyf5y9s5b	2025-12-07 08:29:36.8	2026-01-31 15:07:01.861	default
+cmivgoujk00059y5ijob55cly	Exit Thank You	1614441933012020	welcome_visit_feedback	en_US	exit	cmivgorqg00009y5iyf5y9s5b	2025-12-07 08:29:36.8	2026-01-31 15:07:01.861	default
+cmj7foz0100019ys0jx2zd05y	Digital Enquiry	906197139247940	digital_enquiry_reply_temp_updated1	en_US	digital_enquiry	cmivgorqg00009y5iyf5y9s5b	2025-12-15 17:34:57.073	2026-01-31 15:07:01.861	digital_enquiry
+cmivgoujk00049y5i8i0amwz3	Test Drive Follow-up	1426745462783971	test_drive_feedback_temp	en_US	test_drive	cmivgorqg00009y5iyf5y9s5b	2025-12-07 08:29:36.8	2026-01-31 15:07:01.861	default
+cmjb4r6lo00059y55kbpw1ozn	Delivery Completion	1386651019021695	delivery_notify_2_updated	en_US	delivery_completion	cmivgorqg00009y5iyf5y9s5b	2025-12-18 07:39:49.164	2026-01-31 15:07:01.861	delivery_update
+cmj39r9wl00019yzy4il1210w	Delivery Reminder	854907410836364	delivery_notify_1_updated	en_US	delivery_reminder	cmivgorqg00009y5iyf5y9s5b	2025-12-12 19:37:42.116	2026-01-31 15:07:01.861	delivery_update
+cmjvhls4t00019y9iqve59x6x	Field Inquiry	906197139247940	digital_enquiry_reply_temp_updated1	en_US	field_inquiry	cmivgorqg00009y5iyf5y9s5b	2026-01-01 13:34:55.661	2026-01-31 15:07:01.861	field_inquiry
 \.
 
 
@@ -2271,6 +2734,22 @@ ALTER TABLE ONLY public."FieldInquiry"
 
 ALTER TABLE ONLY public."LeadSource"
     ADD CONSTRAINT "LeadSource_pkey" PRIMARY KEY (id);
+
+
+--
+-- Name: OrgFeatureToggle OrgFeatureToggle_pkey; Type: CONSTRAINT; Schema: public; Owner: utkalUser
+--
+
+ALTER TABLE ONLY public."OrgFeatureToggle"
+    ADD CONSTRAINT "OrgFeatureToggle_pkey" PRIMARY KEY (id);
+
+
+--
+-- Name: Organization Organization_pkey; Type: CONSTRAINT; Schema: public; Owner: utkalUser
+--
+
+ALTER TABLE ONLY public."Organization"
+    ADD CONSTRAINT "Organization_pkey" PRIMARY KEY (id);
 
 
 --
@@ -2412,6 +2891,13 @@ CREATE INDEX "BulkUploadJob_status_idx" ON public."BulkUploadJob" USING btree (s
 
 
 --
+-- Name: Dealership_organizationId_idx; Type: INDEX; Schema: public; Owner: utkalUser
+--
+
+CREATE INDEX "Dealership_organizationId_idx" ON public."Dealership" USING btree ("organizationId");
+
+
+--
 -- Name: DeliveryTicket_dealershipId_idx; Type: INDEX; Schema: public; Owner: utkalUser
 --
 
@@ -2524,6 +3010,41 @@ CREATE UNIQUE INDEX "LeadSource_dealershipId_name_key" ON public."LeadSource" US
 
 
 --
+-- Name: OrgFeatureToggle_organizationId_idx; Type: INDEX; Schema: public; Owner: utkalUser
+--
+
+CREATE INDEX "OrgFeatureToggle_organizationId_idx" ON public."OrgFeatureToggle" USING btree ("organizationId");
+
+
+--
+-- Name: OrgFeatureToggle_organizationId_key; Type: INDEX; Schema: public; Owner: utkalUser
+--
+
+CREATE UNIQUE INDEX "OrgFeatureToggle_organizationId_key" ON public."OrgFeatureToggle" USING btree ("organizationId");
+
+
+--
+-- Name: Organization_isActive_idx; Type: INDEX; Schema: public; Owner: utkalUser
+--
+
+CREATE INDEX "Organization_isActive_idx" ON public."Organization" USING btree ("isActive");
+
+
+--
+-- Name: Organization_slug_idx; Type: INDEX; Schema: public; Owner: utkalUser
+--
+
+CREATE INDEX "Organization_slug_idx" ON public."Organization" USING btree (slug);
+
+
+--
+-- Name: Organization_slug_key; Type: INDEX; Schema: public; Owner: utkalUser
+--
+
+CREATE UNIQUE INDEX "Organization_slug_key" ON public."Organization" USING btree (slug);
+
+
+--
 -- Name: ScheduledMessage_deliveryTicketId_idx; Type: INDEX; Schema: public; Owner: utkalUser
 --
 
@@ -2591,6 +3112,13 @@ CREATE INDEX "User_dealershipId_idx" ON public."User" USING btree ("dealershipId
 --
 
 CREATE UNIQUE INDEX "User_email_key" ON public."User" USING btree (email);
+
+
+--
+-- Name: User_organizationId_idx; Type: INDEX; Schema: public; Owner: utkalUser
+--
+
+CREATE INDEX "User_organizationId_idx" ON public."User" USING btree ("organizationId");
 
 
 --
@@ -2818,6 +3346,14 @@ ALTER TABLE ONLY public."LeadSource"
 
 
 --
+-- Name: OrgFeatureToggle OrgFeatureToggle_organizationId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: utkalUser
+--
+
+ALTER TABLE ONLY public."OrgFeatureToggle"
+    ADD CONSTRAINT "OrgFeatureToggle_organizationId_fkey" FOREIGN KEY ("organizationId") REFERENCES public."Organization"(id) ON UPDATE CASCADE ON DELETE CASCADE;
+
+
+--
 -- Name: ScheduledMessage ScheduledMessage_deliveryTicketId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: utkalUser
 --
 
@@ -2863,6 +3399,14 @@ ALTER TABLE ONLY public."UserPermission"
 
 ALTER TABLE ONLY public."User"
     ADD CONSTRAINT "User_dealershipId_fkey" FOREIGN KEY ("dealershipId") REFERENCES public."Dealership"(id) ON UPDATE CASCADE ON DELETE SET NULL;
+
+
+--
+-- Name: User User_organizationId_fkey; Type: FK CONSTRAINT; Schema: public; Owner: utkalUser
+--
+
+ALTER TABLE ONLY public."User"
+    ADD CONSTRAINT "User_organizationId_fkey" FOREIGN KEY ("organizationId") REFERENCES public."Organization"(id) ON UPDATE CASCADE ON DELETE SET NULL;
 
 
 --
@@ -2956,5 +3500,5 @@ REVOKE USAGE ON SCHEMA public FROM PUBLIC;
 -- PostgreSQL database dump complete
 --
 
-\unrestrict Ub5Jqh3PVenbI7W89JHSHg22EdrWcV7aXFRnM2pVgWrWDS3JX8WAEvKWsEZANsC
+\unrestrict JQh0uflwai8OsoJumikcaWheMz8eROlkipb43nqD9XTcQAMnOGCgQfmTqDhMrGG
 
