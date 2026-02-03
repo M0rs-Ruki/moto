@@ -15,6 +15,7 @@ interface FeedbackDialogProps {
   selectedFeedback: string | null;
   onFeedbackSelect: (feedback: string) => void;
   onSubmit: () => void;
+  onSkip: () => void;
   onCancel: () => void;
 }
 
@@ -24,6 +25,7 @@ export function FeedbackDialog({
   selectedFeedback,
   onFeedbackSelect,
   onSubmit,
+  onSkip,
   onCancel,
 }: FeedbackDialogProps) {
   return (
@@ -81,6 +83,14 @@ export function FeedbackDialog({
             className="w-full sm:w-auto"
           >
             Cancel
+          </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            onClick={onSkip}
+            className="w-full sm:w-auto"
+          >
+            Skip
           </Button>
           <Button
             type="button"

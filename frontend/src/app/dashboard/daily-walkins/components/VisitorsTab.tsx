@@ -49,10 +49,10 @@ export function VisitorsTab({
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
             type="text"
-            placeholder="Search by name, phone number, or email..."
+            placeholder="   Search by name, phone number, or email..."
             value={searchQuery}
             onChange={(e) => onSearchChange(e.target.value)}
-            className="pl-10 pr-10"
+            className="pl-14 pr-10"
           />
           {searchQuery && (
             <Button
@@ -132,7 +132,8 @@ export function VisitorsTab({
                       return (
                         <tr
                           key={visitor.id}
-                          className="border-b hover:bg-muted/30 transition-colors"
+                          className="border-b hover:bg-muted/30 transition-colors cursor-pointer"
+                          onClick={() => onViewDetails(visitor)}
                         >
                           {/* Visitor Column */}
                           <td className="py-3 px-4">

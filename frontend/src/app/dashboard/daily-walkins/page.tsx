@@ -290,6 +290,10 @@ export default function DailyWalkinsPage() {
         selectedFeedback={selectedFeedback}
         onFeedbackSelect={setSelectedFeedback}
         onSubmit={handleFeedbackSubmit}
+        onSkip={() => {
+          setSelectedFeedback(null);
+          handleFeedbackSubmit();
+        }}
         onCancel={() => {
           setFeedbackDialogOpen(false);
           setSessionToExit(null);

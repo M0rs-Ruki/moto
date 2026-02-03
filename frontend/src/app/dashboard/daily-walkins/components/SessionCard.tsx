@@ -68,24 +68,22 @@ export function SessionCard({
       )}
 
       {/* Actions */}
-      {session.status === "intake" && (
+      {(session.status === "intake" || session.status === "test_drive") && (
         <div className="pt-3 flex flex-col sm:flex-row gap-2">
           <Button
-            variant="outline"
             size="sm"
             onClick={() => onAddTestDrive(session)}
             disabled={sessionSubmitting}
-            className="flex-1 sm:flex-none"
+            className="flex-1 sm:flex-none bg-black text-white hover:bg-zinc-800 dark:bg-white dark:text-black dark:hover:bg-zinc-200"
           >
             <Car className="h-3.5 w-3.5 mr-2" />
             Add Test Drive
           </Button>
           <Button
-            variant="outline"
             size="sm"
             onClick={() => onExitSession(session)}
             disabled={sessionSubmitting}
-            className="flex-1 sm:flex-none"
+            className="flex-1 sm:flex-none bg-black text-white hover:bg-zinc-800 dark:bg-white dark:text-black dark:hover:bg-zinc-200"
           >
             <LogOut className="h-3.5 w-3.5 mr-2" />
             Exit Session
