@@ -10,7 +10,6 @@ import {
 import { rateLimiter } from "./middleware/rateLimiter";
 import routes from "./routes";
 import { rabbitMQService } from "./services/rabbitmq.service";
-import { RabbitMQQueueService } from "./services/rabbitmq-queue.service";
 import { rabbitmqConsumerService } from "./services/rabbitmq-consumer.service";
 import { logger } from "./utils/logger";
 import { gracefulShutdown } from "./utils/gracefulShutdown";
@@ -108,21 +107,18 @@ const server = app.listen(PORT, async () => {
   }
 
   try {
-    // Connect to RabbitMQ
+    // Register callback to start consumers after each connect (including reconnect)
+    rabbitMQService.setOnConnect(async () => {
+      logger.info("Starting consumers...");
+      await rabbitmqConsumerService.startExcelUploadConsumer();
+      await rabbitmqConsumerService.startWhatsAppConsumer();
+      logger.info("✅ Consumers started");
+    });
+
+    // Connect to RabbitMQ (asserts queues and starts consumers via callback)
     logger.info("Connecting to RabbitMQ...");
     await rabbitMQService.connect();
-    logger.info("✅ RabbitMQ connected");
-
-    // Initialize all queues and exchanges
-    logger.info("Initializing queues...");
-    await RabbitMQQueueService.initializeQueues();
-    logger.info("✅ Queues initialized");
-
-    // Start RabbitMQ consumers
-    logger.info("Starting consumers...");
-    await rabbitmqConsumerService.startExcelUploadConsumer();
-    await rabbitmqConsumerService.startWhatsAppConsumer();
-    logger.info("✅ Consumers started");
+    logger.info("✅ RabbitMQ connected and queues ready");
 
     // Start monitoring in production
     if (isProduction) {

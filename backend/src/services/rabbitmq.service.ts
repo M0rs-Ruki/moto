@@ -1,9 +1,15 @@
 import * as amqp from "amqplib";
 import { logger } from "../utils/logger";
+import { RabbitMQQueueService } from "./rabbitmq-queue.service";
 
 class RabbitMQService {
   private connection: amqp.Connection | null = null;
   private channel: amqp.Channel | null = null;
+  private onConnectCallback: (() => Promise<void>) | null = null;
+
+  setOnConnect(callback: () => Promise<void>): void {
+    this.onConnectCallback = callback;
+  }
 
   async connect(): Promise<void> {
     try {
@@ -13,6 +19,13 @@ class RabbitMQService {
       this.channel = await (this.connection as any).createChannel();
 
       logger.info("✅ Connected to RabbitMQ");
+
+      // Assert exchanges and queues on this channel (required after reconnect or when exchange was missing)
+      await RabbitMQQueueService.initializeQueues();
+
+      if (this.onConnectCallback) {
+        await this.onConnectCallback();
+      }
 
       (this.connection as any).on("error", (err: any) => {
         logger.error("RabbitMQ connection error", err);
@@ -30,6 +43,8 @@ class RabbitMQService {
   }
 
   private reconnect(): void {
+    this.connection = null;
+    this.channel = null;
     logger.info("Attempting to reconnect to RabbitMQ...");
     setTimeout(() => this.connect(), 5000);
   }

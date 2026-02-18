@@ -3,9 +3,6 @@ import { DigitalEnquiryService } from "../services/digital-enquiry.service";
 import { CreateDigitalEnquiryDto } from "../dto/request/create-digital-enquiry.dto";
 import { UpdateLeadScopeDto } from "../dto/request/update-lead-scope.dto";
 import { PAGINATION } from "../config/constants";
-import { RabbitMQPublisherService } from "../services/rabbitmq-publisher.service";
-import { bulkUploadJobRepository } from "../repositories/bulk-upload-job.repository";
-import { v4 as uuidv4 } from "uuid";
 
 export class DigitalEnquiryController {
   private service: DigitalEnquiryService;
@@ -120,8 +117,9 @@ export class DigitalEnquiryController {
   };
 
   /**
-   * Bulk upload digital enquiries
+   * Bulk upload digital enquiries (synchronous, same as Field Inquiry).
    * POST /api/digital-enquiry/bulk
+   * Processes immediately, sends WhatsApp templates per row, returns results.
    */
   bulkUpload = async (req: Request, res: Response): Promise<void> => {
     if (!req.user || !req.user.dealershipId) {
@@ -130,7 +128,6 @@ export class DigitalEnquiryController {
     }
 
     const { rows } = req.body;
-    const userId = req.user.userId;
 
     if (!rows || !Array.isArray(rows) || rows.length === 0) {
       res.status(400).json({ error: "No data provided or invalid format" });
@@ -138,35 +135,14 @@ export class DigitalEnquiryController {
     }
 
     try {
-      // Create unique job ID
-      const jobId = uuidv4();
-
-      // Save job record in database
-      await bulkUploadJobRepository.createJob({
-        jobId,
-        type: "digital_enquiry",
-        totalRows: rows.length,
-        dealershipId: req.user.dealershipId,
-      });
-
-      // Publish job to RabbitMQ queue
-      await RabbitMQPublisherService.publishExcelUploadJob({
-        jobId,
-        dealershipId: req.user.dealershipId,
-        type: "digital_enquiry",
-        rows,
-        totalRows: rows.length,
-        userId,
-        timestamp: Date.now(),
-      });
-
-      // Return immediately with job ID (202 = Accepted)
-      res.status(202).json({
-        success: true,
-        message: "Upload job queued for processing",
-        jobId,
-        totalRows: rows.length,
-        status: "queued",
+      const result = await this.service.bulkUpload(
+        { rows },
+        req.user.dealershipId,
+      );
+      res.status(200).json({
+        success: result.success,
+        summary: result.summary,
+        results: result.results,
       });
     } catch (error) {
       const errorMessage = (error as Error).message;
@@ -176,7 +152,7 @@ export class DigitalEnquiryController {
       } else {
         res
           .status(500)
-          .json({ error: "Failed to queue upload job", details: errorMessage });
+          .json({ error: "Failed to process upload", details: errorMessage });
       }
     }
   };
