@@ -8,22 +8,22 @@ export function ThemeSwitcherButtons() {
   const { theme, setTheme } = useTheme();
 
   return (
-    <div className="flex w-full gap-2">
+    <div className="flex w-full gap-1.5">
       <Button
         variant={theme === "light" ? "secondary" : "ghost"}
-        className="flex-1 h-12 justify-center gap-2"
+        className="flex-1 h-9 justify-center gap-1.5"
         onClick={() => setTheme("light")}
       >
-        <Sun className="h-4 w-4" style={{ color: "#1976B8" }} />
-        <span className="text-sm font-medium">Light</span>
+        <Sun className="h-3.5 w-3.5" style={{ color: "#1976B8" }} />
+        <span className="text-xs font-medium">Light</span>
       </Button>
       <Button
         variant={theme === "dark" ? "secondary" : "ghost"}
-        className="flex-1 h-12 justify-center gap-2"
+        className="flex-1 h-9 justify-center gap-1.5"
         onClick={() => setTheme("dark")}
       >
-        <Moon className="h-4 w-4" style={{ color: "#1976B8" }} />
-        <span className="text-sm font-medium">Dark</span>
+        <Moon className="h-3.5 w-3.5" style={{ color: "#1976B8" }} />
+        <span className="text-xs font-medium">Dark</span>
       </Button>
     </div>
   );

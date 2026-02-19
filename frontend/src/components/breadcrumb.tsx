@@ -33,7 +33,7 @@ export function Breadcrumb() {
   const breadcrumbs = generateBreadcrumbs();
 
   return (
-    <nav className="flex items-center space-x-1 sm:space-x-2 text-xs sm:text-sm overflow-x-auto">
+    <nav className="flex items-center space-x-1 sm:space-x-2 text-xs overflow-x-auto">
       {breadcrumbs.map((breadcrumb, index) => (
         <div
           key={index}

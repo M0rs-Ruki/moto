@@ -119,8 +119,8 @@
 
   html {
     scroll-behavior: smooth;
-    /* Fluid typography base - prevents text from being too small on large screens */
-    font-size: clamp(14px, 0.875rem + 0.1vw, 16px);
+    /* Compact typography to match sidebar - whole app smaller */
+    font-size: clamp(12px, 0.75rem + 0.1vw, 14px);
   }
 
   body {

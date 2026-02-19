@@ -10,7 +10,7 @@ const Table = React.forwardRef<
     <table
       ref={ref}
       className={cn(
-        "w-full caption-bottom text-xs sm:text-sm xl:text-base",
+        "w-full caption-bottom text-xs",
         className,
       )}
       {...props}
@@ -67,7 +67,7 @@ const TableRow = React.forwardRef<
     className={cn(
       "border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted",
       /* Touch-friendly row height on touch devices */
-      "min-h-[44px]",
+      "min-h-[36px]",
       className,
     )}
     {...props}
@@ -82,7 +82,7 @@ const TableHead = React.forwardRef<
   <th
     ref={ref}
     className={cn(
-      "h-10 sm:h-11 xl:h-12 px-2 sm:px-3 xl:px-4 text-left align-middle font-medium text-muted-foreground [&:has([role=checkbox])]:pr-0 text-xs sm:text-sm xl:text-base whitespace-nowrap",
+      "h-9 sm:h-10 px-2 sm:px-3 text-left align-middle font-medium text-muted-foreground [&:has([role=checkbox])]:pr-0 text-xs whitespace-nowrap",
       className,
     )}
     {...props}
@@ -97,7 +97,7 @@ const TableCell = React.forwardRef<
   <td
     ref={ref}
     className={cn(
-      "p-2 sm:p-3 xl:p-4 align-middle [&:has([role=checkbox])]:pr-0 text-xs sm:text-sm xl:text-base",
+      "p-2 sm:p-3 align-middle [&:has([role=checkbox])]:pr-0 text-xs",
       className,
     )}
     {...props}
@@ -112,7 +112,7 @@ const TableCaption = React.forwardRef<
   <caption
     ref={ref}
     className={cn(
-      "mt-4 text-xs sm:text-sm xl:text-base text-muted-foreground",
+      "mt-4 text-xs text-muted-foreground",
       className,
     )}
     {...props}
