@@ -467,7 +467,7 @@ export default function SessionsPage() {
                             <p className="text-xs sm:text-sm font-semibold mb-2">
                               Vehicle Interests for This Visit:
                             </p>
-                            <div className="flex flex-wrap gap-2">
+                            <div className="flex flex-wrap gap-4">
                               {session.visitorInterests.map((interest) => (
                                 <Badge
                                   key={interest.id}
@@ -612,7 +612,7 @@ export default function SessionsPage() {
                                   </div>
                                 )}
 
-                                <div className="flex flex-col sm:flex-row justify-end gap-2">
+                                <div className="flex flex-col sm:flex-row justify-end gap-4">
                                   <Button
                                     type="button"
                                     variant="outline"
@@ -677,7 +677,7 @@ export default function SessionsPage() {
               session and send a thank you message to the visitor.
             </DialogDescription>
           </DialogHeader>
-          <div className="flex flex-col sm:flex-row justify-end gap-2 mt-4">
+          <div className="flex flex-col sm:flex-row justify-end gap-4 mt-4">
             <Button
               type="button"
               variant="outline"

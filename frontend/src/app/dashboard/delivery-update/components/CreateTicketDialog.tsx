@@ -553,7 +553,7 @@ export default function CreateTicketDialog({
             </div>
           </div>
 
-          <div className="flex flex-col sm:flex-row justify-end gap-3 pt-6">
+          <div className="flex flex-col sm:flex-row justify-end gap-4 pt-6">
             <Button
               type="button"
               variant="outline"

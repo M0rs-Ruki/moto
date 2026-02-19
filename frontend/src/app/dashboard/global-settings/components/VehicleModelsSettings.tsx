@@ -305,7 +305,7 @@ export default function VehicleModelsSettings() {
                         required
                       />
                     </div>
-                    <div className="flex flex-col sm:flex-row justify-end gap-2">
+                    <div className="flex flex-col sm:flex-row justify-end gap-4">
                       <Button
                         type="button"
                         variant="outline"
@@ -401,7 +401,7 @@ export default function VehicleModelsSettings() {
                         placeholder="e.g., 2024"
                       />
                     </div>
-                    <div className="flex flex-col sm:flex-row justify-end gap-2">
+                    <div className="flex flex-col sm:flex-row justify-end gap-4">
                       <Button
                         type="button"
                         variant="outline"
@@ -482,7 +482,7 @@ export default function VehicleModelsSettings() {
                         required
                       />
                     </div>
-                    <div className="flex flex-col sm:flex-row justify-end gap-2">
+                    <div className="flex flex-col sm:flex-row justify-end gap-4">
                       <Button
                         type="button"
                         variant="outline"
@@ -589,7 +589,7 @@ export default function VehicleModelsSettings() {
                                       </div>
                                     )}
                                   </div>
-                                  <div className="flex gap-2">
+                                  <div className="flex gap-4">
                                     <Button
                                       size="sm"
                                       variant="outline"
@@ -627,7 +627,7 @@ export default function VehicleModelsSettings() {
                                       <div className="text-xs text-muted-foreground mb-1">
                                         Variants:
                                       </div>
-                                      <div className="flex flex-wrap gap-2">
+                                      <div className="flex flex-wrap gap-4">
                                         {model.variants.map((variant) => (
                                           <div
                                             key={variant.id}
@@ -684,7 +684,7 @@ export default function VehicleModelsSettings() {
               delete all models in this category and cannot be undone.
             </DialogDescription>
           </DialogHeader>
-          <div className="flex flex-col sm:flex-row justify-end gap-2 mt-4">
+          <div className="flex flex-col sm:flex-row justify-end gap-4 mt-4">
             <Button
               type="button"
               variant="outline"
@@ -722,7 +722,7 @@ export default function VehicleModelsSettings() {
               drives, and cannot be undone.
             </DialogDescription>
           </DialogHeader>
-          <div className="flex flex-col sm:flex-row justify-end gap-2 mt-4">
+          <div className="flex flex-col sm:flex-row justify-end gap-4 mt-4">
             <Button
               type="button"
               variant="outline"
@@ -761,7 +761,7 @@ export default function VehicleModelsSettings() {
               cannot be undone.
             </DialogDescription>
           </DialogHeader>
-          <div className="flex flex-col sm:flex-row justify-end gap-2 mt-4">
+          <div className="flex flex-col sm:flex-row justify-end gap-4 mt-4">
             <Button
               type="button"
               variant="outline"

@@ -12,7 +12,7 @@ export default function RoleManagementLoading() {
       </div>
 
       {/* Tabs skeleton */}
-      <div className="flex gap-2">
+      <div className="flex gap-4">
         <Skeleton className="h-10 w-24" />
         <Skeleton className="h-10 w-24" />
         <Skeleton className="h-10 w-24" />

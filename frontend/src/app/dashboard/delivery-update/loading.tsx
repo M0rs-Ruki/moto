@@ -77,14 +77,14 @@ export default function DeliveryUpdateLoading() {
                     </td>
                     {/* Messages Column */}
                     <td className="py-3 px-4">
-                      <div className="flex gap-2">
+                      <div className="flex gap-4">
                         <Skeleton className="h-6 w-6 rounded" />
                         <Skeleton className="h-6 w-6 rounded" />
                       </div>
                     </td>
                     {/* Actions Column */}
                     <td className="py-3 px-4">
-                      <div className="flex gap-2">
+                      <div className="flex gap-4">
                         <Skeleton className="h-8 w-8" />
                         <Skeleton className="h-8 w-20" />
                       </div>
@@ -98,7 +98,7 @@ export default function DeliveryUpdateLoading() {
       </Card>
 
       {/* Pagination Skeleton */}
-      <div className="flex flex-wrap items-center justify-center gap-2 pt-4">
+      <div className="flex flex-wrap items-center justify-center gap-4 pt-4">
         <Skeleton className="h-9 w-20" />
         <Skeleton className="h-9 w-9" />
         <Skeleton className="h-9 w-9" />

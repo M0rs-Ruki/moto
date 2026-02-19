@@ -13,7 +13,7 @@ export default function DigitalEnquiryLoading() {
       </div>
 
       {/* Action Buttons Skeleton */}
-      <div className="flex justify-end gap-2">
+      <div className="flex justify-end gap-4">
         <Skeleton className="h-10 w-24" />
         <Skeleton className="h-10 w-32" />
         <Skeleton className="h-10 w-36" />

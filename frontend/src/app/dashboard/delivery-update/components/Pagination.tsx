@@ -42,7 +42,7 @@ export default function Pagination({
   if (totalPages <= 1) return null;
 
   return (
-    <div className="flex flex-wrap items-center justify-center gap-2 pt-4">
+    <div className="flex flex-wrap items-center justify-center gap-4 pt-4">
       <Button
         variant="outline"
         size="sm"

@@ -248,7 +248,7 @@ export default function ProfileSettings() {
         <CardContent className="space-y-4">
           <div className="space-y-2">
             <Label className="text-sm">Theme</Label>
-            <div className="flex flex-col sm:flex-row gap-2">
+            <div className="flex flex-col sm:flex-row gap-4">
               <Button
                 size="sm"
                 variant={
@@ -325,7 +325,7 @@ export default function ProfileSettings() {
                 </div>
               )}
 
-              <div className="flex flex-col sm:flex-row gap-2">
+              <div className="flex flex-col sm:flex-row gap-4">
                 <Input
                   id="profile-picture-input"
                   type="file"

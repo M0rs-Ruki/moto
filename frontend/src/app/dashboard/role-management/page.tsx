@@ -518,7 +518,7 @@ export default function RoleManagementPage() {
                 <Label className="text-base sm:text-lg font-semibold">
                   Permissions
                 </Label>
-                <div className="flex gap-2">
+                <div className="flex gap-4">
                   <Button
                     type="button"
                     variant="outline"
@@ -608,7 +608,7 @@ export default function RoleManagementPage() {
               </div>
             </div>
 
-            <div className="flex justify-end gap-2 pt-4">
+            <div className="flex justify-end gap-4 pt-4">
               <Button
                 type="button"
                 variant="outline"
@@ -677,7 +677,7 @@ export default function RoleManagementPage() {
                 <Label className="text-base sm:text-lg font-semibold">
                   Permissions
                 </Label>
-                <div className="flex gap-2">
+                <div className="flex gap-4">
                   <Button
                     type="button"
                     variant="outline"
@@ -767,7 +767,7 @@ export default function RoleManagementPage() {
               </div>
             </div>
 
-            <div className="flex justify-end gap-2 pt-4">
+            <div className="flex justify-end gap-4 pt-4">
               <Button
                 type="button"
                 variant="outline"
@@ -798,7 +798,7 @@ export default function RoleManagementPage() {
               undone.
             </DialogDescription>
           </DialogHeader>
-          <div className="flex justify-end gap-2 mt-4">
+          <div className="flex justify-end gap-4 mt-4">
             <Button
               variant="outline"
               onClick={() => setDeleteDialogOpen(false)}
@@ -915,7 +915,7 @@ function UserListCard({
                       )}
                     </TableCell>
                     <TableCell className="text-right">
-                      <div className="flex justify-end gap-2">
+                      <div className="flex justify-end gap-4">
                         <Button
                           variant="outline"
                           size="sm"

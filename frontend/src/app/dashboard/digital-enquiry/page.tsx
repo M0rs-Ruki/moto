@@ -516,7 +516,7 @@ export default function DigitalEnquiryPage() {
         </p>
       </div>
 
-      <div className="flex justify-end gap-2">
+      <div className="flex justify-end gap-4">
         <Button
           variant="outline"
           onClick={() => {

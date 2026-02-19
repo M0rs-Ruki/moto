@@ -243,7 +243,7 @@ export default function DeliveryUpdatePage() {
         </p>
       </div>
 
-      <div className="flex justify-end">
+      <div className="flex justify-end gap-4">
         <Button onClick={() => setCreateDialogOpen(true)}>
           <Plus className="mr-2 h-4 w-4" />
           Create Ticket

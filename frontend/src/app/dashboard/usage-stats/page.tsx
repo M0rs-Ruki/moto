@@ -195,7 +195,7 @@ export default function UsageStatsPage() {
             size="sm"
             onClick={fetchUserStats}
             disabled={loading}
-            className="gap-2"
+            className="gap-3"
           >
             {loading ? (
               <Loader2 className="h-4 w-4 animate-spin" />

@@ -200,7 +200,7 @@ export default function LeadSourcesSettings() {
                       required
                     />
                   </div>
-                  <div className="flex flex-col sm:flex-row justify-end gap-2">
+                  <div className="flex flex-col sm:flex-row justify-end gap-4">
                     <Button
                       type="button"
                       variant="outline"
@@ -284,7 +284,7 @@ export default function LeadSourcesSettings() {
               enquiries, it cannot be deleted.
             </DialogDescription>
           </DialogHeader>
-          <div className="flex flex-col sm:flex-row justify-end gap-2 mt-4">
+          <div className="flex flex-col sm:flex-row justify-end gap-4 mt-4">
             <Button
               type="button"
               variant="outline"

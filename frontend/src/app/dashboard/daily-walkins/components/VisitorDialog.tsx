@@ -402,7 +402,7 @@ export function VisitorDialog({
             </div>
           </div>
 
-          <div className="flex flex-col sm:flex-row justify-end gap-2">
+          <div className="flex flex-col sm:flex-row justify-end gap-4">
             <Button
               type="button"
               variant="outline"

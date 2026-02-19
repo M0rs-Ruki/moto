@@ -37,7 +37,7 @@ export function ExitConfirmDialog({
             session and send a thank you message to the visitor.
           </DialogDescription>
         </DialogHeader>
-        <div className="flex flex-col sm:flex-row justify-end gap-2 mt-4">
+        <div className="flex flex-col sm:flex-row justify-end gap-4 mt-4">
           <Button
             type="button"
             variant="outline"
