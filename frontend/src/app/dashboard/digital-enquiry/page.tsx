@@ -7,7 +7,8 @@ import { toast } from "sonner";
 import { usePermissions } from "@/contexts/permissions";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Plus, Loader2, MessageSquare, Upload, RotateCw } from "lucide-react";
+import { Plus, Loader2, MessageSquare, Upload, RotateCw, Search, X } from "lucide-react";
+import { Input } from "@/components/ui/input";
 import * as XLSX from "xlsx";
 import CreateEnquiryDialog from "./components/CreateEnquiryDialog";
 import BulkUploadDialog from "./components/BulkUploadDialog";
@@ -124,6 +125,7 @@ export default function DigitalEnquiryPage() {
   const [updatingLeadScope, setUpdatingLeadScope] = useState(false);
   const [leadSources, setLeadSources] = useState<LeadSource[]>([]);
   const [categories, setCategories] = useState<VehicleCategory[]>([]);
+  const [searchQuery, setSearchQuery] = useState("");
 
   useEffect(() => {
     mountedRef.current = true;
@@ -499,8 +501,18 @@ export default function DigitalEnquiryPage() {
     return <DigitalEnquiryLoading />;
   }
 
-  const totalPages = Math.max(1, Math.ceil(totalEnquiries / PAGE_SIZE));
-  const paginatedEnquiries = enquiries.slice(
+  const filteredEnquiries = searchQuery.trim()
+    ? enquiries.filter((e) => {
+        const q = searchQuery.trim().toLowerCase();
+        const fullName = `${e.firstName} ${e.lastName}`.toLowerCase();
+        const phone = e.whatsappNumber.toLowerCase();
+        const email = (e.email || "").toLowerCase();
+        return fullName.includes(q) || phone.includes(q) || email.includes(q);
+      })
+    : enquiries;
+
+  const totalPages = Math.max(1, Math.ceil(filteredEnquiries.length / PAGE_SIZE));
+  const paginatedEnquiries = filteredEnquiries.slice(
     (currentPage - 1) * PAGE_SIZE,
     currentPage * PAGE_SIZE,
   );
@@ -568,6 +580,49 @@ export default function DigitalEnquiryPage() {
         </Card>
       ) : (
         <>
+          <div className="relative">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                type="text"
+                placeholder="   Search by name, phone number, or email..."
+                value={searchQuery}
+                onChange={(e) => {
+                  setSearchQuery(e.target.value);
+                  setCurrentPage(1);
+                }}
+                className="pl-14 pr-10"
+              />
+              {searchQuery && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => {
+                    setSearchQuery("");
+                    setCurrentPage(1);
+                  }}
+                  className="absolute right-1 top-1/2 transform -translate-y-1/2 h-7 w-7 p-0"
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              )}
+            </div>
+            {searchQuery && (
+              <p className="text-xs text-muted-foreground mt-2">
+                {filteredEnquiries.length} result{filteredEnquiries.length !== 1 ? "s" : ""} found
+              </p>
+            )}
+          </div>
+          {searchQuery && filteredEnquiries.length === 0 ? (
+            <Card>
+              <CardContent className="pt-6">
+                <p className="text-center text-sm text-muted-foreground py-6">
+                  No results for your search. Try a different name, phone, or email.
+                </p>
+              </CardContent>
+            </Card>
+          ) : (
+            <>
           <EnquiriesTable
             enquiries={paginatedEnquiries}
             phoneLookups={phoneLookups}
@@ -584,6 +639,8 @@ export default function DigitalEnquiryPage() {
             onPageChange={handlePageChange}
             pageLoading={pageLoading}
           />
+            </>
+          )}
         </>
       )}
 

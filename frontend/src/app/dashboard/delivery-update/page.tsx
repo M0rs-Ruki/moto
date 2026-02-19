@@ -6,7 +6,8 @@ import { getCachedData, setCachedData } from "@/lib/cache";
 import { usePermissions } from "@/contexts/permissions";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Plus, Loader2 } from "lucide-react";
+import { Plus, Loader2, Search, X } from "lucide-react";
+import { Input } from "@/components/ui/input";
 import CreateTicketDialog from "./components/CreateTicketDialog";
 import DeliveryTicketsTable from "./components/DeliveryTicketsTable";
 import Pagination from "./components/Pagination";
@@ -64,6 +65,7 @@ export default function DeliveryUpdatePage() {
 
   // Create ticket dialog state
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
 
   useEffect(() => {
     mountedRef.current = true;
@@ -211,8 +213,18 @@ export default function DeliveryUpdatePage() {
     return <DeliveryUpdateLoading />;
   }
 
-  const totalPages = Math.max(1, Math.ceil(totalTickets / PAGE_SIZE));
-  const paginatedTickets = tickets.slice(
+  const filteredTickets = searchQuery.trim()
+    ? tickets.filter((t) => {
+        const q = searchQuery.trim().toLowerCase();
+        const fullName = `${t.firstName} ${t.lastName}`.toLowerCase();
+        const phone = t.whatsappNumber.toLowerCase();
+        const email = (t.email || "").toLowerCase();
+        return fullName.includes(q) || phone.includes(q) || email.includes(q);
+      })
+    : tickets;
+
+  const totalPages = Math.max(1, Math.ceil(filteredTickets.length / PAGE_SIZE));
+  const paginatedTickets = filteredTickets.slice(
     (currentPage - 1) * PAGE_SIZE,
     currentPage * PAGE_SIZE,
   );
@@ -250,6 +262,52 @@ export default function DeliveryUpdatePage() {
         </Button>
       </div>
 
+      {tickets.length > 0 && (
+        <div className="relative">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              type="text"
+              placeholder="   Search by name, phone number, or email..."
+              value={searchQuery}
+              onChange={(e) => {
+                setSearchQuery(e.target.value);
+                setCurrentPage(1);
+              }}
+              className="pl-14 pr-10"
+            />
+            {searchQuery && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => {
+                  setSearchQuery("");
+                  setCurrentPage(1);
+                }}
+                className="absolute right-1 top-1/2 transform -translate-y-1/2 h-7 w-7 p-0"
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            )}
+          </div>
+          {searchQuery && (
+            <p className="text-xs text-muted-foreground mt-2">
+              {filteredTickets.length} result{filteredTickets.length !== 1 ? "s" : ""} found
+            </p>
+          )}
+        </div>
+      )}
+
+      {tickets.length > 0 && searchQuery && filteredTickets.length === 0 ? (
+        <Card>
+          <CardContent className="pt-6">
+            <p className="text-center text-sm text-muted-foreground py-6">
+              No results for your search. Try a different name, phone, or email.
+            </p>
+          </CardContent>
+        </Card>
+      ) : (
+        <>
       <DeliveryTicketsTable
         tickets={paginatedTickets}
         phoneLookups={phoneLookups}
@@ -263,6 +321,8 @@ export default function DeliveryUpdatePage() {
           onPageChange={handlePageChange}
           pageLoading={pageLoading}
         />
+      )}
+        </>
       )}
 
       <CreateTicketDialog
