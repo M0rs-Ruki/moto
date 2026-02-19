@@ -3,7 +3,8 @@
   "version": "1.0.0",
   "private": true,
   "scripts": {
-    "dev": "concurrently \"pnpm --filter moter-frontend dev\" \"pnpm --filter moter-backend dev\""
+    "dev": "concurrently \"pnpm --filter moter-frontend dev\" \"pnpm --filter moter-backend dev\"",
+    "backup": "pnpm --filter moter-backend run backup"
   },
   "devDependencies": {
     "concurrently": "^8.2.0"

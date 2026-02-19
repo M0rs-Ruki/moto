@@ -1,0 +1,2 @@
+# Keep this folder in git; ignore SQL backup files (they may contain sensitive data)
+*.sql
