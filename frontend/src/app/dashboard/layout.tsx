@@ -532,7 +532,7 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
                   </div>
                 )}
                 <div className="hidden sm:flex flex-col items-start leading-tight">
-                  <span className="text-xs md:text-sm font-medium text-foreground">
+                  <span className="text-md md:text-base font-medium text-foreground">
                     {user?.email?.split("@")[0] || "User"}
                   </span>
                   {/* <span className="text-xs text-muted-foreground">

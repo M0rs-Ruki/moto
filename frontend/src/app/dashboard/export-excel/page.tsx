@@ -29,6 +29,9 @@ import {
   MapPin,
   Package,
   Loader2,
+  Calendar,
+  X,
+  CheckCircle,
 } from "lucide-react";
 
 type ExportType =
@@ -303,42 +306,124 @@ export default function ExportExcelPage() {
                   </Button>
                 </div>
                 {selectedRanges[section.type] === "custom" && (
-                  <div className="grid grid-cols-2 gap-3 sm:gap-4">
-                    <div className="space-y-1.5">
-                      <Label htmlFor={`${section.type}-start`} className="text-xs">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label
+                        htmlFor={`${section.type}-start`}
+                        className="text-sm font-medium flex items-center gap-2"
+                      >
+                        <Calendar className="h-4 w-4 text-primary" />
                         Start date
                       </Label>
-                      <Input
-                        id={`${section.type}-start`}
-                        type="date"
-                        value={customDates[section.type].startDate}
-                        onChange={(e) =>
-                          handleCustomDateChange(
-                            section.type,
-                            "startDate",
-                            e.target.value,
-                          )
-                        }
-                        className="h-9"
-                      />
+                      <div className="relative group">
+                        <div className="absolute left-2 top-1/2 transform -translate-y-1/2 z-10 pointer-events-none">
+                          <Calendar className="h-5 w-5 text-primary" />
+                        </div>
+                        <Input
+                          id={`${section.type}-start`}
+                          type="date"
+                          value={customDates[section.type].startDate}
+                          onChange={(e) =>
+                            handleCustomDateChange(
+                              section.type,
+                              "startDate",
+                              e.target.value,
+                            )
+                          }
+                          className="pl-10 pr-10 w-full cursor-pointer hover:border-primary focus:border-primary transition-colors text-sm font-medium [&::-webkit-calendar-picker-indicator]:opacity-0 [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:w-full [&::-webkit-calendar-picker-indicator]:h-full [&::-webkit-calendar-picker-indicator]:left-0 [&::-webkit-calendar-picker-indicator]:cursor-pointer"
+                          style={{ colorScheme: "light" }}
+                        />
+                        {customDates[section.type].startDate && (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              handleCustomDateChange(
+                                section.type,
+                                "startDate",
+                                "",
+                              )
+                            }
+                            className="absolute right-3 top-1/2 transform -translate-y-1/2 h-6 w-6 rounded-full bg-destructive/20 hover:bg-destructive/30 flex items-center justify-center transition-colors z-20 border border-destructive/30"
+                            aria-label="Clear start date"
+                          >
+                            <X className="h-3.5 w-3.5 text-destructive font-bold" />
+                          </button>
+                        )}
+                      </div>
+                      {customDates[section.type].startDate && (
+                        <div className="flex items-center gap-2 p-2 rounded-md bg-primary/5 border border-primary/10">
+                          <CheckCircle className="h-3.5 w-3.5 text-primary flex-shrink-0" />
+                          <p className="text-xs text-foreground font-medium">
+                            {new Date(
+                              customDates[section.type].startDate,
+                            ).toLocaleDateString("en-US", {
+                              weekday: "long",
+                              year: "numeric",
+                              month: "long",
+                              day: "numeric",
+                            })}
+                          </p>
+                        </div>
+                      )}
                     </div>
-                    <div className="space-y-1.5">
-                      <Label htmlFor={`${section.type}-end`} className="text-xs">
+                    <div className="space-y-2">
+                      <Label
+                        htmlFor={`${section.type}-end`}
+                        className="text-sm font-medium flex items-center gap-2"
+                      >
+                        <Calendar className="h-4 w-4 text-primary" />
                         End date
                       </Label>
-                      <Input
-                        id={`${section.type}-end`}
-                        type="date"
-                        value={customDates[section.type].endDate}
-                        onChange={(e) =>
-                          handleCustomDateChange(
-                            section.type,
-                            "endDate",
-                            e.target.value,
-                          )
-                        }
-                        className="h-9"
-                      />
+                      <div className="relative group">
+                        <div className="absolute left-2 top-1/2 transform -translate-y-1/2 z-10 pointer-events-none">
+                          <Calendar className="h-5 w-5 text-primary" />
+                        </div>
+                        <Input
+                          id={`${section.type}-end`}
+                          type="date"
+                          value={customDates[section.type].endDate}
+                          onChange={(e) =>
+                            handleCustomDateChange(
+                              section.type,
+                              "endDate",
+                              e.target.value,
+                            )
+                          }
+                          className="pl-10 pr-10 w-full cursor-pointer hover:border-primary focus:border-primary transition-colors text-sm font-medium [&::-webkit-calendar-picker-indicator]:opacity-0 [&::-webkit-calendar-picker-indicator]:absolute [&::-webkit-calendar-picker-indicator]:w-full [&::-webkit-calendar-picker-indicator]:h-full [&::-webkit-calendar-picker-indicator]:left-0 [&::-webkit-calendar-picker-indicator]:cursor-pointer"
+                          style={{ colorScheme: "light" }}
+                        />
+                        {customDates[section.type].endDate && (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              handleCustomDateChange(
+                                section.type,
+                                "endDate",
+                                "",
+                              )
+                            }
+                            className="absolute right-3 top-1/2 transform -translate-y-1/2 h-6 w-6 rounded-full bg-destructive/20 hover:bg-destructive/30 flex items-center justify-center transition-colors z-20 border border-destructive/30"
+                            aria-label="Clear end date"
+                          >
+                            <X className="h-3.5 w-3.5 text-destructive font-bold" />
+                          </button>
+                        )}
+                      </div>
+                      {customDates[section.type].endDate && (
+                        <div className="flex items-center gap-2 p-2 rounded-md bg-primary/5 border border-primary/10">
+                          <CheckCircle className="h-3.5 w-3.5 text-primary flex-shrink-0" />
+                          <p className="text-xs text-foreground font-medium">
+                            {new Date(
+                              customDates[section.type].endDate,
+                            ).toLocaleDateString("en-US", {
+                              weekday: "long",
+                              year: "numeric",
+                              month: "long",
+                              day: "numeric",
+                            })}
+                          </p>
+                        </div>
+                      )}
                     </div>
                   </div>
                 )}
