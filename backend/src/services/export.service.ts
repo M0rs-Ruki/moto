@@ -6,11 +6,22 @@ export type ExportType =
   | "digital-enquiry"
   | "field-inquiry"
   | "delivery-tickets";
-export type DateRange = "1m" | "3m" | "6m" | "1y";
+export type DateRange = "1m" | "3m" | "6m" | "1y" | "custom";
+
+export interface CustomDateRange {
+  startDate: string; // YYYY-MM-DD
+  endDate: string;   // YYYY-MM-DD
+}
 
 interface ExportResult {
   buffer: Buffer;
   filename: string;
+}
+
+interface DateBounds {
+  dateFrom: Date;
+  dateTo: Date;
+  rangeLabel: string;
 }
 
 export class ExportService {
@@ -21,16 +32,36 @@ export class ExportService {
     const now = new Date();
     switch (range) {
       case "1m":
-        return new Date(now.setMonth(now.getMonth() - 1));
+        return new Date(now.getFullYear(), now.getMonth() - 1, now.getDate());
       case "3m":
-        return new Date(now.setMonth(now.getMonth() - 3));
+        return new Date(now.getFullYear(), now.getMonth() - 3, now.getDate());
       case "6m":
-        return new Date(now.setMonth(now.getMonth() - 6));
+        return new Date(now.getFullYear(), now.getMonth() - 6, now.getDate());
       case "1y":
-        return new Date(now.setFullYear(now.getFullYear() - 1));
+        return new Date(now.getFullYear() - 1, now.getMonth(), now.getDate());
       default:
-        return new Date(now.setMonth(now.getMonth() - 1));
+        return new Date(now.getFullYear(), now.getMonth() - 1, now.getDate());
     }
+  }
+
+  /**
+   * Get date bounds for filtering: from preset range or custom start/end dates
+   */
+  private getDateBounds(range: DateRange, custom?: CustomDateRange): DateBounds {
+    const now = new Date();
+    if (range === "custom" && custom) {
+      const dateFrom = new Date(custom.startDate + "T00:00:00.000Z");
+      const dateTo = new Date(custom.endDate + "T23:59:59.999Z");
+      const rangeLabel = `Custom (${this.formatDate(dateFrom)} - ${this.formatDate(dateTo)})`;
+      return { dateFrom, dateTo, rangeLabel };
+    }
+    const dateFrom = this.getDateFrom(range);
+    const dateTo = now;
+    return {
+      dateFrom,
+      dateTo,
+      rangeLabel: this.getRangeLabel(range),
+    };
   }
 
   /**
@@ -48,11 +79,12 @@ export class ExportService {
    * Get readable range label
    */
   private getRangeLabel(range: DateRange): string {
-    const rangeLabels: Record<DateRange, string> = {
+    const rangeLabels: Record<string, string> = {
       "1m": "Last 1 Month",
       "3m": "Last 3 Months",
       "6m": "Last 6 Months",
       "1y": "Last 1 Year",
+      custom: "Custom",
     };
     return rangeLabels[range] || "Last 1 Month";
   }
@@ -60,12 +92,17 @@ export class ExportService {
   /**
    * Generate filename with date range info
    */
-  private generateFilename(type: ExportType, range: DateRange): string {
-    const rangeLabels: Record<DateRange, string> = {
+  private generateFilename(
+    type: ExportType,
+    range: DateRange,
+    rangeLabelForCustom?: string,
+  ): string {
+    const rangeLabels: Record<string, string> = {
       "1m": "Last_1_Month",
       "3m": "Last_3_Months",
       "6m": "Last_6_Months",
       "1y": "Last_1_Year",
+      custom: rangeLabelForCustom?.replace(/\s+/g, "_") || "Custom",
     };
     const typeLabels: Record<ExportType, string> = {
       visitors: "Daily_Walkins",
@@ -87,13 +124,14 @@ export class ExportService {
   async exportVisitors(
     dealershipId: string,
     range: DateRange,
+    custom?: CustomDateRange,
   ): Promise<ExportResult> {
-    const dateFrom = this.getDateFrom(range);
+    const { dateFrom, dateTo, rangeLabel } = this.getDateBounds(range, custom);
 
     const visitors = await prisma.visitor.findMany({
       where: {
         dealershipId,
-        createdAt: { gte: dateFrom },
+        createdAt: { gte: dateFrom, lte: dateTo },
       },
       include: {
         interests: {
@@ -154,7 +192,13 @@ export class ExportService {
       row["S.No"] = index + 1;
     });
 
-    return this.createExcelBuffer(data, "Daily Walkins", "visitors", range);
+    return this.createExcelBuffer(
+      data,
+      "Daily Walkins",
+      "visitors",
+      range,
+      rangeLabel,
+    );
   }
 
   /**
@@ -163,13 +207,14 @@ export class ExportService {
   async exportDigitalEnquiry(
     dealershipId: string,
     range: DateRange,
+    custom?: CustomDateRange,
   ): Promise<ExportResult> {
-    const dateFrom = this.getDateFrom(range);
+    const { dateFrom, dateTo, rangeLabel } = this.getDateBounds(range, custom);
 
     const enquiries = await prisma.digitalEnquiry.findMany({
       where: {
         dealershipId,
-        createdAt: { gte: dateFrom },
+        createdAt: { gte: dateFrom, lte: dateTo },
       },
       include: {
         model: true,
@@ -210,6 +255,7 @@ export class ExportService {
       "Digital Enquiry",
       "digital-enquiry",
       range,
+      rangeLabel,
     );
   }
 
@@ -219,13 +265,14 @@ export class ExportService {
   async exportFieldInquiry(
     dealershipId: string,
     range: DateRange,
+    custom?: CustomDateRange,
   ): Promise<ExportResult> {
-    const dateFrom = this.getDateFrom(range);
+    const { dateFrom, dateTo, rangeLabel } = this.getDateBounds(range, custom);
 
     const inquiries = await prisma.fieldInquiry.findMany({
       where: {
         dealershipId,
-        createdAt: { gte: dateFrom },
+        createdAt: { gte: dateFrom, lte: dateTo },
       },
       include: {
         model: true,
@@ -266,6 +313,7 @@ export class ExportService {
       "Field Inquiry",
       "field-inquiry",
       range,
+      rangeLabel,
     );
   }
 
@@ -275,13 +323,14 @@ export class ExportService {
   async exportDeliveryTickets(
     dealershipId: string,
     range: DateRange,
+    custom?: CustomDateRange,
   ): Promise<ExportResult> {
-    const dateFrom = this.getDateFrom(range);
+    const { dateFrom, dateTo, rangeLabel } = this.getDateBounds(range, custom);
 
     const tickets = await prisma.deliveryTicket.findMany({
       where: {
         dealershipId,
-        createdAt: { gte: dateFrom },
+        createdAt: { gte: dateFrom, lte: dateTo },
       },
       include: {
         model: true,
@@ -317,6 +366,7 @@ export class ExportService {
       "Delivery Update",
       "delivery-tickets",
       range,
+      rangeLabel,
     );
   }
 
@@ -328,9 +378,11 @@ export class ExportService {
     sheetName: string,
     type: ExportType,
     range: DateRange,
+    rangeLabelOverride?: string,
   ): ExportResult {
     // Create title and info rows
-    const rangeLabel = this.getRangeLabel(range);
+    const rangeLabel =
+      rangeLabelOverride ?? this.getRangeLabel(range);
     const exportDate = new Date().toLocaleDateString("en-IN", {
       day: "2-digit",
       month: "long",
@@ -390,7 +442,11 @@ export class ExportService {
     ];
 
     const buffer = XLSX.write(workbook, { type: "buffer", bookType: "xlsx" });
-    const filename = this.generateFilename(type, range);
+    const filename = this.generateFilename(
+      type,
+      range,
+      range === "custom" ? rangeLabel : undefined,
+    );
 
     return { buffer, filename };
   }
@@ -402,16 +458,17 @@ export class ExportService {
     type: ExportType,
     dealershipId: string,
     range: DateRange,
+    custom?: CustomDateRange,
   ): Promise<ExportResult> {
     switch (type) {
       case "visitors":
-        return this.exportVisitors(dealershipId, range);
+        return this.exportVisitors(dealershipId, range, custom);
       case "digital-enquiry":
-        return this.exportDigitalEnquiry(dealershipId, range);
+        return this.exportDigitalEnquiry(dealershipId, range, custom);
       case "field-inquiry":
-        return this.exportFieldInquiry(dealershipId, range);
+        return this.exportFieldInquiry(dealershipId, range, custom);
       case "delivery-tickets":
-        return this.exportDeliveryTickets(dealershipId, range);
+        return this.exportDeliveryTickets(dealershipId, range, custom);
       default:
         throw new Error(`Unknown export type: ${type}`);
     }

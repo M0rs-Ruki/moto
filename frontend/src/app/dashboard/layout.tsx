@@ -494,9 +494,9 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
         </aside>
 
         {/* Main content */}
-        <main className="flex-1 w-full bg-gradient-to-br from-background to-muted/30 mt-14 sm:mt-16 lg:mt-0 p-3 sm:p-4 md:p-6 lg:p-8 xl:p-10">
-          {/* Responsive container to prevent content stretching */}
-          <div className="max-w-[1800px] mx-auto">
+        <main className="flex-1 w-full bg-gradient-to-br from-background to-muted/30 mt-14 sm:mt-16 lg:mt-0 px-4 sm:px-6 md:px-8 lg:px-10 xl:px-16 2xl:px-20 py-3 sm:py-4 md:py-6 lg:py-8 xl:py-10">
+          {/* Responsive container: max-width + mx-auto centers content with space on sides */}
+          <div className="max-w-[1600px] mx-auto w-full">
             {/* Breadcrumb & Profile Box */}
             <div className="mb-4 sm:mb-6 lg:mb-8 border bg-card rounded-lg px-3 sm:px-4 md:px-6 lg:px-8 py-3 sm:py-4 flex flex-row items-center justify-between shadow-sm gap-3 sm:gap-4">
               <div className="flex-1 min-w-0 flex items-center">

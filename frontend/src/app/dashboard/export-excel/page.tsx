@@ -19,6 +19,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Download,
   FileSpreadsheet,
@@ -34,7 +36,7 @@ type ExportType =
   | "digital-enquiry"
   | "field-inquiry"
   | "delivery-tickets";
-type DateRange = "1m" | "3m" | "6m" | "1y";
+type DateRange = "1m" | "3m" | "6m" | "1y" | "custom";
 
 interface ExportSection {
   type: ExportType;
@@ -84,7 +86,22 @@ const dateRangeOptions: { value: DateRange; label: string }[] = [
   { value: "3m", label: "Last 3 Months" },
   { value: "6m", label: "Last 6 Months" },
   { value: "1y", label: "Last 1 Year" },
+  { value: "custom", label: "Custom date range" },
 ];
+
+function getDefaultCustomDates(): Record<ExportType, { startDate: string; endDate: string }> {
+  const end = new Date();
+  const start = new Date(end);
+  start.setMonth(start.getMonth() - 1);
+  const fmt = (d: Date) => d.toISOString().slice(0, 10);
+  const def = { startDate: fmt(start), endDate: fmt(end) };
+  return {
+    visitors: { ...def },
+    "digital-enquiry": { ...def },
+    "field-inquiry": { ...def },
+    "delivery-tickets": { ...def },
+  };
+}
 
 export default function ExportExcelPage() {
   const { hasPermission, isAdmin } = usePermissions();
@@ -104,6 +121,9 @@ export default function ExportExcelPage() {
     "field-inquiry": false,
     "delivery-tickets": false,
   });
+  const [customDates, setCustomDates] = useState<
+    Record<ExportType, { startDate: string; endDate: string }>
+  >(getDefaultCustomDates);
 
   // Permission check
   if (!isAdmin && !hasPermission("exportExcel")) {
@@ -127,12 +147,19 @@ export default function ExportExcelPage() {
 
   const handleExport = async (type: ExportType) => {
     const range = selectedRanges[type];
+    const params: Record<string, string> =
+      range === "custom"
+        ? {
+            startDate: customDates[type].startDate,
+            endDate: customDates[type].endDate,
+          }
+        : { range };
 
     setLoadingStates((prev) => ({ ...prev, [type]: true }));
 
     try {
       const response = await apiClient.get(`/export/${type}`, {
-        params: { range },
+        params,
         responseType: "blob",
       });
 
@@ -176,6 +203,23 @@ export default function ExportExcelPage() {
     setSelectedRanges((prev) => ({ ...prev, [type]: range }));
   };
 
+  const handleCustomDateChange = (
+    type: ExportType,
+    field: "startDate" | "endDate",
+    value: string,
+  ) => {
+    setCustomDates((prev) => ({
+      ...prev,
+      [type]: { ...prev[type], [field]: value },
+    }));
+  };
+
+  const isCustomRangeValid = (type: ExportType): boolean => {
+    const { startDate, endDate } = customDates[type];
+    if (!startDate || !endDate) return false;
+    return new Date(startDate) <= new Date(endDate);
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -213,45 +257,91 @@ export default function ExportExcelPage() {
               </div>
             </CardHeader>
             <CardContent className="pt-0">
-              <div className="flex flex-col sm:flex-row gap-3">
-                <Select
-                  value={selectedRanges[section.type]}
-                  onValueChange={(value: DateRange) =>
-                    handleRangeChange(section.type, value)
-                  }
-                >
-                  <SelectTrigger className="w-full sm:w-[180px]">
-                    <SelectValue placeholder="Select range" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {dateRangeOptions.map((option) => (
-                      <SelectItem key={option.value} value={option.value}>
-                        {option.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <Button
-                  onClick={() => handleExport(section.type)}
-                  disabled={loadingStates[section.type]}
-                  className="flex-1 sm:flex-initial"
-                  style={{
-                    backgroundColor: section.color,
-                    borderColor: section.color,
-                  }}
-                >
-                  {loadingStates[section.type] ? (
-                    <>
-                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      Exporting...
-                    </>
-                  ) : (
-                    <>
-                      <Download className="h-4 w-4 mr-2" />
-                      Export
-                    </>
-                  )}
-                </Button>
+              <div className="flex flex-col gap-3">
+                <div className="flex flex-col sm:flex-row gap-3">
+                  <Select
+                    value={selectedRanges[section.type]}
+                    onValueChange={(value: DateRange) =>
+                      handleRangeChange(section.type, value)
+                    }
+                  >
+                    <SelectTrigger className="w-full sm:w-[180px]">
+                      <SelectValue placeholder="Select range" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {dateRangeOptions.map((option) => (
+                        <SelectItem key={option.value} value={option.value}>
+                          {option.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Button
+                    onClick={() => handleExport(section.type)}
+                    disabled={
+                      loadingStates[section.type] ||
+                      (selectedRanges[section.type] === "custom" &&
+                        !isCustomRangeValid(section.type))
+                    }
+                    className="flex-1 sm:flex-initial"
+                    style={{
+                      backgroundColor: section.color,
+                      borderColor: section.color,
+                    }}
+                  >
+                    {loadingStates[section.type] ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        Exporting...
+                      </>
+                    ) : (
+                      <>
+                        <Download className="h-4 w-4 mr-2" />
+                        Export
+                      </>
+                    )}
+                  </Button>
+                </div>
+                {selectedRanges[section.type] === "custom" && (
+                  <div className="grid grid-cols-2 gap-3 sm:gap-4">
+                    <div className="space-y-1.5">
+                      <Label htmlFor={`${section.type}-start`} className="text-xs">
+                        Start date
+                      </Label>
+                      <Input
+                        id={`${section.type}-start`}
+                        type="date"
+                        value={customDates[section.type].startDate}
+                        onChange={(e) =>
+                          handleCustomDateChange(
+                            section.type,
+                            "startDate",
+                            e.target.value,
+                          )
+                        }
+                        className="h-9"
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label htmlFor={`${section.type}-end`} className="text-xs">
+                        End date
+                      </Label>
+                      <Input
+                        id={`${section.type}-end`}
+                        type="date"
+                        value={customDates[section.type].endDate}
+                        onChange={(e) =>
+                          handleCustomDateChange(
+                            section.type,
+                            "endDate",
+                            e.target.value,
+                          )
+                        }
+                        className="h-9"
+                      />
+                    </div>
+                  </div>
+                )}
               </div>
             </CardContent>
           </Card>
