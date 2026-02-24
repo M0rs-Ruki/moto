@@ -14,6 +14,7 @@ import CreateEnquiryDialog from "./components/CreateEnquiryDialog";
 import BulkUploadDialog from "./components/BulkUploadDialog";
 import EnquiriesTable from "./components/EnquiriesTable";
 import Pagination from "./components/Pagination";
+import { ExportExcelButton } from "@/components/export-excel-button";
 import DigitalEnquiryLoading from "./loading";
 
 interface LeadSource {
@@ -529,6 +530,7 @@ export default function DigitalEnquiryPage() {
       </div>
 
       <div className="flex justify-end gap-4">
+        <ExportExcelButton type="digital-enquiry" />
         <Button
           variant="outline"
           onClick={() => {

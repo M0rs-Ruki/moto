@@ -14,6 +14,7 @@ import InquiriesTable from "./components/InquiriesTable";
 import Pagination from "./components/Pagination";
 import CreateInquiryDialog from "./components/CreateInquiryDialog";
 import BulkUploadDialog from "./components/BulkUploadDialog";
+import { ExportExcelButton } from "@/components/export-excel-button";
 
 interface LeadSource {
   id: string;
@@ -449,6 +450,7 @@ export default function FieldInquiryPage() {
       </div>
 
       <div className="flex justify-end gap-4">
+        <ExportExcelButton type="field-inquiry" />
         <Button
           variant="outline"
           onClick={() => {

@@ -18,6 +18,7 @@ import { VisitorDetailsModal } from "./components/VisitorDetailsModal";
 import { TestDriveDialog } from "./components/TestDriveDialog";
 import { FeedbackDialog } from "./components/FeedbackDialog";
 import { ExitConfirmDialog } from "./components/ExitConfirmDialog";
+import { ExportExcelButton } from "@/components/export-excel-button";
 import DailyWalkinsLoading from "./loading";
 
 export default function DailyWalkinsPage() {
@@ -192,13 +193,16 @@ export default function DailyWalkinsPage() {
             </p>
           </div>
 
-          <DateFilterDialog
-            open={dateFilterOpen}
-            onOpenChange={setDateFilterOpen}
-            dateFilter={visitorsHook.dateFilter}
-            onDateFilterChange={visitorsHook.setDateFilter}
-            onClearFilter={visitorsHook.clearDateFilter}
-          />
+          <div className="flex flex-wrap items-center gap-2">
+            <ExportExcelButton type="visitors" />
+            <DateFilterDialog
+              open={dateFilterOpen}
+              onOpenChange={setDateFilterOpen}
+              dateFilter={visitorsHook.dateFilter}
+              onDateFilterChange={visitorsHook.setDateFilter}
+              onClearFilter={visitorsHook.clearDateFilter}
+            />
+          </div>
         </div>
       </div>
 

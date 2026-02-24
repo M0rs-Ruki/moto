@@ -23,7 +23,6 @@ import {
   MessageSquare,
   Package,
   MapPin,
-  FileSpreadsheet,
   Building2,
   BarChart3,
 } from "lucide-react";
@@ -296,39 +295,6 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
                     <span className="text-xs font-medium">Delivery Update</span>
                     {(pathname === "/dashboard/delivery-update" ||
                       pathname?.startsWith("/dashboard/delivery-update/")) && (
-                      <div
-                        className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 rounded-r-full"
-                        style={{ backgroundColor: "#1976B8" }}
-                      />
-                    )}
-                  </Button>
-                </Link>
-              )}
-
-              {/* Export Excel */}
-              {hasPermission("exportExcel") && (
-                <Link
-                  prefetch={false}
-                  href="/dashboard/export-excel"
-                  onClick={() => setSidebarOpen(false)}
-                  className="w-full"
-                >
-                  <Button
-                    variant={
-                      pathname === "/dashboard/export-excel" ||
-                      pathname?.startsWith("/dashboard/export-excel/")
-                        ? "secondary"
-                        : "ghost"
-                    }
-                    className="w-full h-9 justify-start relative min-h-[36px]"
-                  >
-                    <FileSpreadsheet
-                      className="h-5 w-5 mr-3 flex-shrink-0"
-                      style={{ color: "#1976B8" }}
-                    />
-                    <span className="text-xs font-medium">Export Excel</span>
-                    {(pathname === "/dashboard/export-excel" ||
-                      pathname?.startsWith("/dashboard/export-excel/")) && (
                       <div
                         className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 rounded-r-full"
                         style={{ backgroundColor: "#1976B8" }}

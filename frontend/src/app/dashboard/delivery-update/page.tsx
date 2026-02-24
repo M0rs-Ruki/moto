@@ -11,6 +11,7 @@ import { Input } from "@/components/ui/input";
 import CreateTicketDialog from "./components/CreateTicketDialog";
 import DeliveryTicketsTable from "./components/DeliveryTicketsTable";
 import Pagination from "./components/Pagination";
+import { ExportExcelButton } from "@/components/export-excel-button";
 import DeliveryUpdateLoading from "./loading";
 
 interface DeliveryTicket {
@@ -256,6 +257,7 @@ export default function DeliveryUpdatePage() {
       </div>
 
       <div className="flex justify-end gap-4">
+        <ExportExcelButton type="delivery-tickets" />
         <Button onClick={() => setCreateDialogOpen(true)}>
           <Plus className="mr-2 h-4 w-4" />
           Create Ticket
