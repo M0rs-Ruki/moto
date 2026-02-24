@@ -24,6 +24,7 @@ interface WhatsAppTemplate {
   templateName: string;
   language: string;
   type: string;
+  section?: string;
 }
 
 export default function WhatsAppSettings() {
@@ -107,12 +108,27 @@ export default function WhatsAppSettings() {
       toast.error("You don't have permission to update templates");
       return;
     }
+    if (!template?.id) {
+      toast.error("Invalid template");
+      return;
+    }
     setSaving(true);
     try {
-      await apiClient.put("/templates", template);
+      const payload = {
+        id: String(template.id),
+        name: String(template.name ?? ""),
+        templateId: String(template.templateId ?? ""),
+        templateName: String(template.templateName ?? ""),
+        language: String(template.language ?? "en_US"),
+        section: String(template.section ?? "global"),
+      };
+      await apiClient.put("/templates", payload);
+      toast.success("Template saved");
       fetchData();
-    } catch (error) {
+    } catch (error: unknown) {
       console.error("Failed to update template:", error);
+      const err = error as { response?: { data?: { error?: string } } };
+      toast.error(err.response?.data?.error || "Failed to update template");
     } finally {
       setSaving(false);
     }
@@ -159,7 +175,8 @@ export default function WhatsAppSettings() {
             WhatsApp Templates
           </CardTitle>
           <CardDescription className="text-xs sm:text-sm">
-            Configure template IDs and names for WhatsApp messages
+            Configure template IDs and names for WhatsApp messages. Leave both
+            empty to disable WhatsApp for that template.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-3 sm:space-y-4">
@@ -238,7 +255,7 @@ export default function WhatsAppSettings() {
                           );
                           setTemplates(updated);
                         }}
-                        placeholder="e.g., 728805729727726"
+                        placeholder="e.g., 728805729727726 (leave empty to disable)"
                         className="text-xs sm:text-sm"
                       />
                     </div>
@@ -254,11 +271,15 @@ export default function WhatsAppSettings() {
                           );
                           setTemplates(updated);
                         }}
-                        placeholder="e.g., welcome_msg"
+                        placeholder="e.g., welcome_msg (leave empty to disable)"
                         className="text-xs sm:text-sm"
                       />
                     </div>
                   </div>
+                  <p className="text-xs text-muted-foreground">
+                    Leave both Template ID and Template Name empty to stop
+                    sending WhatsApp messages for this template.
+                  </p>
                   <Button
                     size="sm"
                     onClick={() => handleUpdateTemplate(template)}

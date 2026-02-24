@@ -107,6 +107,7 @@ router.get(
 );
 
 // Update template
+// Only id is required. templateId and templateName may be empty (disables WhatsApp for that template).
 router.put(
   "/",
   authenticate,
@@ -117,17 +118,24 @@ router.put(
       return;
     }
 
-    const { id, name, templateId, templateName, language, section } = req.body;
+    const body = req.body || {};
+    const id = body.id;
+    const name = body.name;
+    const templateId = body.templateId;
+    const templateName = body.templateName;
+    const language = body.language;
+    const section = body.section;
 
-    if (!id || !name || !templateId || !templateName) {
-      res.status(400).json({ error: "Missing required fields" });
+    // Only require id. Do NOT require name, templateId, or templateName (empty = disable WhatsApp).
+    if (id == null || id === "" || (typeof id === "string" && id.trim() === "")) {
+      res.status(400).json({ error: "Missing or invalid template id" });
       return;
     }
 
     // Verify template belongs to user's dealership
     const existingTemplate = await prisma.whatsAppTemplate.findFirst({
       where: {
-        id,
+        id: String(id).trim(),
         dealershipId: req.user.dealershipId,
       },
     });
@@ -137,15 +145,18 @@ router.put(
       return;
     }
 
+    // Empty templateId/templateName is allowed: it disables WhatsApp for this template
+    const updateData = {
+      name: name != null && typeof name === "string" ? name : existingTemplate.name,
+      templateId: templateId != null && typeof templateId === "string" ? templateId : "",
+      templateName: templateName != null && typeof templateName === "string" ? templateName : "",
+      language: language != null && typeof language === "string" ? language : "en_US",
+      section: section != null && typeof section === "string" ? section : (existingTemplate.section ?? "global"),
+    };
+
     const template = await prisma.whatsAppTemplate.update({
-      where: { id },
-      data: {
-        name,
-        templateId,
-        templateName,
-        language: language || "en_US",
-        section: section || existingTemplate.section || "global",
-      },
+      where: { id: existingTemplate.id },
+      data: updateData,
     });
 
     res.json({ success: true, template });
