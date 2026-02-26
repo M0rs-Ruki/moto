@@ -136,7 +136,7 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
               href="https://prominds.digital/"
               target="_blank"
               rel="noopener noreferrer"
-              className="mb-2 hidden md:flex items-center justify-center text-[10px] text-muted-foreground hover:text-blue-600 dark:hover:text-blue-400 transition-colors cursor-pointer"
+              className="mb-2 hidden md:flex items-center justify-center text-xs text-muted-foreground hover:text-blue-600 dark:hover:text-blue-400 transition-colors cursor-pointer"
             >
               Powered by{" "}
               <span className="font-semibold ml-1">Prominds Digital</span>
@@ -154,16 +154,16 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
                 >
                   <Button
                     variant={pathname === "/dashboard" ? "secondary" : "ghost"}
-                    className="w-full h-9 justify-start relative min-h-[36px]"
+                    className="w-full h-10 justify-start relative min-h-[40px]"
                   >
                     <LayoutDashboard
                       className="h-5 w-5 mr-3 flex-shrink-0"
                       style={{ color: "#1976B8" }}
                     />
-                    <span className="text-xs font-medium">Dashboard</span>
+                    <span className="text-sm font-medium">Dashboard</span>
                     {pathname === "/dashboard" && (
                       <div
-                        className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 rounded-r-full"
+                        className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-8 rounded-r-full"
                         style={{ backgroundColor: "#1976B8" }}
                       />
                     )}
@@ -187,17 +187,17 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
                         ? "secondary"
                         : "ghost"
                     }
-                    className="w-full h-9 justify-start relative min-h-[36px]"
+                    className="w-full h-10 justify-start relative min-h-[40px]"
                   >
                     <DoorOpen
                       className="h-5 w-5 mr-3 flex-shrink-0"
                       style={{ color: "#1976B8" }}
                     />
-                    <span className="text-xs font-medium">Daily Walkins</span>
+                    <span className="text-sm font-medium">Daily Walkins</span>
                     {(pathname === "/dashboard/daily-walkins" ||
                       pathname?.startsWith("/dashboard/daily-walkins/")) && (
                       <div
-                        className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 rounded-r-full"
+                        className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-8 rounded-r-full"
                         style={{ backgroundColor: "#1976B8" }}
                       />
                     )}
@@ -220,17 +220,17 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
                         ? "secondary"
                         : "ghost"
                     }
-                    className="w-full h-9 justify-start relative min-h-[36px]"
+                    className="w-full h-10 justify-start relative min-h-[40px]"
                   >
                     <MessageSquare
                       className="h-5 w-5 mr-3 flex-shrink-0"
                       style={{ color: "#1976B8" }}
                     />
-                    <span className="text-xs font-medium">Digital Enquiry</span>
+                    <span className="text-sm font-medium">Digital Enquiry</span>
                     {(pathname === "/dashboard/digital-enquiry" ||
                       pathname?.startsWith("/dashboard/digital-enquiry/")) && (
                       <div
-                        className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 rounded-r-full"
+                        className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-8 rounded-r-full"
                         style={{ backgroundColor: "#1976B8" }}
                       />
                     )}
@@ -253,17 +253,17 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
                         ? "secondary"
                         : "ghost"
                     }
-                    className="w-full h-9 justify-start relative min-h-[36px]"
+                    className="w-full h-10 justify-start relative min-h-[40px]"
                   >
                     <MapPin
                       className="h-5 w-5 mr-3 flex-shrink-0"
                       style={{ color: "#1976B8" }}
                     />
-                    <span className="text-xs font-medium">Field Inquiry</span>
+                    <span className="text-sm font-medium">Field Inquiry</span>
                     {(pathname === "/dashboard/field-inquiry" ||
                       pathname?.startsWith("/dashboard/field-inquiry/")) && (
                       <div
-                        className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 rounded-r-full"
+                        className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-8 rounded-r-full"
                         style={{ backgroundColor: "#1976B8" }}
                       />
                     )}
@@ -286,17 +286,17 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
                         ? "secondary"
                         : "ghost"
                     }
-                    className="w-full h-9 justify-start relative min-h-[36px]"
+                    className="w-full h-10 justify-start relative min-h-[40px]"
                   >
                     <Package
                       className="h-5 w-5 mr-3 flex-shrink-0"
                       style={{ color: "#1976B8" }}
                     />
-                    <span className="text-xs font-medium">Delivery Update</span>
+                    <span className="text-sm font-medium">Delivery Update</span>
                     {(pathname === "/dashboard/delivery-update" ||
                       pathname?.startsWith("/dashboard/delivery-update/")) && (
                       <div
-                        className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 rounded-r-full"
+                        className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-8 rounded-r-full"
                         style={{ backgroundColor: "#1976B8" }}
                       />
                     )}
@@ -322,16 +322,16 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
                           ? "secondary"
                           : "ghost"
                       }
-                      className="w-full h-9 justify-start relative min-h-[36px]"
+                      className="w-full h-10 justify-start relative min-h-[40px]"
                     >
                       <Globe
                         className="h-5 w-5 mr-3 flex-shrink-0"
                         style={{ color: "#1976B8" }}
                       />
-                      <span className="text-xs font-medium">Settings</span>
+                      <span className="text-sm font-medium">Settings</span>
                       {pathname === "/dashboard/global-settings" && (
                         <div
-                          className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 rounded-r-full"
+                          className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-8 rounded-r-full"
                           style={{ backgroundColor: "#1976B8" }}
                         />
                       )}
@@ -355,17 +355,17 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
                         ? "secondary"
                         : "ghost"
                     }
-                    className="w-full h-9 justify-start relative min-h-[36px]"
+                    className="w-full h-10 justify-start relative min-h-[40px]"
                   >
                     <Users
                       className="h-5 w-5 mr-3 flex-shrink-0"
                       style={{ color: "#1976B8" }}
                     />
-                    <span className="text-xs font-medium">Role Management</span>
+                    <span className="text-sm font-medium">Role Management</span>
                     {(pathname === "/dashboard/role-management" ||
                       pathname?.startsWith("/dashboard/role-management/")) && (
                       <div
-                        className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 rounded-r-full"
+                        className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-8 rounded-r-full"
                         style={{ backgroundColor: "#1976B8" }}
                       />
                     )}
@@ -377,7 +377,7 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
               {isSuperAdmin && (
                 <>
                   <div className="pt-1.5 border-t w-full">
-                    <p className="text-xs text-muted-foreground px-2 py-1 uppercase tracking-wider">
+                    <p className="text-sm text-muted-foreground px-2 py-1.5 uppercase tracking-wider">
                       Organization
                     </p>
                   </div>
@@ -393,16 +393,16 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
                           ? "secondary"
                           : "ghost"
                       }
-                      className="w-full h-9 justify-start relative min-h-[36px]"
+                      className="w-full h-10 justify-start relative min-h-[40px]"
                     >
                       <Building2
                         className="h-5 w-5 mr-3 flex-shrink-0"
                         style={{ color: "#1976B8" }}
                       />
-                      <span className="text-xs font-medium">Org Settings</span>
+                      <span className="text-sm font-medium">Org Settings</span>
                       {pathname === "/dashboard/org-settings" && (
                         <div
-                          className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 rounded-r-full"
+                          className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-8 rounded-r-full"
                           style={{ backgroundColor: "#1976B8" }}
                         />
                       )}
@@ -420,16 +420,16 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
                           ? "secondary"
                           : "ghost"
                       }
-                      className="w-full h-9 justify-start relative min-h-[36px]"
+                      className="w-full h-10 justify-start relative min-h-[40px]"
                     >
                       <BarChart3
                         className="h-5 w-5 mr-3 flex-shrink-0"
                         style={{ color: "#1976B8" }}
                       />
-                      <span className="text-xs font-medium">Usage Stats</span>
+                      <span className="text-sm font-medium">Usage Stats</span>
                       {pathname === "/dashboard/usage-stats" && (
                         <div
-                          className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 rounded-r-full"
+                          className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-8 rounded-r-full"
                           style={{ backgroundColor: "#1976B8" }}
                         />
                       )}
@@ -443,14 +443,14 @@ function DashboardLayoutContent({ children }: { children: React.ReactNode }) {
             <div className="border-t w-full pt-2 space-y-1.5 flex flex-col items-start">
               <Button
                 variant="ghost"
-                className="w-full h-9 justify-start"
+                className="w-full h-10 justify-start"
                 onClick={handleLogout}
               >
                 <LogOut
-                  className="h-4 w-4 mr-2 flex-shrink-0"
+                  className="h-5 w-5 mr-3 flex-shrink-0"
                   style={{ color: "#1976B8" }}
                 />
-                <span className="text-xs font-medium">Logout</span>
+                <span className="text-sm font-medium">Logout</span>
               </Button>
               <div className="w-full">
                 <ThemeSwitcherButtons />
