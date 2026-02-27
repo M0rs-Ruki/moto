@@ -9,7 +9,7 @@ A multi-tenant dealership and automotive management application. Manage organiza
 - **Auth:** JWT, cookie-based sessions, bcrypt
 - **Infra:** RabbitMQ (AMQP), Vercel Blob (optional), health checks, rate limiting
 
-## Project Structure
+## Project Structure 
 
 ```
 moto/
